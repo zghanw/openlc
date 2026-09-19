@@ -11,8 +11,10 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 /// party from holding the other hostage: the buyer reclaims an escrow that
 /// was never shipped, and the supplier claims an escrow the buyer never
 /// inspected. A settled escrow is never deleted: its outcome stays on the
-/// struct as the permanent receipt. This is a line-for-line port of
-/// `payproof::escrow` (Sui Move) onto BOT Chain; see the adaptation table in
+/// struct as the permanent receipt. For every escrow,
+/// `totalAmount == releasedAmount + balance + settledBuyerRefund` holds
+/// after every call. This is a line-for-line port of `payproof::escrow`
+/// (Sui Move) onto BOT Chain; see the adaptation table in
 /// docs/hackathon-build/spec.md for what changed and why. There is no owner,
 /// admin, upgrade path or fee.
 contract OpenLCEscrow is ReentrancyGuard {
@@ -65,7 +67,7 @@ contract OpenLCEscrow is ReentrancyGuard {
         uint256 depositAmount;
         uint256 dispatchAmount;
         uint256 deliveryAmount;
-        uint256 releasedAmount; // cumulative milestone release to the supplier (deposit + dispatch)
+        uint256 releasedAmount; // cumulative BOT released to the supplier: deposit, dispatch, undisputed value and settlement release
         uint256 balance; // BOT still held by this escrow
         uint256 disputedAmount;
         uint256 requestedBuyerRefund;
@@ -87,6 +89,7 @@ contract OpenLCEscrow is ReentrancyGuard {
         bool buyerApproved;
         bool supplierApproved;
         bool arbitratorApproved;
+        // mode, settledAt, settledBuyerRefund and settledSupplierRelease are meaningful only once status == Settled
         uint256 settledBuyerRefund;
         uint256 settledSupplierRelease;
     }
@@ -250,6 +253,7 @@ contract OpenLCEscrow is ReentrancyGuard {
         uint256 undisputed = remaining - disputedAmount;
         esc.undisputedReleased = true;
         esc.balance = disputedAmount;
+        esc.releasedAmount += undisputed;
         emit UndisputedReleased(id, esc.supplier, undisputed);
         _pay(esc.supplier, undisputed);
     }
@@ -268,27 +272,30 @@ contract OpenLCEscrow is ReentrancyGuard {
     /// overrides and needs no match.
     function approveSettlement(uint256 id, uint256 buyerRefund, uint256 supplierRelease, bytes32 proposalHash) external nonReentrant {
         Escrow storage esc = _escrow(id);
+        bool isArbitrator = msg.sender == esc.arbitrator;
+        bool isBuyer = msg.sender == esc.buyer;
+        bool isSupplier = msg.sender == esc.supplier;
+        if (!isArbitrator && !isBuyer && !isSupplier) revert Unauthorized();
+
         if (esc.status != Status.Disputed) revert InvalidState();
         _validateAllocation(esc, buyerRefund, supplierRelease, proposalHash);
 
-        if (msg.sender == esc.arbitrator) {
+        if (isArbitrator) {
             esc.arbitratorApproved = true;
-        } else if (msg.sender == esc.buyer) {
+        } else if (isBuyer) {
             if (esc.supplierApproved || esc.arbitratorApproved) {
                 if (esc.approvedBuyerRefund != buyerRefund || esc.approvedSupplierRelease != supplierRelease || esc.proposalHash != proposalHash) {
                     revert ApprovalMismatch();
                 }
             }
             esc.buyerApproved = true;
-        } else if (msg.sender == esc.supplier) {
+        } else {
             if (esc.buyerApproved || esc.arbitratorApproved) {
                 if (esc.approvedBuyerRefund != buyerRefund || esc.approvedSupplierRelease != supplierRelease || esc.proposalHash != proposalHash) {
                     revert ApprovalMismatch();
                 }
             }
             esc.supplierApproved = true;
-        } else {
-            revert Unauthorized();
         }
 
         esc.approvedBuyerRefund = buyerRefund;
@@ -346,11 +353,14 @@ contract OpenLCEscrow is ReentrancyGuard {
     /// outcome (mode, split, timestamp) stays on the struct as the
     /// permanent receipt; a Settled escrow is terminal.
     function _settle(uint256 id, Escrow storage esc, uint256 buyerRefund, uint256 supplierRelease, Mode mode) private {
+        if (buyerRefund + supplierRelease != esc.balance) revert FundsNotReady();
+
         esc.status = Status.Settled;
         esc.mode = mode;
         esc.settledAt = uint64(block.timestamp);
         esc.settledBuyerRefund = buyerRefund;
         esc.settledSupplierRelease = supplierRelease;
+        esc.releasedAmount += supplierRelease;
         esc.balance = 0;
 
         emit SettlementExecuted(id, esc.buyer, esc.supplier, buyerRefund, supplierRelease, esc.proposalHash, mode);
