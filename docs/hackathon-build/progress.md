@@ -3,3 +3,4 @@
 Merge base: c87129d (kickoff, spec, plan). Commits stay local until Hao Wen says "push" (github.com/zghanw/openlc is public).
 
 Task 1: complete (commits ee7ca8d..5cff1e3). Review found 3 issues (env example described the future, dotfiles skipped, renamed defaults); fixed in 1 round, re-review clean. Baseline: backend 103 tests pass, backend + web build.
+Task 2: complete (commits d46dfe7..b6a7832). Review: no critical issues; fixed in 1 round: restored Move conservation check in _settle, auth-first approveSettlement, cumulative releasedAmount (invariant total == released + balance + settledBuyerRefund), /types/ ignored. Re-review clean.
