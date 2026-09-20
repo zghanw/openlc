@@ -19,8 +19,8 @@ for mechanical/repetitive work, **sonnet** for judgment or multi-file work.
 | 5 | API: EIP-191 wallet identity; zkLogin/Enoki/Google removed | sonnet | yes |
 | 6 | API: EVM funding + settlement verifiers | sonnet | yes |
 | 7 | API: wallet-bound invites and funding party checks | sonnet | yes |
-| 8 | Web: chain config, MetaMask provider, wallet sign-in | sonnet | yes |
-| 9 | Web: escrow actions on ethers, 18-decimal BOT units | sonnet | yes |
+| 8 | Web: chain config, MetaMask provider, wallet sign-in, escrow actions on ethers (merged with task 9) | sonnet | yes |
+| ~~9~~ | ~~Web: escrow actions on ethers~~ — merged into task 8: swapping the wallet provider breaks every file using the old hooks, so they must land together or `main` cannot build | | yes |
 | 10 | Web: Sui removal, OpenLC copy, BOT Chain footer | haiku | yes |
 | 11 | Preview deploy (new Supabase, Render, Vercel) + Feature Zero run-through | haiku | yes |
 | 12 | Demo supplier that auto-confirms | sonnet | no |
