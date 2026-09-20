@@ -125,6 +125,7 @@ async function openEscrow(context, overrides = {}) {
 async function expectInvariants(context, addresses = []) {
   const { ethers, escrow } = context;
   const count = await escrow.escrowCount();
+  expect(count, "no escrow to check the invariants against").to.be.greaterThan(0n);
   let held = 0n;
   for (let id = 1n; id <= count; id += 1n) {
     const record = await escrow.getEscrow(id);
@@ -133,7 +134,11 @@ async function expectInvariants(context, addresses = []) {
     );
     held += record.balance;
   }
-  for (const address of addresses) held += await escrow.owed(address);
+  // every address the contract ever failed to pay announced itself in an event,
+  // so the owed side is scanned rather than trusted to a caller's list
+  const deferred = await escrow.queryFilter(escrow.filters.PaymentDeferred());
+  const owedTo = new Set([...addresses, ...deferred.map((event) => event.args.to)]);
+  for (const address of owedTo) held += await escrow.owed(address);
   expect(await ethers.provider.getBalance(await escrow.getAddress()), "contract balance").to.equal(held);
 }
 
@@ -198,8 +203,10 @@ describe("OpenLCEscrow", function () {
       const disputed = ethers.parseEther("3.6");
       await (await escrow.connect(buyer).openDispute(id, disputed, disputed)).wait();
 
-      const refund = ethers.parseEther("1.8");
-      const release = disputed - refund;
+      // deliberately lopsided: a swapped payout inside _settle would be visible
+      const refund = ethers.parseEther("1.2");
+      const release = disputed - refund; // 2.4
+      expect(refund).to.not.equal(release);
       await (await escrow.connect(buyer).approveSettlement(id, refund, release, PROPOSAL_HASH)).wait();
       await (await escrow.connect(supplier).approveSettlement(id, refund, release, PROPOSAL_HASH)).wait();
 
@@ -307,6 +314,12 @@ describe("OpenLCEscrow", function () {
       const milestone = eventArgs(escrow, shipReceipt, "MilestoneReleased");
       expect(milestone.stage).to.equal(2n);
       expect(milestone.amount).to.equal(dispatch);
+
+      // both sides of the trade may anchor a document
+      const supplierAnchor = await (
+        await escrow.connect(supplier).anchorEvidence(id, KIND_DISPATCH, EVIDENCE_HASH)
+      ).wait();
+      expect(eventArgs(escrow, supplierAnchor, "EvidenceAnchored").party).to.equal(supplier.address);
 
       const anchorReceipt = await (await escrow.connect(buyer).anchorEvidence(id, KIND_DISPATCH, EVIDENCE_HASH)).wait();
       const anchored = eventArgs(escrow, anchorReceipt, "EvidenceAnchored");
@@ -418,11 +431,14 @@ describe("OpenLCEscrow", function () {
     it("lets the supplier claim an uninspected escrow after the window", async function () {
       const context = await deployFixture();
       const { ethers, escrow, supplier } = context;
-      const { id, delivery } = await openEscrow(context);
+      const { id, delivery, deadline, window } = await openEscrow(context);
       await (await escrow.connect(supplier).markShipped(id, EVIDENCE_HASH)).wait();
 
-      const closes = await escrow.inspectionClosesAt(id);
-      await setNextTimestamp(ethers, BigInt(closes) + 1n);
+      // shipped on time, so the window runs from the agreed delivery date, not from shipment;
+      // computed here from the order's own terms rather than read back from the contract
+      const closes = BigInt(await escrow.inspectionClosesAt(id));
+      expect(closes).to.equal(deadline + window);
+      await setNextTimestamp(ethers, closes + 1n);
       const before = await ethers.provider.getBalance(supplier.address);
       const receipt = await (await escrow.connect(supplier).claimUninspected(id)).wait();
 
@@ -496,22 +512,23 @@ describe("OpenLCEscrow", function () {
         .revertedWithCustomError(escrow, "ZeroAmount");
     });
 
-    it("refuses missing or duplicated parties", async function () {
-      const context = await deployFixture();
-      const { escrow, buyer, supplier, arbitrator } = context;
-
-      const cases = [
-        { supplier: ZERO_ADDRESS },
-        { arbitrator: ZERO_ADDRESS },
-        { supplier: buyer.address },
-        { arbitrator: buyer.address },
-        { supplier: arbitrator.address },
-        { arbitrator: supplier.address },
-      ];
-      for (const override of cases) {
-        await expect(openEscrow(context, override)).to.be.revertedWithCustomError(escrow, "InvalidParties");
-      }
-    });
+    const partyCases = [
+      ["a supplier that is not an address", (c) => ({ supplier: ZERO_ADDRESS })],
+      ["an arbitrator that is not an address", (c) => ({ arbitrator: ZERO_ADDRESS })],
+      ["a supplier that is also the buyer", (c) => ({ supplier: c.buyer.address })],
+      ["an arbitrator that is also the buyer", (c) => ({ arbitrator: c.buyer.address })],
+      ["a supplier that is also the arbitrator", (c) => ({ supplier: c.arbitrator.address })],
+      ["an arbitrator that is also the supplier", (c) => ({ arbitrator: c.supplier.address })],
+    ];
+    for (const [label, override] of partyCases) {
+      it(`refuses ${label}`, async function () {
+        const context = await deployFixture();
+        await expect(openEscrow(context, override(context))).to.be.revertedWithCustomError(
+          context.escrow,
+          "InvalidParties",
+        );
+      });
+    }
 
     it("refuses an empty order hash", async function () {
       const context = await deployFixture();
@@ -735,7 +752,7 @@ describe("OpenLCEscrow", function () {
       );
     });
 
-    it("cannot re-enter the escrow from a payout", async function () {
+    it("cannot re-enter through the capped-gas payout push", async function () {
       const context = await deployFixture();
       const { ethers, escrow, buyer } = context;
       const escrowAddress = await escrow.getAddress();
@@ -743,28 +760,58 @@ describe("OpenLCEscrow", function () {
       await attacker.waitForDeployment();
       const attackerAddress = await attacker.getAddress();
 
-      // on receiving the deposit it tries to open a dispute on the same escrow
+      // the supplier tries to release its own dispatch milestone from inside the
+      // deposit payout: a call it is genuinely entitled to make, just not re-entrantly
       await (
-        await attacker.setReentryCall(
-          escrow.interface.encodeFunctionData("openDispute", [1n, 1n, 1n]),
-        )
+        await attacker.setReentryCall(escrow.interface.encodeFunctionData("markShipped", [1n, EVIDENCE_HASH]))
       ).wait();
 
       const { id, deposit, dispatch, delivery } = await openEscrow(context, { supplier: attackerAddress });
       expect(await attacker.reentered()).to.equal(false);
+      expect((await escrow.getEscrow(id)).shipped).to.equal(false);
       expect(await ethers.provider.getBalance(attackerAddress)).to.equal(deposit);
-      await expectInvariants(context, [attackerAddress]);
+      await expectInvariants(context);
 
-      // and again on the undisputed payout, this time trying to withdraw mid-payout
-      await (await attacker.setReentryCall(escrow.interface.encodeFunctionData("withdraw"))).wait();
+      // same again on the undisputed payout during a claim
       const disputed = ethers.parseEther("4");
       await (await escrow.connect(buyer).openDispute(id, disputed, disputed)).wait();
-
       expect(await attacker.reentered()).to.equal(false);
-      expect(await ethers.provider.getBalance(attackerAddress)).to.equal(
-        deposit + dispatch + delivery - disputed,
-      );
-      await expectInvariants(context, [attackerAddress]);
+      expect(await ethers.provider.getBalance(attackerAddress)).to.equal(deposit + dispatch + delivery - disputed);
+      await expectInvariants(context);
+    });
+
+    it("cannot re-enter the escrow while a withdrawal is in flight", async function () {
+      const context = await deployFixture();
+      const { ethers, escrow } = context;
+      const escrowAddress = await escrow.getAddress();
+      const attacker = await ethers.deployContract("ReentrantReceiver", [escrowAddress]);
+      await attacker.waitForDeployment();
+      const attackerAddress = await attacker.getAddress();
+
+      // Refuse the deposit first so the escrow owes it: withdraw() forwards ALL remaining
+      // gas, unlike the 50,000-gas payout push, so the re-entered call below would really
+      // succeed here if nonReentrant were absent. This is the test that pins the guard.
+      await (await attacker.setRejecting(true)).wait();
+      const { id, deposit, dispatch, delivery } = await openEscrow(context, { supplier: attackerAddress });
+      expect(await escrow.owed(attackerAddress)).to.equal(deposit);
+
+      await (await attacker.setRejecting(false)).wait();
+      await (
+        await attacker.setReentryCall(escrow.interface.encodeFunctionData("markShipped", [id, EVIDENCE_HASH]))
+      ).wait();
+
+      await (await attacker.execute(escrowAddress, escrow.interface.encodeFunctionData("withdraw"))).wait();
+
+      // the withdrawal paid out, but the re-entered markShipped was refused,
+      // so no dispatch milestone was released early
+      expect(await attacker.reentered()).to.equal(false);
+      const record = await escrow.getEscrow(id);
+      expect(record.shipped).to.equal(false);
+      expect(record.balance).to.equal(dispatch + delivery);
+      expect(record.releasedAmount).to.equal(deposit);
+      expect(await escrow.owed(attackerAddress)).to.equal(0n);
+      expect(await ethers.provider.getBalance(attackerAddress)).to.equal(deposit);
+      await expectInvariants(context);
     });
   });
 
@@ -774,7 +821,7 @@ describe("OpenLCEscrow", function () {
       const { ethers, escrow, buyer, supplier } = context;
       const parties = [buyer.address, supplier.address];
 
-      const { id, total, deposit, dispatch } = await openEscrow(context);
+      const { id, total } = await openEscrow(context);
       await expectInvariants(context, parties);
 
       await (await escrow.connect(supplier).markShipped(id, EVIDENCE_HASH)).wait();
@@ -801,7 +848,6 @@ describe("OpenLCEscrow", function () {
       const record = await escrow.getEscrow(id);
       expect(record.status).to.equal(STATUS.Settled);
       expect(record.releasedAmount).to.equal(total - refund);
-      expect(record.releasedAmount).to.equal(deposit + dispatch + (total - deposit - dispatch - disputed) + release);
       expect(await ethers.provider.getBalance(await escrow.getAddress())).to.equal(0n);
     });
   });

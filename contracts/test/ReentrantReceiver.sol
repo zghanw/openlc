@@ -12,6 +12,9 @@ contract ReentrantReceiver {
     address public immutable escrow;
     bytes public reentryCall;
     bool public reentered;
+    /// While true, incoming BOT is refused, so the escrow defers the payout
+    /// to `owed` and a later full-gas `withdraw()` becomes the reentry path.
+    bool public rejecting;
 
     constructor(address escrowAddress) {
         escrow = escrowAddress;
@@ -21,9 +24,14 @@ contract ReentrantReceiver {
         reentryCall = data;
     }
 
-    /// Attempts the configured call back into the escrow; never reverts,
-    /// so a blocked reentrancy just leaves `reentered` false.
+    function setRejecting(bool value) external {
+        rejecting = value;
+    }
+
+    /// Attempts the configured call back into the escrow; never reverts
+    /// unless asked to, so a blocked reentrancy just leaves `reentered` false.
     receive() external payable {
+        require(!rejecting, "rejecting");
         (bool ok,) = escrow.call(reentryCall);
         if (ok) reentered = true;
     }
