@@ -694,7 +694,7 @@ describe("OpenLCEscrow", function () {
   describe("recipients that refuse payment", function () {
     it("cannot block a dispute, and can collect later through withdraw", async function () {
       const context = await deployFixture();
-      const { ethers, escrow, buyer, arbitrator } = context;
+      const { ethers, escrow, buyer } = context;
       const hostile = await ethers.deployContract("RevertingReceiver");
       await hostile.waitForDeployment();
       const hostileAddress = await hostile.getAddress();
@@ -733,7 +733,6 @@ describe("OpenLCEscrow", function () {
         escrow,
         "NothingToWithdraw",
       );
-      expect(arbitrator.address).to.not.equal(hostileAddress);
     });
 
     it("cannot re-enter the escrow from a payout", async function () {
