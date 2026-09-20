@@ -50,13 +50,47 @@ describe("HTTP API", () => {
       chainId: 968,
     });
     const enabled = createApp(service, verifier, undefined, undefined, undefined, undefined, false, identity);
-    const response = await enabled.request("/auth/wallet/challenge", {
-      method: "POST",
-      headers: { "content-type": "application/json", origin: "http://localhost:3000" },
-      body: JSON.stringify({ address: `0x${"1".repeat(40)}` }),
+    const previousOrigin = process.env.FRONTEND_ORIGIN;
+    process.env.FRONTEND_ORIGIN = "https://openlc.xyz";
+    try {
+      const response = await enabled.request("/auth/wallet/challenge", {
+        method: "POST",
+        // a caller-supplied Origin must not reach the message the user signs
+        headers: { "content-type": "application/json", origin: "https://evil.example" },
+        body: JSON.stringify({ address: `0x${"1".repeat(40)}` }),
+      });
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { message: string };
+      expect(body.message).toContain("Sign in to OpenLC");
+      expect(body.message).toContain("Origin: https://openlc.xyz");
+      expect(body.message).not.toContain("evil.example");
+    } finally {
+      process.env.FRONTEND_ORIGIN = previousOrigin;
+    }
+  });
+
+  it("refuses a wallet challenge for an address that is not 20 bytes", async () => {
+    const control = controlledContext();
+    const verifier: TokenVerifier = { verify: async (token) => ({ id: token }) };
+    const service = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const identity = new IdentityService(new MemoryIdentityStore(), {
+      sessionSecret: "test-only-session-secret-that-is-at-least-thirty-two-bytes",
+      chainId: 968,
     });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ message: expect.stringContaining("Sign in to OpenLC") });
+    const app = createApp(service, verifier, undefined, undefined, undefined, undefined, false, identity);
+    const previousOrigin = process.env.FRONTEND_ORIGIN;
+    process.env.FRONTEND_ORIGIN = "https://openlc.xyz";
+    try {
+      // a 32-byte Sui-shaped address must not be accepted by a BOT Chain endpoint
+      const response = await app.request("/auth/wallet/challenge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address: `0x${"1".repeat(64)}` }),
+      });
+      expect(response.status).toBe(400);
+    } finally {
+      process.env.FRONTEND_ORIGIN = previousOrigin;
+    }
   });
 
   it("does not expose internal errors", async () => {

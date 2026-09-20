@@ -21,6 +21,8 @@ const fileSchema = z.object({
   transcript: z.string().max(50_000).optional(),
 });
 const suiAddress = z.string().regex(/^0x[0-9a-fA-F]{1,64}$/);
+/** A BOT Chain wallet address, exactly 20 bytes. */
+const evmAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 const suiObjectId = suiAddress;
 const transactionDigest = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{20,128}$/);
 const onchainEscrowSchema = z.object({
@@ -124,16 +126,19 @@ export function createApp(
   });
   if (identity) {
     app.post("/auth/wallet/challenge", async (c) => {
-      const body = z.object({ address: suiAddress }).parse(await c.req.json());
-      const origin = c.req.header("origin") ?? process.env.FRONTEND_ORIGIN ?? "";
+      const body = z.object({ address: evmAddress }).parse(await c.req.json());
+      // The origin is named in the message the user signs, so it comes from this
+      // deployment's own configuration: a caller-supplied header could claim any
+      // site and would make that line of the message meaningless.
+      const origin = process.env.FRONTEND_ORIGIN ?? "";
       if (!/^https?:\/\//.test(origin))
-        throw new DomainError("INVALID_ORIGIN", "A valid application origin is required", 400);
+        throw new DomainError("INVALID_ORIGIN", "This deployment has no valid FRONTEND_ORIGIN configured", 500);
       return c.json(await identity.createWalletChallenge(body.address, origin));
     });
     app.post("/auth/wallet/verify", async (c) => {
       const body = z.object({
         challengeId: uuid,
-        address: suiAddress,
+        address: evmAddress,
         signature: z.string().min(20).max(4096),
       }).parse(await c.req.json());
       return c.json(await identity.verifyWalletChallenge(body));
