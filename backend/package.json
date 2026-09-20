@@ -14,12 +14,10 @@
     "test:qdrant": "node --use-system-ca --import tsx scripts/test-qdrant-live.ts",
     "test:gemini": "node --use-system-ca --import tsx scripts/test-gemini-live.ts",
     "test:mediation": "node --use-system-ca --import tsx scripts/test-mediation-live.ts",
-    "test:sui": "node --use-system-ca --import tsx scripts/test-sui-settlement-live.ts",
     "ingest:legal": "node --use-system-ca --import tsx scripts/ingest-legal.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.7",
-    "@mysten/sui": "^2.27.1",
     "@supabase/supabase-js": "^2.57.4",
     "dotenv": "^17.2.2",
     "ethers": "^6.17.0",

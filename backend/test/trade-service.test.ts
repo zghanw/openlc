@@ -60,22 +60,22 @@ describe("trade lifecycle API", () => {
     expect((await acceptedFresh.json() as any).status).toBe("supplier_confirmed");
 
     const funded = await app.request(`/v1/orders/${order.id}/funding`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({
-      packageId: "0x1", escrowObjectId: "0x2", transactionDigest: "funding-reference", buyerAddress: `0x${"a".repeat(64)}`,
-      supplierAddress: `0x${"b".repeat(64)}`, arbitratorAddress: `0x${"c".repeat(64)}`,
+      packageId: `0x${"1".repeat(40)}`, escrowObjectId: "2", transactionDigest: `0x${"a".repeat(64)}`, buyerAddress: `0x${"a".repeat(40)}`,
+      supplierAddress: `0x${"b".repeat(40)}`, arbitratorAddress: `0x${"c".repeat(40)}`,
     }) });
     expect(funded.status).toBe(200);
     expect((await funded.json() as any).status).toBe("funded");
-    const fundingBody = { packageId: "0x1", escrowObjectId: "0x2", transactionDigest: "funding-reference", buyerAddress: `0x${"a".repeat(64)}`, supplierAddress: `0x${"b".repeat(64)}`, arbitratorAddress: `0x${"c".repeat(64)}` };
+    const fundingBody = { packageId: `0x${"1".repeat(40)}`, escrowObjectId: "2", transactionDigest: `0x${"a".repeat(64)}`, buyerAddress: `0x${"a".repeat(40)}`, supplierAddress: `0x${"b".repeat(40)}`, arbitratorAddress: `0x${"c".repeat(40)}` };
     const retryFunding = await app.request(`/v1/orders/${order.id}/funding`, { method: "POST", headers: buyerHeaders, body: JSON.stringify(fundingBody) });
     expect(retryFunding.status).toBe(200);
-    const replacementFunding = await app.request(`/v1/orders/${order.id}/funding`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({ ...fundingBody, escrowObjectId: `0x${"e".repeat(64)}` }) });
+    const replacementFunding = await app.request(`/v1/orders/${order.id}/funding`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({ ...fundingBody, escrowObjectId: "999" }) });
     expect(replacementFunding.status).toBe(409);
 
-    expect((await app.request(`/v1/orders/${order.id}/shipment`, { method: "POST", headers: auth(supplierSession.accessToken), body: JSON.stringify({ carrier: "GDEX", trackingNumber: "GD-API-1", dispatchedAt: "2026-09-01T00:00:00.000Z", transactionDigest: "shipment-reference", evidenceSha256: "03".repeat(32) }) })).status).toBe(200);
+    expect((await app.request(`/v1/orders/${order.id}/shipment`, { method: "POST", headers: auth(supplierSession.accessToken), body: JSON.stringify({ carrier: "GDEX", trackingNumber: "GD-API-1", dispatchedAt: "2026-09-01T00:00:00.000Z", transactionDigest: `0x${"b".repeat(64)}`, evidenceSha256: "03".repeat(32) }) })).status).toBe(200);
     expect((await app.request(`/v1/orders/${order.id}/delivery`, { method: "POST", headers: buyerHeaders })).status).toBe(200);
 
     const opened = await app.request(`/v1/orders/${order.id}/dispute`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({
-      disputeTransactionDigest: "111111111111111111111111", disputedUnits: "30000000", requestedBuyerUnits: "20000000",
+      disputeTransactionDigest: `0x${"c".repeat(64)}`, disputedUnits: "30000000", requestedBuyerUnits: "20000000",
       claim: "13 cartons were damaged", evidenceStatement: "Receiving photos show damage", negotiationDeadline: "2026-09-03T00:00:00.000Z",
     }) });
     expect(opened.status).toBe(200);
@@ -84,8 +84,8 @@ describe("trade lifecycle API", () => {
     expect(payload.order.status).toBe("dispute_open");
 
     // The claim transaction itself pays the undisputed value, so the order records the release at once.
-    expect(payload.order.undisputedRelease).toMatchObject({ transactionDigest: "111111111111111111111111", verificationStatus: "external_reference" });
-    const lateRefund = await app.request(`/v1/orders/${order.id}/deadline-settlement`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({ kind: "refund_unshipped", transactionDigest: "8h6Qw7kqQn8tT7mM9nV3aX2pL4rS5dF6gH8jK9mN2pQ" }) });
+    expect(payload.order.undisputedRelease).toMatchObject({ transactionDigest: `0x${"c".repeat(64)}`, verificationStatus: "external_reference" });
+    const lateRefund = await app.request(`/v1/orders/${order.id}/deadline-settlement`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({ kind: "refund_unshipped", transactionDigest: `0x${"d".repeat(64)}` }) });
     expect(lateRefund.status).toBe(409);
 
     const responded = await app.request(`/v1/disputes/${payload.dispute.id}/supplier-response`, { method: "POST", headers: auth(supplierSession.accessToken), body: JSON.stringify({ agrees: false, statement: "Dispatch evidence shows the goods left intact." }) });

@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { normalizeSuiAddress } from "@mysten/sui/utils";
+import { getAddress } from "ethers";
 import type { DisputeService } from "./dispute-service.js";
 import { DomainError, type Actor, type DomainContext, type EvidenceFile } from "../domain/types.js";
 import type {
@@ -21,7 +21,7 @@ import type {
 } from "../domain/trade-types.js";
 import type { TradeStore } from "../store/trade-store.js";
 import { MemoryDocumentStore, type DocumentStore } from "../store/document-store.js";
-import type { SuiFundingVerifier } from "../integrations/sui-funding.js";
+import type { EscrowFundingVerifier } from "../integrations/evm-escrow.js";
 import type { OrganizationService } from "./organization-service.js";
 import { DisabledInvitationEmailSender, type InvitationEmailSender } from "../integrations/invitation-email.js";
 
@@ -149,7 +149,13 @@ function releasePlan(input: CreateTradeOrderInput): TradeReleasePlan {
 
 function sameAddress(left: string | undefined, right: string | undefined): boolean {
   if (!left || !right) return false;
-  try { return normalizeSuiAddress(left) === normalizeSuiAddress(right); } catch { return left.toLowerCase() === right.toLowerCase(); }
+  try { return getAddress(left) === getAddress(right); } catch { return left.toLowerCase() === right.toLowerCase(); }
+}
+
+/** Numeric escrow id comparison: "1" and "01" are the same escrow, unlike an address string. */
+function sameEscrowId(left: string | undefined, right: string | undefined): boolean {
+  if (!left || !right) return false;
+  try { return BigInt(left) === BigInt(right); } catch { return left === right; }
 }
 
 function allowed(order: TradeOrder, actor: Actor): boolean {
@@ -162,7 +168,7 @@ export class TradeService {
     private readonly disputes: DisputeService,
     private readonly ctx: DomainContext,
     private readonly inviteBaseUrl = "http://localhost:3000/workspace",
-    private readonly fundingVerifier?: SuiFundingVerifier,
+    private readonly fundingVerifier?: EscrowFundingVerifier,
     private readonly organizations?: OrganizationService,
     private readonly invitationEmail: InvitationEmailSender = new DisabledInvitationEmailSender(),
     private readonly documents: DocumentStore = new MemoryDocumentStore(),
@@ -480,9 +486,9 @@ export class TradeService {
     await this.requireBuyerAuthority(order, actor, "Only an authorized buyer can fund an order");
     if (!order.supplierId || !order.buyerId) throw new DomainError("SUPPLIER_REQUIRED", "Both parties must confirm the order before funding", 409);
     if (!["supplier_confirmed", "funded"].includes(order.status)) throw new DomainError("INVALID_STATE", "This order is not ready for funding");
-    if (!input.packageId || !input.escrowObjectId || !input.transactionDigest) throw new DomainError("INVALID_FUNDING", "Sui package, escrow object, and transaction digest are required", 400);
+    if (!input.packageId || !input.escrowObjectId || !input.transactionDigest) throw new DomainError("INVALID_FUNDING", "Escrow contract address, escrow id, and transaction hash are required", 400);
     if (order.funding) {
-      const same = order.funding.packageId === input.packageId && sameAddress(order.funding.escrowObjectId, input.escrowObjectId) && order.funding.transactionDigest === input.transactionDigest && sameAddress(order.funding.buyerAddress, input.buyerAddress) && sameAddress(order.funding.supplierAddress, input.supplierAddress) && sameAddress(order.funding.arbitratorAddress, input.arbitratorAddress);
+      const same = order.funding.packageId === input.packageId && sameEscrowId(order.funding.escrowObjectId, input.escrowObjectId) && order.funding.transactionDigest === input.transactionDigest && sameAddress(order.funding.buyerAddress, input.buyerAddress) && sameAddress(order.funding.supplierAddress, input.supplierAddress) && sameAddress(order.funding.arbitratorAddress, input.arbitratorAddress);
       if (same) return structuredClone(order);
       throw new DomainError("FUNDING_ALREADY_RECORDED", "This order is already bound to a different escrow funding transaction", 409);
     }

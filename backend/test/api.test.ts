@@ -133,7 +133,7 @@ describe("HTTP API", () => {
     const agreed = await service.respond(openInput().id!, { id: SUPPLIER }, { agrees: true });
     expect(agreed.status).toBe("settlement_pending");
     const disabled = createApp(service, verifier);
-    const proof = { transactionDigest: "tx", packageId: "0xpackage", escrowObjectId: "0xescrow", receiptObjectId: "0xreceipt" };
+    const proof = { transactionDigest: `0x${"a".repeat(64)}`, packageId: `0x${"1".repeat(40)}`, escrowObjectId: "1", receiptObjectId: "0xreceipt" };
     expect((await disabled.request(`/v1/disputes/${agreed.id}/settlement-execution`, {
       method: "POST", headers: { authorization: `Bearer ${BUYER}`, "content-type": "application/json" }, body: JSON.stringify(proof),
     })).status).toBe(503);

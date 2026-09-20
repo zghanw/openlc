@@ -10,8 +10,7 @@ import { DemoOrderService } from "./demo/demo-service.js";
 import { MemoryDocumentStore, SupabaseDocumentStore } from "./store/document-store.js";
 import { GeminiEmbedder, GeminiJsonModel } from "./integrations/gemini.js";
 import { QdrantLegalIndex } from "./integrations/qdrant.js";
-import { createSuiSettlementVerifier } from "./integrations/sui-settlement.js";
-import { GrpcSuiFundingVerifier } from "./integrations/sui-funding.js";
+import { EvmFundingVerifier, EvmSettlementVerifier, RpcEscrowChainReader } from "./integrations/evm-escrow.js";
 import { DisputeService, systemContext } from "./service/dispute-service.js";
 import { MemoryDisputeStore } from "./store/store.js";
 import { SupabaseDisputeStore } from "./store/supabase-store.js";
@@ -43,7 +42,6 @@ const noWalletAuth: TokenVerifier = {
 };
 const productionVerifier: TokenVerifier = identity ? new WalletSessionVerifier(identity) : noWalletAuth;
 const verifier = new DemoAwareTokenVerifier(productionVerifier, config.demoMode);
-const legacyEscrowPackageIds = (process.env.SUI_LEGACY_ESCROW_PACKAGE_IDS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
 let mediator: MediationOrchestrator | undefined;
 if (process.env.GEMINI_API_KEY) {
   const embedder = new GeminiEmbedder(config.geminiApiKey(), config.embeddingModel);
@@ -84,14 +82,17 @@ console.log("Invitation email sender", invitationEmail instanceof SmtpInvitation
   ? `SMTP ${smtpHost}:${config.smtpPort()} (${config.smtpSecure() ? "implicit TLS" : "STARTTLS"})`
   : invitationEmail instanceof BrevoInvitationEmailSender ? "Brevo"
   : invitationEmail instanceof ResendInvitationEmailSender ? "Resend" : "disabled — invitations will report not_configured");
-const settlementVerifier = config.suiEscrowVerifierEnabled
-  ? createSuiSettlementVerifier({ packageId: config.suiEscrowPackageId, network: config.suiNetwork, baseUrl: config.suiRpcUrl })
-  : undefined;
-const fundingVerifier = config.suiEscrowVerifierEnabled
-  ? new GrpcSuiFundingVerifier({ packageId: config.suiEscrowPackageId,
-      legacyPackageIds: legacyEscrowPackageIds,
-      network: config.suiNetwork, baseUrl: config.suiRpcUrl })
-  : undefined;
+let fundingVerifier: EvmFundingVerifier | undefined;
+let settlementVerifier: EvmSettlementVerifier | undefined;
+if (config.escrowVerifierEnabled) {
+  const escrowAddress = config.escrowAddress();
+  if (!escrowAddress || !/^0x[0-9a-fA-F]{40}$/.test(escrowAddress)) {
+    throw new Error("ESCROW_VERIFIER_ENABLED is true but OPENLC_ESCROW_ADDRESS is not a valid 20-byte contract address");
+  }
+  const reader = new RpcEscrowChainReader({ rpcUrl: config.botchainRpcUrl, escrowAddress });
+  fundingVerifier = new EvmFundingVerifier({ escrowAddress, reader });
+  settlementVerifier = new EvmSettlementVerifier({ escrowAddress, reader });
+}
 const documentStore = config.store === "supabase"
   ? new SupabaseDocumentStore(config.supabaseUrl(), config.supabaseSecretKey(), config.documentsBucket)
   : new MemoryDocumentStore();

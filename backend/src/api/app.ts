@@ -6,7 +6,7 @@ import { type DemoCommand, type DemoOrderService } from "../demo/demo-service.js
 import { DomainError, type Actor } from "../domain/types.js";
 import type { DisputeService } from "../service/dispute-service.js";
 import type { TradeService } from "../service/trade-service.js";
-import type { SuiSettlementVerifier } from "../integrations/sui-settlement.js";
+import type { EscrowSettlementVerifier } from "../integrations/evm-escrow.js";
 import { issueDemoGoogleSession } from "./demo-auth.js";
 import type { IdentityService } from "../service/identity-service.js";
 import type { OrganizationService } from "../service/organization-service.js";
@@ -20,19 +20,20 @@ const fileSchema = z.object({
   sizeBytes: z.number().int().nonnegative().max(10 * 1024 * 1024),
   transcript: z.string().max(50_000).optional(),
 });
-const suiAddress = z.string().regex(/^0x[0-9a-fA-F]{1,64}$/);
-/** A BOT Chain wallet address, exactly 20 bytes. */
+/** A BOT Chain wallet or contract address, exactly 20 bytes. */
 const evmAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
-const suiObjectId = suiAddress;
-const transactionDigest = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{20,128}$/);
+/** A BOT Chain transaction hash: 32 bytes, hex-encoded. */
+const txHash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
+/** OpenLCEscrow ids are a 1-based uint256, serialized as a decimal string. */
+const decimalEscrowId = z.string().regex(/^[0-9]{1,78}$/);
 const onchainEscrowSchema = z.object({
-  packageId: suiObjectId,
-  escrowObjectId: suiObjectId,
-  fundingTransactionDigest: transactionDigest,
-  disputeTransactionDigest: transactionDigest,
-  buyerAddress: suiAddress,
-  supplierAddress: suiAddress,
-  arbitratorAddress: suiAddress,
+  packageId: evmAddress,
+  escrowObjectId: decimalEscrowId,
+  fundingTransactionDigest: txHash,
+  disputeTransactionDigest: txHash,
+  buyerAddress: evmAddress,
+  supplierAddress: evmAddress,
+  arbitratorAddress: evmAddress,
 });
 const uuid = z.string().uuid();
 const lineItemSchema = z.object({
@@ -41,7 +42,7 @@ const lineItemSchema = z.object({
 });
 const tradeOrderSchema = z.object({
   reference: z.string().min(1).max(128), initiatorRole: z.enum(["buyer", "supplier"]).optional(),
-  supplierEmail: z.string().email().optional(), supplierName: z.string().max(256).optional(), supplierWalletAddress: suiAddress.optional(), arbitratorWalletAddress: suiAddress.optional(),
+  supplierEmail: z.string().email().optional(), supplierName: z.string().max(256).optional(), supplierWalletAddress: evmAddress.optional(), arbitratorWalletAddress: evmAddress.optional(),
   buyerEmail: z.string().email().optional(), buyerName: z.string().max(256).optional(),
   arbitratorId: uuid, assetType: z.string().min(1).max(256), amountUnits: amount, description: z.string().min(1).max(20_000),
   deliveryDate: z.string().min(1).max(128), deliveryLocation: z.string().min(1).max(500), lineItems: z.array(lineItemSchema).min(1).max(100),
@@ -57,26 +58,26 @@ const inspectionSchema = z.object({
 const shipmentSchema = z.object({
   carrier: z.string().min(1).max(128), trackingNumber: z.string().min(1).max(128),
   dispatchedAt: z.string().min(1).max(64), expectedAt: z.string().max(64).optional(),
-  transactionDigest: z.string().min(1).max(128), evidenceSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  transactionDigest: txHash, evidenceSha256: z.string().regex(/^[0-9a-f]{64}$/),
 });
 const deliverySchema = z.object({ reference: z.string().max(128).optional() });
 const acceptDeliverySchema = z.object({
-  transactionDigest: z.string().min(1).max(256), receiptObjectId: z.string().min(1).max(256).optional(), inspection: inspectionSchema.optional(),
+  transactionDigest: txHash, receiptObjectId: z.string().min(1).max(256).optional(), inspection: inspectionSchema.optional(),
 });
 const fundingSchema = z.object({
-  packageId: z.string().min(1).max(128), escrowObjectId: z.string().min(1).max(128), transactionDigest: z.string().min(1).max(128),
-  buyerAddress: suiAddress, supplierAddress: suiAddress, arbitratorAddress: suiAddress,
+  packageId: evmAddress, escrowObjectId: decimalEscrowId, transactionDigest: txHash,
+  buyerAddress: evmAddress, supplierAddress: evmAddress, arbitratorAddress: evmAddress,
   verificationStatus: z.enum(["verified_on_chain", "external_reference"]).optional(),
   deliveryDeadlineMs: z.number().int().nonnegative().optional(), inspectionWindowMs: z.number().int().positive().optional(),
 });
 const deadlineSettlementSchema = z.object({
-  kind: z.enum(["refund_unshipped", "claim_uninspected"]), transactionDigest: z.string().min(1).max(256), receiptObjectId: z.string().min(1).max(256).optional(),
+  kind: z.enum(["refund_unshipped", "claim_uninspected"]), transactionDigest: txHash, receiptObjectId: z.string().min(1).max(256).optional(),
 });
 const acceptInviteSchema = z.object({
-  email: z.string().email().optional(), name: z.string().max(256).optional(), supplierWalletAddress: suiAddress.optional(),
+  email: z.string().email().optional(), name: z.string().max(256).optional(), supplierWalletAddress: evmAddress.optional(),
 });
 const openTradeDisputeSchema = z.object({
-  disputeTransactionDigest: transactionDigest, disputedUnits: amount, requestedBuyerUnits: amount,
+  disputeTransactionDigest: txHash, disputedUnits: amount, requestedBuyerUnits: amount,
   claim: z.string().min(1).max(20_000), evidenceStatement: z.string().min(1).max(20_000), evidenceFiles: z.array(fileSchema).max(20).optional(),
   negotiationDeadline: z.string().datetime(), maxHumanRounds: z.number().int().min(1).max(5).optional(),
   inspection: inspectionSchema.optional(),
@@ -96,7 +97,7 @@ export function createApp(
   verifier: TokenVerifier,
   mediator?: MediationOrchestrator,
   demo?: DemoOrderService,
-  settlementVerifier?: SuiSettlementVerifier,
+  settlementVerifier?: EscrowSettlementVerifier,
   trades?: TradeService,
   demoAuthEnabled = false,
   identity?: IdentityService,
@@ -299,15 +300,15 @@ export function createApp(
   });
   app.get("/v1/disputes/:id/arbitration-package", async (c) => c.json(await service.arbitrationPackage(c.req.param("id"), c.get("actor"))));
   app.post("/v1/disputes/:id/settlement-execution", async (c) => {
-    if (!settlementVerifier) throw new DomainError("SUI_ESCROW_UNAVAILABLE", "The escrow settlement verifier is not configured", 503);
+    if (!settlementVerifier) throw new DomainError("ESCROW_VERIFIER_UNAVAILABLE", "The escrow settlement verifier is not configured", 503);
     const dispute = await service.get(c.req.param("id"));
     const actor = c.get("actor");
     if (![dispute.buyerId, dispute.supplierId, dispute.arbitratorId].includes(actor.id)) {
       throw new DomainError("FORBIDDEN", "Actor cannot submit settlement execution proof", 403);
     }
     const proof = z.object({
-      transactionDigest: z.string().min(1).max(256), packageId: z.string().min(1).max(256),
-      escrowObjectId: z.string().min(1).max(256), receiptObjectId: z.string().min(1).max(256).optional(),
+      transactionDigest: txHash, packageId: evmAddress,
+      escrowObjectId: decimalEscrowId, receiptObjectId: z.string().min(1).max(256).optional(),
     }).parse(await c.req.json());
     const verified = await settlementVerifier.verify(dispute, proof);
     const result = await service.confirmSettlement(dispute.id, verified);
