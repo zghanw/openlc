@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createApp, type TokenVerifier } from "../src/api/app.js";
 import { DemoOrderService } from "../src/demo/demo-service.js";
 import { DisputeService } from "../src/service/dispute-service.js";
+import { TradeService } from "../src/service/trade-service.js";
 import { MemoryDisputeStore } from "../src/store/store.js";
 import { MemoryIdentityStore } from "../src/store/identity-store.js";
+import { MemoryTradeStore } from "../src/store/trade-store.js";
 import { IdentityService } from "../src/service/identity-service.js";
-import { BUYER, SUPPLIER, controlledContext, openInput } from "./fixtures.js";
+import { ARBITRATOR, BUYER, SUPPLIER, controlledContext, openInput } from "./fixtures.js";
 
 describe("HTTP API", () => {
   it("requires authentication and executes an opening request", async () => {
@@ -144,6 +146,26 @@ describe("HTTP API", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ status: "settled", settlement: { executionStatus: "verified_on_chain" } });
+  });
+
+  it("creates an order naming neither a supplier email nor a supplier wallet (zod no longer requires one)", async () => {
+    const control = controlledContext();
+    const verifier: TokenVerifier = { verify: async (token) => ({ id: token, walletAddress: `0x${"1".repeat(40)}` }) };
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades);
+    const response = await app.request("/v1/orders", {
+      method: "POST", headers: { authorization: `Bearer ${BUYER}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        reference: "PO-NO-EMAIL", arbitratorId: ARBITRATOR, assetType: "BOT", amountUnits: "100",
+        description: "Bearer-link order", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+        lineItems: [{ id: "1", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "100" }],
+      }),
+    });
+    expect(response.status).toBe(201);
+    const order = await response.json() as any;
+    expect(order.supplierEmail).toBeUndefined();
+    expect(order.supplierWalletAddress).toBeUndefined();
   });
 
   it("does not spend AI calls while a human proposal is still open", async () => {

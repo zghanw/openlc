@@ -58,7 +58,12 @@ create table if not exists public.trade_invites (
   id uuid primary key,
   order_id uuid not null references public.trade_orders(id) on delete cascade,
   token_hash text not null unique,
-  invited_email text not null,
+  -- Nullable: the order may name its counterparty by email, by wallet address, or by
+  -- neither (a pure bearer link secured only by the token itself).
+  invited_email text,
+  -- Lowercase, like invited_email is lowercased before storage, so the plain lookup
+  -- index in the invitation-lookup migration can serve an exact-match query.
+  invited_wallet_address text check (invited_wallet_address ~ '^0x[0-9a-fA-F]{40}$'),
   expires_at timestamptz not null,
   accepted_by text,
   accepted_at timestamptz,

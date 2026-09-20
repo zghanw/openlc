@@ -73,7 +73,8 @@ export class SupabaseTradeStore implements TradeStore {
       id: invite.id,
       order_id: invite.orderId,
       token_hash: invite.tokenHash,
-      invited_email: invite.invitedEmail,
+      invited_email: invite.invitedEmail ?? null,
+      invited_wallet_address: invite.invitedWalletAddress ?? null,
       expires_at: invite.expiresAt,
       accepted_by: invite.acceptedBy ?? null,
       accepted_at: invite.acceptedAt ?? null,
@@ -88,7 +89,9 @@ export class SupabaseTradeStore implements TradeStore {
   private mapInvite(row: Record<string, unknown>): TradeInvite {
     return {
       id: String(row.id), orderId: String(row.order_id), tokenHash: String(row.token_hash),
-      invitedEmail: String(row.invited_email), expiresAt: String(row.expires_at),
+      invitedEmail: row.invited_email ? String(row.invited_email) : undefined,
+      invitedWalletAddress: row.invited_wallet_address ? String(row.invited_wallet_address) : undefined,
+      expiresAt: String(row.expires_at),
       acceptedBy: row.accepted_by ? String(row.accepted_by) : undefined,
       acceptedAt: row.accepted_at ? String(row.accepted_at) : undefined,
       createdAt: String(row.created_at),
@@ -118,9 +121,19 @@ export class SupabaseTradeStore implements TradeStore {
     return (data ?? []).map((row) => this.mapInvite(row as Record<string, unknown>));
   }
 
+  /** `walletAddress` is expected lowercase, matching how it is stored (see the invitation-lookup migration). */
+  async listPendingInvitesByWallet(walletAddress: string, now: string): Promise<TradeInvite[]> {
+    const { data, error } = await this.client.from("trade_invites").select("*")
+      .eq("invited_wallet_address", walletAddress).is("accepted_by", null).gt("expires_at", now)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(`Supabase trade invite lookup failed: ${error.message}`);
+    return (data ?? []).map((row) => this.mapInvite(row as Record<string, unknown>));
+  }
+
   async saveInvite(invite: TradeInvite): Promise<void> {
     const { error } = await this.client.from("trade_invites").update({
       expires_at: invite.expiresAt, accepted_by: invite.acceptedBy ?? null, accepted_at: invite.acceptedAt ?? null,
+      invited_wallet_address: invite.invitedWalletAddress ?? null,
       delivery_status: invite.deliveryStatus ?? null, delivery_message_id: invite.deliveryMessageId ?? null,
       delivery_attempted_at: invite.deliveryAttemptedAt ?? null,
     }).eq("id", invite.id);

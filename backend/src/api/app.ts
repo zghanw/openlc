@@ -42,14 +42,14 @@ const lineItemSchema = z.object({
 });
 const tradeOrderSchema = z.object({
   reference: z.string().min(1).max(128), initiatorRole: z.enum(["buyer", "supplier"]).optional(),
+  // The counterparty may be named by email, by wallet address, or by neither (a pure bearer
+  // link): sessions are wallet-first now and usually carry no email at all.
   supplierEmail: z.string().email().optional(), supplierName: z.string().max(256).optional(), supplierWalletAddress: evmAddress.optional(), arbitratorWalletAddress: evmAddress.optional(),
   buyerEmail: z.string().email().optional(), buyerName: z.string().max(256).optional(),
   arbitratorId: uuid, assetType: z.string().min(1).max(256), amountUnits: amount, description: z.string().min(1).max(20_000),
   deliveryDate: z.string().min(1).max(128), deliveryLocation: z.string().min(1).max(500), lineItems: z.array(lineItemSchema).min(1).max(100),
   releasePlan: z.object({ depositUnits: amount, dispatchUnits: amount, deliveryUnits: amount }).optional(),
   buyerOrganizationId: uuid.optional(), supplierOrganizationId: uuid.optional(),
-}).refine((value) => (value.initiatorRole === "supplier" ? Boolean(value.buyerEmail) : Boolean(value.supplierEmail)), {
-  message: "A buyer-initiated order needs supplierEmail; a supplier-initiated order needs buyerEmail",
 });
 const inspectionSchema = z.object({
   lines: z.array(z.object({ lineId: z.string().min(1).max(128), accepted: amount, missing: amount, damaged: amount })).min(1).max(100),
@@ -74,7 +74,7 @@ const deadlineSettlementSchema = z.object({
   kind: z.enum(["refund_unshipped", "claim_uninspected"]), transactionDigest: txHash, receiptObjectId: z.string().min(1).max(256).optional(),
 });
 const acceptInviteSchema = z.object({
-  email: z.string().email().optional(), name: z.string().max(256).optional(), supplierWalletAddress: evmAddress.optional(),
+  email: z.string().email().optional(), name: z.string().max(256).optional(),
 });
 const openTradeDisputeSchema = z.object({
   disputeTransactionDigest: txHash, disputedUnits: amount, requestedBuyerUnits: amount,

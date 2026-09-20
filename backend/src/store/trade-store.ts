@@ -10,6 +10,8 @@ export interface TradeStore {
   getInviteByTokenHash(tokenHash: string): Promise<TradeInvite | undefined>;
   getInviteByOrderId(orderId: string): Promise<TradeInvite | undefined>;
   listPendingInvitesByEmail(invitedEmail: string, now: string): Promise<TradeInvite[]>;
+  /** `walletAddress` is expected lowercase, matching how it is stored. */
+  listPendingInvitesByWallet(walletAddress: string, now: string): Promise<TradeInvite[]>;
   saveInvite(invite: TradeInvite): Promise<void>;
 }
 
@@ -72,6 +74,13 @@ export class MemoryTradeStore implements TradeStore {
   async listPendingInvitesByEmail(invitedEmail: string, now: string): Promise<TradeInvite[]> {
     return [...this.invites.values()]
       .filter((invite) => invite.invitedEmail === invitedEmail && !invite.acceptedBy && invite.expiresAt > now)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .map((invite) => structuredClone(invite));
+  }
+
+  async listPendingInvitesByWallet(walletAddress: string, now: string): Promise<TradeInvite[]> {
+    return [...this.invites.values()]
+      .filter((invite) => invite.invitedWalletAddress === walletAddress && !invite.acceptedBy && invite.expiresAt > now)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .map((invite) => structuredClone(invite));
   }

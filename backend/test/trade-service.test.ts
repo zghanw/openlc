@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createApp, type TokenVerifier } from "../src/api/app.js";
 import { DemoAwareTokenVerifier, issueDemoGoogleSession } from "../src/api/demo-auth.js";
 import { DisputeService } from "../src/service/dispute-service.js";
+import { OrganizationService } from "../src/service/organization-service.js";
 import { TradeService } from "../src/service/trade-service.js";
 import { MemoryDisputeStore } from "../src/store/store.js";
+import { MemoryOrganizationStore } from "../src/store/organization-store.js";
 import { MemoryTradeStore } from "../src/store/trade-store.js";
 import { ARBITRATOR, BUYER, SUPPLIER, controlledContext } from "./fixtures.js";
 
@@ -397,5 +399,122 @@ describe("trade lifecycle API", () => {
     expect(claimed.settlement).toMatchObject({ buyerUnits: "0", supplierUnits: "5000", source: "claim_uninspected" });
     // The supplier was actually paid the delivery balance, so the release trail must show it.
     expect(claimed.releaseRecords?.at(-1)).toMatchObject({ stage: "delivery", amountUnits: "5000", transactionDigest: "claim-2" });
+  });
+
+  it("binds invites and funding to wallets: the named supplier wallet accepts, a different wallet is refused, and funding checks both parties", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const buyerWallet = `0x${"1".repeat(40)}`;
+    const supplierWallet = `0x${"2".repeat(40)}`;
+    const buyer = { id: BUYER, name: "Wallet Buyer", walletAddress: buyerWallet };
+    const order = await trades.createOrder({
+      reference: "PO-WALLET", supplierWalletAddress: supplierWallet, arbitratorId: ARBITRATOR,
+      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer);
+    // Naming a supplier by wallet alone leaves email out entirely: it is optional contact info now.
+    expect(order.supplierEmail).toBeUndefined();
+    const invited = await trades.createInvite(order.id, buyer);
+
+    const wrongWallet = { id: SUPPLIER, walletAddress: `0x${"3".repeat(40)}` };
+    await expect(trades.acceptInvite(invited.inviteToken!, wrongWallet)).rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 403 });
+
+    const rightWallet = { id: SUPPLIER, walletAddress: supplierWallet };
+    const accepted = await trades.acceptInvite(invited.inviteToken!, rightWallet);
+    expect(accepted.status).toBe("supplier_confirmed");
+    expect(accepted.supplierId).toBe(SUPPLIER);
+    expect(accepted.supplierWalletAddress).toBe(supplierWallet);
+
+    const fundingBase = { packageId: `0x${"9".repeat(40)}`, escrowObjectId: "1", transactionDigest: `0x${"a".repeat(64)}`, arbitratorAddress: `0x${"c".repeat(40)}` };
+    await expect(trades.recordFunding(order.id, buyer, { ...fundingBase, buyerAddress: `0x${"5".repeat(40)}`, supplierAddress: supplierWallet }))
+      .rejects.toMatchObject({ code: "BUYER_WALLET_MISMATCH", status: 409 });
+    await expect(trades.recordFunding(order.id, buyer, { ...fundingBase, buyerAddress: buyerWallet, supplierAddress: `0x${"7".repeat(40)}` }))
+      .rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 409 });
+    const funded = await trades.recordFunding(order.id, buyer, { ...fundingBase, buyerAddress: buyerWallet, supplierAddress: supplierWallet });
+    expect(funded.status).toBe("funded");
+  });
+
+  it("Feature Zero: a wallet-only account with no email creates an order and invite, a second wallet accepts via token, and a third cannot steal it", async () => {
+    const control = controlledContext();
+    const walletA = `0x${"a".repeat(40)}`;
+    const walletB = `0x${"b".repeat(40)}`;
+    const walletC = `0x${"c".repeat(40)}`;
+    const idA = "55555555-5555-4555-8555-555555555555";
+    const idB = "66666666-6666-4666-8666-666666666666";
+    const idC = "77777777-7777-4777-8777-777777777777";
+    const idNoWallet = "88888888-8888-4888-8888-888888888888";
+    const verifier: TokenVerifier = {
+      verify: async (token) => {
+        if (token === "wallet-a") return { id: idA, walletAddress: walletA };
+        if (token === "wallet-b") return { id: idB, walletAddress: walletB };
+        if (token === "wallet-c") return { id: idC, walletAddress: walletC };
+        return { id: idNoWallet };
+      },
+    };
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades);
+
+    // Step 2: account A creates a purchase order naming no email and no supplier wallet at all.
+    const created = await app.request("/v1/orders", { method: "POST", headers: auth("wallet-a"), body: JSON.stringify({
+      reference: "PO-FEATURE-ZERO", arbitratorId: ARBITRATOR, assetType: "BOT", amountUnits: "1000000",
+      description: "10 pallets of durian paste", deliveryDate: "2026-10-01", deliveryLocation: "Port Klang",
+      lineItems: [{ id: "line-1", description: "Durian paste", quantity: "10", unit: "pallet", unitPriceUnits: "100000" }],
+      releasePlan: { depositUnits: "100000", dispatchUnits: "200000", deliveryUnits: "700000" },
+    }) });
+    expect(created.status).toBe(201);
+    const order = await created.json() as any;
+    expect(order.supplierEmail).toBeUndefined();
+    expect(order.buyerEmail).toBeUndefined();
+    expect(order.supplierWalletAddress).toBeUndefined();
+
+    const inviteResponse = await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth("wallet-a") });
+    expect(inviteResponse.status).toBe(200);
+    const invite = await inviteResponse.json() as any;
+    expect(invite.inviteToken).toEqual(expect.any(String));
+    // Nothing to email for a pure bearer-link invite.
+    expect(invite.inviteDelivery).toMatchObject({ status: "not_configured" });
+
+    // A walletless session cannot be bound as the supplier: nothing would identify it afterward.
+    const noWalletAttempt = await app.request(`/v1/invites/${encodeURIComponent(invite.inviteToken)}/accept`, { method: "POST", headers: auth("no-wallet"), body: "{}" });
+    expect(noWalletAttempt.status).toBe(403);
+    expect((await noWalletAttempt.json() as any).error).toBe("WALLET_REQUIRED");
+
+    // Step 3: account B opens the link and accepts. First accept wins and binds B's own wallet.
+    const accepted = await app.request(`/v1/invites/${encodeURIComponent(invite.inviteToken)}/accept`, { method: "POST", headers: auth("wallet-b"), body: "{}" });
+    expect(accepted.status).toBe(200);
+    const acceptedOrder = await accepted.json() as any;
+    expect(acceptedOrder.status).toBe("supplier_confirmed");
+    expect(acceptedOrder.supplierId).toBe(idB);
+    expect(acceptedOrder.supplierWalletAddress?.toLowerCase()).toBe(walletB.toLowerCase());
+    expect(acceptedOrder.supplierEmail).toBeUndefined();
+
+    // A third wallet, even with the same valid token, cannot now steal the order.
+    const stolen = await app.request(`/v1/invites/${encodeURIComponent(invite.inviteToken)}/accept`, { method: "POST", headers: auth("wallet-c"), body: "{}" });
+    expect(stolen.status).toBe(409);
+    expect((await stolen.json() as any).error).toBe("INVITE_ALREADY_ACCEPTED");
+  });
+
+  it("grants a new wallet's default workspace both buy and supply authority, so one wallet can act on either side", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const organizations = new OrganizationService(new MemoryOrganizationStore());
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, organizations);
+    const actor = { id: "99999999-9999-4999-8999-999999999999", walletAddress: `0x${"4".repeat(40)}`, name: "OneWallet Co" };
+
+    const asBuyer = await trades.createOrder({
+      reference: "PO-DUAL-BUY", supplierWalletAddress: `0x${"5".repeat(40)}`, arbitratorId: ARBITRATOR,
+      assetType: "BOT", amountUnits: "1000", description: "Goods bought", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, actor);
+    expect(asBuyer.buyerId).toBe(actor.id);
+
+    const asSupplier = await trades.createOrder({
+      reference: "PO-DUAL-SUPPLY", initiatorRole: "supplier", arbitratorId: ARBITRATOR,
+      assetType: "BOT", amountUnits: "1000", description: "Goods supplied", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, actor);
+    expect(asSupplier.supplierId).toBe(actor.id);
   });
 });

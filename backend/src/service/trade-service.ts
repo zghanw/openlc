@@ -67,7 +67,6 @@ const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
 export interface AcceptInvitationInput {
   email?: string;
   name?: string;
-  supplierWalletAddress?: string;
 }
 
 export interface OpenTradeDisputeInput {
@@ -117,7 +116,14 @@ function pendingSide(order: TradeOrder): TradeInitiatorRole | undefined {
 
 function pendingEmail(order: TradeOrder): string | undefined {
   const side = pendingSide(order);
-  return side === "buyer" ? order.buyerEmail?.trim().toLowerCase() : side === "supplier" ? order.supplierEmail.trim().toLowerCase() : undefined;
+  return side === "buyer" ? order.buyerEmail?.trim().toLowerCase() : side === "supplier" ? order.supplierEmail?.trim().toLowerCase() : undefined;
+}
+
+/** The supplier wallet the order already names, when the pending side is the supplier.
+ *  There is no equivalent buyer-wallet field: a supplier-initiated order still binds its
+ *  buyer by email or by the invite token alone. */
+function pendingWallet(order: TradeOrder): string | undefined {
+  return pendingSide(order) === "supplier" ? order.supplierWalletAddress : undefined;
 }
 
 function initiatorName(order: TradeOrder): string {
@@ -276,27 +282,27 @@ export class TradeService {
       const supplierMembership = this.organizations
         ? await this.organizations.requireCapability(actor, "supply", input.supplierOrganizationId)
         : undefined;
-      const buyerEmail = ensureEmail(input.buyerEmail, "buyer");
-      if (actor.email && buyerEmail === actor.email.trim().toLowerCase()) throw new DomainError("INVALID_PARTIES", "The buyer email must belong to another company", 400);
+      const buyerEmail = input.buyerEmail?.trim() ? ensureEmail(input.buyerEmail, "buyer") : undefined;
+      if (buyerEmail && actor.email && buyerEmail === actor.email.trim().toLowerCase()) throw new DomainError("INVALID_PARTIES", "The buyer email must belong to another company", 400);
       order = {
         ...shared, status: "awaiting_buyer",
         supplierId: actor.id, supplierOrganizationId: supplierMembership?.organizationId,
-        supplierEmail: actor.email?.trim().toLowerCase() ?? ensureEmail(input.supplierEmail),
+        supplierEmail: actor.email?.trim().toLowerCase() ?? (input.supplierEmail?.trim() ? ensureEmail(input.supplierEmail) : undefined),
         supplierName: supplierMembership?.organizationName ?? input.supplierName?.trim() ?? actor.name ?? "Supplier",
         supplierWalletAddress: input.supplierWalletAddress?.trim(),
-        buyerEmail, buyerName: input.buyerName?.trim() || buyerEmail,
+        buyerEmail, buyerName: input.buyerName?.trim() || buyerEmail || "the invited buyer",
       };
     } else {
       const buyerMembership = this.organizations
         ? await this.organizations.requireCapability(actor, "buy", input.buyerOrganizationId)
         : undefined;
-      const supplierEmail = ensureEmail(input.supplierEmail);
-      if (actor.email && supplierEmail === actor.email.trim().toLowerCase()) throw new DomainError("INVALID_PARTIES", "The supplier email must belong to another company", 400);
+      const supplierEmail = input.supplierEmail?.trim() ? ensureEmail(input.supplierEmail) : undefined;
+      if (supplierEmail && actor.email && supplierEmail === actor.email.trim().toLowerCase()) throw new DomainError("INVALID_PARTIES", "The supplier email must belong to another company", 400);
       order = {
         ...shared, status: "awaiting_supplier",
         buyerId: actor.id, buyerOrganizationId: buyerMembership?.organizationId,
         buyerEmail: actor.email, buyerName: buyerMembership?.organizationName ?? actor.name,
-        supplierEmail, supplierName: input.supplierName?.trim() || supplierEmail,
+        supplierEmail, supplierName: input.supplierName?.trim() || supplierEmail || "the invited supplier",
         supplierWalletAddress: input.supplierWalletAddress?.trim(),
       };
     }
@@ -318,22 +324,28 @@ export class TradeService {
       ? (await this.organizations.workspace(actor)).organizations.map((item) => item.organizationId)
       : [];
     if (!allowed(order, actor) && !organizationIds.includes(order.buyerOrganizationId ?? "") && !organizationIds.includes(order.supplierOrganizationId ?? "")) {
-      // An invited supplier reads the order before accepting, with or without
-      // the emailed token: their verified email is what the invitation binds.
+      // An invited party reads the order before accepting, with or without the emailed
+      // token: their verified email, or (for a named supplier) their wallet, proves it.
       if (!(await this.pendingInviteFor(order, actor)))
         throw new DomainError("FORBIDDEN", "Actor cannot access this trade order", 403);
     }
     return order;
   }
 
-  /** Pending invitations addressed to the actor's verified email. */
+  /** Pending invitations addressed to the actor's verified email or wallet. Sessions are
+   *  wallet-first and usually carry no email, so both lookups run and are merged by order. */
   async listInvitations(actor: Actor): Promise<TradeInvitation[]> {
     const email = actor.email?.trim().toLowerCase();
-    if (!email) return [];
-    const invites = await this.store.listPendingInvitesByEmail(email, this.ctx.now().toISOString());
+    const wallet = actor.walletAddress;
+    if (!email && !wallet) return [];
+    const now = this.ctx.now().toISOString();
+    const [byEmail, byWallet] = await Promise.all([
+      email ? this.store.listPendingInvitesByEmail(email, now) : Promise.resolve([]),
+      wallet ? this.store.listPendingInvitesByWallet(wallet.toLowerCase(), now) : Promise.resolve([]),
+    ]);
     const invitations: TradeInvitation[] = [];
     const seenOrders = new Set<string>();
-    for (const invite of invites) {
+    for (const invite of [...byEmail, ...byWallet]) {
       if (seenOrders.has(invite.orderId)) continue;
       seenOrders.add(invite.orderId);
       const order = await this.store.getOrder(invite.orderId);
@@ -342,7 +354,7 @@ export class TradeService {
       if (!side || !["awaiting_supplier", "awaiting_buyer"].includes(order.status)) continue;
       invitations.push({
         orderId: order.id, reference: order.reference, buyerName: initiatorName(order), counterpartyName: initiatorName(order), invitedRole: side,
-        invitedEmail: invite.invitedEmail, assetType: order.assetType, amountUnits: order.amountUnits,
+        invitedEmail: invite.invitedEmail, invitedWalletAddress: invite.invitedWalletAddress, assetType: order.assetType, amountUnits: order.amountUnits,
         deliveryDate: order.deliveryDate, invitedAt: invite.createdAt, expiresAt: invite.expiresAt,
       });
     }
@@ -352,8 +364,11 @@ export class TradeService {
   async createInvite(orderId: string, actor: Actor): Promise<TradeOrderWithInvite> {
     const order = await this.getOrder(orderId, actor);
     await this.requireInitiatorAuthority(order, actor, "Only the company that issued the order can send an invitation");
+    if (!["awaiting_supplier", "awaiting_buyer"].includes(order.status)) throw new DomainError("INVALID_STATE", "This order is no longer waiting for confirmation");
+    // The order may name its counterparty by email, by wallet, or by neither: a pure
+    // bearer link, secured only by the token minted below.
     const invitedEmail = pendingEmail(order);
-    if (!invitedEmail || !["awaiting_supplier", "awaiting_buyer"].includes(order.status)) throw new DomainError("INVALID_STATE", "This order is no longer waiting for confirmation");
+    const invitedWalletAddress = pendingWallet(order)?.toLowerCase();
     const existing = await this.store.getInviteByOrderId(orderId);
     const now = this.ctx.now();
     if (existing && !existing.acceptedBy && new Date(existing.expiresAt).getTime() > now.getTime()) {
@@ -365,7 +380,7 @@ export class TradeService {
     const rawToken = randomBytes(32).toString("base64url");
     const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const invite: TradeInvite = {
-      id: this.ctx.id(), orderId, tokenHash: tokenHash(rawToken), invitedEmail,
+      id: this.ctx.id(), orderId, tokenHash: tokenHash(rawToken), invitedEmail, invitedWalletAddress,
       expiresAt, createdAt: now.toISOString(),
     };
     await this.store.createInvite(invite);
@@ -374,11 +389,14 @@ export class TradeService {
     const result = structuredClone(updated) as TradeOrderWithInvite;
     result.inviteToken = rawToken;
     result.inviteUrl = `${this.inviteBaseUrl.replace(/\/$/, "")}/${encodeURIComponent(order.id)}?invite=${encodeURIComponent(rawToken)}`;
-    const delivery = await this.invitationEmail.send({
-      invitationId: invite.id, to: invite.invitedEmail, orderReference: order.reference,
-      buyerName: initiatorName(order), supplierName: invitedName(order),
-      reviewUrl: result.inviteUrl, expiresAt,
-    });
+    // Nothing to email for a wallet-only or bearer-link invite: the link itself is the delivery.
+    const delivery = invitedEmail
+      ? await this.invitationEmail.send({
+          invitationId: invite.id, to: invitedEmail, orderReference: order.reference,
+          buyerName: initiatorName(order), supplierName: invitedName(order),
+          reviewUrl: result.inviteUrl, expiresAt,
+        })
+      : { status: "not_configured" as const, attemptedAt: now.toISOString() };
     await this.store.saveInvite({
       ...invite, deliveryStatus: delivery.status, deliveryMessageId: delivery.messageId,
       deliveryAttemptedAt: delivery.attemptedAt,
@@ -430,39 +448,72 @@ export class TradeService {
     if (actor.id === initiatorId || actor.id === order.arbitratorId) throw new DomainError("INVALID_PARTY", "The issuing company and the arbitrator cannot confirm the order", 400);
     const verifiedEmail = actor.email?.trim().toLowerCase();
     const submittedEmail = input.email?.trim().toLowerCase();
-    if (verifiedEmail && submittedEmail && verifiedEmail !== submittedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "The submitted supplier email does not match the authenticated account", 403);
-    // Without the emailed token, nothing but a verified email proves the actor
-    // is the invited party, so a self-declared address cannot stand in for one.
-    const candidateEmail = verifiedEmail ?? (tokenPresented ? submittedEmail : undefined);
-    if (!candidateEmail) throw new DomainError("INVITE_EMAIL_REQUIRED", "A verified supplier email is required to accept this invitation", 403);
-    if (candidateEmail !== invite.invitedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "This invitation was issued to a different supplier account", 403);
+    if (verifiedEmail && submittedEmail && verifiedEmail !== submittedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "The submitted email does not match the authenticated account", 403);
+
+    // Wallets bind only the supplier side: a supplier-initiated order still has no
+    // buyer-wallet field, so this reasoning is a no-op (namedWallet undefined) for a buyer accept.
+    const namedWallet = side === "supplier" ? (order.supplierWalletAddress ?? invite.invitedWalletAddress) : undefined;
+    let boundWalletAddress: string | undefined;
+    if (namedWallet) {
+      // The order (or invite) already names the supplier's wallet. That wallet is now the
+      // whole proof of identity - contact-info email on file no longer matters here - so the
+      // workspace "accept" button works from that wallet with no token at all.
+      if (!sameAddress(actor.walletAddress, namedWallet)) {
+        throw new DomainError("SUPPLIER_WALLET_MISMATCH", "Connect the wallet this order names as the supplier to accept it", 403);
+      }
+      boundWalletAddress = namedWallet;
+    } else {
+      const namedEmail = side === "buyer" ? order.buyerEmail?.trim().toLowerCase() : order.supplierEmail?.trim().toLowerCase();
+      if (namedEmail) {
+        // Without the emailed token, nothing but a verified email proves the actor
+        // is the invited party, so a self-declared address cannot stand in for one.
+        const candidateEmail = verifiedEmail ?? (tokenPresented ? submittedEmail : undefined);
+        if (!candidateEmail) throw new DomainError("INVITE_EMAIL_REQUIRED", `A verified ${side} email is required to accept this invitation`, 403);
+        if (candidateEmail !== namedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "This invitation was issued to a different account", 403);
+        // The email already proved identity; a wallet is captured opportunistically
+        // (for later funding checks) but is not required to accept.
+        if (side === "supplier") boundWalletAddress = actor.walletAddress;
+      } else {
+        // Nothing names an email or a wallet for this side, so only possession of the
+        // emailed link itself proves the actor was the one invited.
+        if (!tokenPresented) throw new DomainError("INVITE_TOKEN_REQUIRED", "Open this invitation using its link to accept it", 403);
+        if (side === "supplier") {
+          // First accept wins: nothing named a supplier wallet yet, so the accepting
+          // session's own wallet becomes the one funding and shipment are checked against.
+          if (!actor.walletAddress) throw new DomainError("WALLET_REQUIRED", "Connect a wallet before accepting this order as the supplier", 403);
+          boundWalletAddress = actor.walletAddress;
+        }
+      }
+    }
+
     const membership = this.organizations
       ? await this.organizations.requireCapability(actor, side === "buyer" ? "buy" : "supply")
       : undefined;
     const now = this.ctx.now().toISOString();
+    const resolvedEmail = verifiedEmail ?? submittedEmail;
     const confirmation = {
-      confirmedBy: actor.id, confirmedRole: side, email: candidateEmail, organizationName: membership?.organizationName ?? input.name ?? actor.name,
+      confirmedBy: actor.id, confirmedRole: side, email: resolvedEmail, organizationName: membership?.organizationName ?? input.name ?? actor.name,
       orderVersion: order.version, termsVersion: TERMS_VERSION, confirmedAt: now,
     };
     let updated: TradeOrder;
     if (side === "buyer") {
       updated = {
         ...order, buyerId: actor.id, buyerOrganizationId: membership?.organizationId,
-        buyerEmail: ensureEmail(input.email ?? actor.email ?? order.buyerEmail, "buyer"),
+        buyerEmail: resolvedEmail ? ensureEmail(resolvedEmail, "buyer") : order.buyerEmail,
         buyerName: (membership?.organizationName ?? input.name ?? actor.name ?? order.buyerName ?? "Buyer").trim(),
         status: "supplier_confirmed", confirmation, updatedAt: now, version: order.version + 1,
       };
     } else {
-      if (order.supplierWalletAddress && input.supplierWalletAddress && !sameAddress(order.supplierWalletAddress, input.supplierWalletAddress)) throw new DomainError("SUPPLIER_WALLET_MISMATCH", "The supplier wallet does not match the wallet recorded on the order", 409);
       updated = {
         ...order, supplierId: actor.id, supplierOrganizationId: membership?.organizationId,
-        supplierEmail: ensureEmail(input.email ?? actor.email ?? order.supplierEmail),
-        supplierName: (membership?.organizationName ?? input.name ?? actor.name ?? order.supplierName).trim(), supplierWalletAddress: order.supplierWalletAddress ?? input.supplierWalletAddress?.trim(), status: "supplier_confirmed",
-        confirmation, updatedAt: now, version: order.version + 1,
+        supplierEmail: resolvedEmail ? ensureEmail(resolvedEmail) : order.supplierEmail,
+        supplierName: (membership?.organizationName ?? input.name ?? actor.name ?? order.supplierName).trim(),
+        supplierWalletAddress: boundWalletAddress ?? order.supplierWalletAddress,
+        status: "supplier_confirmed", confirmation, updatedAt: now, version: order.version + 1,
       };
     }
     await this.store.saveOrder(updated, order.version);
-    await this.store.saveInvite({ ...invite, acceptedBy: actor.id, acceptedAt: now });
+    await this.store.saveInvite({ ...invite, acceptedBy: actor.id, acceptedAt: now, invitedWalletAddress: invite.invitedWalletAddress ?? boundWalletAddress?.toLowerCase() });
     return updated;
   }
 
@@ -471,8 +522,8 @@ export class TradeService {
     const invite = await this.store.getInviteByTokenHash(tokenHash(rawToken.trim()));
     if (!invite) throw new DomainError("INVALID_INVITE", "This invitation is invalid or has expired", 404);
     if (new Date(invite.expiresAt).getTime() <= this.ctx.now().getTime()) throw new DomainError("INVITE_EXPIRED", "This invitation has expired", 410);
-    const verifiedEmail = actor.email?.trim().toLowerCase();
-    if (!verifiedEmail || verifiedEmail !== invite.invitedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "Sign in with the supplier email that received this invitation", 403);
+    // Holding the raw token is itself the proof for a read: it is only ever learned from the
+    // invite link, so no separate email or wallet check gates a preview before accepting.
     const order = await this.store.getOrder(invite.orderId);
     if (!order) throw new DomainError("NOT_FOUND", "The invited order no longer exists", 404);
     const side = pendingSide(order) ?? (order.initiatorRole === "supplier" ? "buyer" : "supplier");
@@ -492,6 +543,9 @@ export class TradeService {
       if (same) return structuredClone(order);
       throw new DomainError("FUNDING_ALREADY_RECORDED", "This order is already bound to a different escrow funding transaction", 409);
     }
+    // A session with no verified wallet (for example a demo account) has nothing to check the
+    // declared buyer address against; a real wallet session must fund from its own wallet.
+    if (actor.walletAddress && !sameAddress(input.buyerAddress, actor.walletAddress)) throw new DomainError("BUYER_WALLET_MISMATCH", "Fund this order from the wallet connected as the buyer", 409);
     if (order.supplierWalletAddress && !sameAddress(order.supplierWalletAddress, input.supplierAddress)) throw new DomainError("SUPPLIER_WALLET_MISMATCH", "Funding must pay the supplier wallet recorded on the order", 409);
     if (order.arbitratorWalletAddress && !sameAddress(order.arbitratorWalletAddress, input.arbitratorAddress)) throw new DomainError("ARBITRATOR_WALLET_MISMATCH", "Funding must use the arbitrator wallet recorded on the order", 409);
     let verificationStatus: "verified_on_chain" | "external_reference" = "external_reference";
@@ -735,12 +789,19 @@ export class TradeService {
     return next;
   }
 
+  /** Whether this actor is the party a pending invite names, so they may read the order (and
+   *  see the accept button) before presenting the emailed token: a verified email matching the
+   *  invited email, or - for the supplier side - a wallet matching the named supplier wallet. */
   private async pendingInviteFor(order: TradeOrder, actor: Actor): Promise<TradeInvite | undefined> {
-    const email = actor.email?.trim().toLowerCase();
-    if (!email || !pendingSide(order)) return undefined;
+    const side = pendingSide(order);
+    if (!side) return undefined;
     const invite = await this.store.getInviteByOrderId(order.id);
-    if (!invite || invite.acceptedBy || invite.invitedEmail !== email) return undefined;
-    return new Date(invite.expiresAt).getTime() > this.ctx.now().getTime() ? invite : undefined;
+    if (!invite || invite.acceptedBy || new Date(invite.expiresAt).getTime() <= this.ctx.now().getTime()) return undefined;
+    const email = actor.email?.trim().toLowerCase();
+    if (email && invite.invitedEmail && email === invite.invitedEmail) return invite;
+    const namedWallet = side === "supplier" ? (invite.invitedWalletAddress ?? order.supplierWalletAddress) : undefined;
+    if (namedWallet && sameAddress(actor.walletAddress, namedWallet)) return invite;
+    return undefined;
   }
 
   private async requireInitiatorAuthority(order: TradeOrder, actor: Actor, message: string): Promise<void> {

@@ -124,7 +124,8 @@ export interface TradeOrder {
   buyerName?: string;
   supplierId?: string;
   supplierOrganizationId?: string;
-  supplierEmail: string;
+  /** Optional contact info once a wallet address (or the invite token itself) binds the party. */
+  supplierEmail?: string;
   supplierName: string;
   supplierWalletAddress?: string;
   arbitratorWalletAddress?: string;
@@ -187,7 +188,10 @@ export interface TradeInvite {
   id: string;
   orderId: string;
   tokenHash: string;
-  invitedEmail: string;
+  /** Set only when the order names an email for the invited side. */
+  invitedEmail?: string;
+  /** Set when the order (or the accepting session) binds the invited side to a wallet. */
+  invitedWalletAddress?: string;
   expiresAt: string;
   acceptedBy?: string;
   acceptedAt?: string;
@@ -206,7 +210,8 @@ export interface TradeInvitation {
   counterpartyName: string;
   /** The role the invited account takes on the order. */
   invitedRole: TradeInitiatorRole;
-  invitedEmail: string;
+  invitedEmail?: string;
+  invitedWalletAddress?: string;
   assetType: string;
   amountUnits: string;
   deliveryDate: string;
