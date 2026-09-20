@@ -1,46 +1,82 @@
-import { readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
+import { readFileSync, writeFileSync, readdirSync } from "fs";
+import { join, resolve } from "path";
 
-const ARTIFACT_PATH = resolve("artifacts/contracts/OpenLCEscrow.sol/OpenLCEscrow.json");
 const ABI_PATHS = [
   "backend/src/integrations/openlc-escrow.abi.json",
   "web/lib/openlc-escrow.abi.json",
 ];
 
-function getAbi() {
-  const artifact = JSON.parse(readFileSync(ARTIFACT_PATH, "utf-8"));
-  return artifact.abi;
+function findArtifact() {
+  const artifactsDir = resolve("artifacts");
+  const matches = [];
+
+  function walkDir(dir) {
+    try {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walkDir(fullPath);
+        } else if (entry.name === "OpenLCEscrow.json") {
+          // Skip debug files
+          if (!entry.name.endsWith(".dbg.json")) {
+            matches.push(fullPath);
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read
+    }
+  }
+
+  walkDir(artifactsDir);
+
+  if (matches.length === 0) {
+    console.error("❌ No artifact found — run `npm run compile` first");
+    process.exit(1);
+  }
+
+  if (matches.length > 1) {
+    console.error("❌ Multiple OpenLCEscrow.json artifacts found:");
+    matches.forEach((m) => console.error(`   ${m}`));
+    process.exit(1);
+  }
+
+  return matches[0];
 }
 
-function readAbi(path) {
+function getAbiContent() {
+  const artifactPath = findArtifact();
+  const artifact = JSON.parse(readFileSync(artifactPath, "utf-8"));
+  const abi = artifact.abi;
+  return JSON.stringify(abi, null, 2) + "\n";
+}
+
+function readFileContent(path) {
   try {
-    return JSON.parse(readFileSync(path, "utf-8"));
+    return readFileSync(path, "utf-8");
   } catch {
     return null;
   }
 }
 
-function abiEqual(abi1, abi2) {
-  return JSON.stringify(abi1) === JSON.stringify(abi2);
-}
-
 async function main() {
   const checkMode = process.argv.includes("--check");
-  const sourceAbi = getAbi();
+  const expectedContent = getAbiContent();
 
   if (checkMode) {
     console.log("Checking ABI files for drift...");
     let hasDrift = false;
 
     for (const path of ABI_PATHS) {
-      const fileAbi = readAbi(path);
-      if (!fileAbi) {
+      const fileContent = readFileContent(path);
+      if (!fileContent) {
         console.error(`❌ ${path} not found`);
         hasDrift = true;
         continue;
       }
 
-      if (!abiEqual(sourceAbi, fileAbi)) {
+      if (fileContent !== expectedContent) {
         console.error(`❌ ${path} differs from artifact`);
         hasDrift = true;
       } else {
@@ -56,10 +92,9 @@ async function main() {
     process.exit(0);
   } else {
     console.log("Exporting ABI to files...");
-    const abiJson = JSON.stringify(sourceAbi, null, 2) + "\n";
 
     for (const path of ABI_PATHS) {
-      writeFileSync(path, abiJson);
+      writeFileSync(path, expectedContent);
       console.log(`✓ Exported to ${path}`);
     }
 

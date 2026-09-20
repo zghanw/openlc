@@ -1,4 +1,5 @@
 {
+  "network": "botchainTestnet",
   "chainId": 968,
   "contract": "OpenLCEscrow",
   "address": "0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5",
