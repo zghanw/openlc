@@ -284,12 +284,18 @@ export class TradeService {
         : undefined;
       const buyerEmail = input.buyerEmail?.trim() ? ensureEmail(input.buyerEmail, "buyer") : undefined;
       if (buyerEmail && actor.email && buyerEmail === actor.email.trim().toLowerCase()) throw new DomainError("INVALID_PARTIES", "The buyer email must belong to another company", 400);
+      const supplierWalletAddress = input.supplierWalletAddress?.trim();
+      // The contract requires buyer, supplier, and arbitrator to be three distinct addresses
+      // and reverts otherwise; catching a colliding arbitrator wallet here, before an invite is
+      // ever sent, gives a far better message than a revert at funding time.
+      if (shared.arbitratorWalletAddress && actor.walletAddress && sameAddress(shared.arbitratorWalletAddress, actor.walletAddress)) throw new DomainError("INVALID_PARTIES", "The arbitrator wallet must be different from the buyer and supplier wallets", 400);
+      if (shared.arbitratorWalletAddress && supplierWalletAddress && sameAddress(shared.arbitratorWalletAddress, supplierWalletAddress)) throw new DomainError("INVALID_PARTIES", "The arbitrator wallet must be different from the buyer and supplier wallets", 400);
       order = {
         ...shared, status: "awaiting_buyer",
         supplierId: actor.id, supplierOrganizationId: supplierMembership?.organizationId,
         supplierEmail: actor.email?.trim().toLowerCase() ?? (input.supplierEmail?.trim() ? ensureEmail(input.supplierEmail) : undefined),
         supplierName: supplierMembership?.organizationName ?? input.supplierName?.trim() ?? actor.name ?? "Supplier",
-        supplierWalletAddress: input.supplierWalletAddress?.trim(),
+        supplierWalletAddress,
         buyerEmail, buyerName: input.buyerName?.trim() || buyerEmail || "the invited buyer",
       };
     } else {
@@ -298,12 +304,19 @@ export class TradeService {
         : undefined;
       const supplierEmail = input.supplierEmail?.trim() ? ensureEmail(input.supplierEmail) : undefined;
       if (supplierEmail && actor.email && supplierEmail === actor.email.trim().toLowerCase()) throw new DomainError("INVALID_PARTIES", "The supplier email must belong to another company", 400);
+      const supplierWalletAddress = input.supplierWalletAddress?.trim();
+      // A buyer naming their own wallet as the supplier would make the order impossible to
+      // accept (the initiator can never confirm their own order) and, if it somehow reached
+      // funding, would pay the buyer itself - so it is refused up front like the email case.
+      if (supplierWalletAddress && actor.walletAddress && sameAddress(supplierWalletAddress, actor.walletAddress)) throw new DomainError("INVALID_PARTIES", "The supplier wallet must belong to another company", 400);
+      if (shared.arbitratorWalletAddress && actor.walletAddress && sameAddress(shared.arbitratorWalletAddress, actor.walletAddress)) throw new DomainError("INVALID_PARTIES", "The arbitrator wallet must be different from the buyer and supplier wallets", 400);
+      if (shared.arbitratorWalletAddress && supplierWalletAddress && sameAddress(shared.arbitratorWalletAddress, supplierWalletAddress)) throw new DomainError("INVALID_PARTIES", "The arbitrator wallet must be different from the buyer and supplier wallets", 400);
       order = {
         ...shared, status: "awaiting_supplier",
         buyerId: actor.id, buyerOrganizationId: buyerMembership?.organizationId,
         buyerEmail: actor.email, buyerName: buyerMembership?.organizationName ?? actor.name,
         supplierEmail, supplierName: input.supplierName?.trim() || supplierEmail || "the invited supplier",
-        supplierWalletAddress: input.supplierWalletAddress?.trim(),
+        supplierWalletAddress,
       };
     }
     await this.store.createOrder(order);
@@ -470,19 +483,20 @@ export class TradeService {
         const candidateEmail = verifiedEmail ?? (tokenPresented ? submittedEmail : undefined);
         if (!candidateEmail) throw new DomainError("INVITE_EMAIL_REQUIRED", `A verified ${side} email is required to accept this invitation`, 403);
         if (candidateEmail !== namedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "This invitation was issued to a different account", 403);
-        // The email already proved identity; a wallet is captured opportunistically
-        // (for later funding checks) but is not required to accept.
-        if (side === "supplier") boundWalletAddress = actor.walletAddress;
       } else {
         // Nothing names an email or a wallet for this side, so only possession of the
         // emailed link itself proves the actor was the one invited.
         if (!tokenPresented) throw new DomainError("INVITE_TOKEN_REQUIRED", "Open this invitation using its link to accept it", 403);
-        if (side === "supplier") {
-          // First accept wins: nothing named a supplier wallet yet, so the accepting
-          // session's own wallet becomes the one funding and shipment are checked against.
-          if (!actor.walletAddress) throw new DomainError("WALLET_REQUIRED", "Connect a wallet before accepting this order as the supplier", 403);
-          boundWalletAddress = actor.walletAddress;
-        }
+      }
+      // Every supplier acceptance binds a payout wallet, however identity was just proved
+      // (email or token) - recordFunding's guards only work when this is always set, and a
+      // wallet captured only "when convenient" is what let a walletless account accept and
+      // then leave the order's payout wallet unset. First accept wins: nothing named a
+      // supplier wallet yet, so the accepting session's own wallet becomes the one funding
+      // and shipment are checked against.
+      if (side === "supplier") {
+        if (!actor.walletAddress) throw new DomainError("WALLET_REQUIRED", "Connect a wallet before accepting this order as the supplier", 403);
+        boundWalletAddress = actor.walletAddress;
       }
     }
 
@@ -522,13 +536,27 @@ export class TradeService {
     const invite = await this.store.getInviteByTokenHash(tokenHash(rawToken.trim()));
     if (!invite) throw new DomainError("INVALID_INVITE", "This invitation is invalid or has expired", 404);
     if (new Date(invite.expiresAt).getTime() <= this.ctx.now().getTime()) throw new DomainError("INVITE_EXPIRED", "This invitation has expired", 410);
-    // Holding the raw token is itself the proof for a read: it is only ever learned from the
-    // invite link, so no separate email or wallet check gates a preview before accepting.
     const order = await this.store.getOrder(invite.orderId);
     if (!order) throw new DomainError("NOT_FOUND", "The invited order no longer exists", 404);
     const side = pendingSide(order) ?? (order.initiatorRole === "supplier" ? "buyer" : "supplier");
     const acceptedId = side === "buyer" ? order.buyerId : order.supplierId;
     if (acceptedId && acceptedId !== actor.id) throw new DomainError("INVITE_ALREADY_ACCEPTED", "This order has already been accepted by another company", 409);
+    // Holding the raw token is proof enough for a bearer-link order that names nobody for
+    // this side. Otherwise the previewing session must match what the order actually names -
+    // the named wallet or the named email - the same reasoning pendingInviteFor applies to
+    // the token-free workspace read, so a stolen/guessed token cannot browse a named order.
+    const namedWallet = side === "supplier" ? (order.supplierWalletAddress ?? invite.invitedWalletAddress) : undefined;
+    if (namedWallet) {
+      if (!sameAddress(actor.walletAddress, namedWallet)) {
+        throw new DomainError("SUPPLIER_WALLET_MISMATCH", "Connect the wallet this order names as the supplier to preview it", 403);
+      }
+    } else {
+      const namedEmail = side === "buyer" ? order.buyerEmail?.trim().toLowerCase() : order.supplierEmail?.trim().toLowerCase();
+      if (namedEmail) {
+        const email = actor.email?.trim().toLowerCase();
+        if (!email || email !== namedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "Sign in with the account this invitation names to preview it", 403);
+      }
+    }
     return structuredClone(order);
   }
 
@@ -543,11 +571,14 @@ export class TradeService {
       if (same) return structuredClone(order);
       throw new DomainError("FUNDING_ALREADY_RECORDED", "This order is already bound to a different escrow funding transaction", 409);
     }
-    // A session with no verified wallet (for example a demo account) has nothing to check the
-    // declared buyer address against; a real wallet session must fund from its own wallet.
-    if (actor.walletAddress && !sameAddress(input.buyerAddress, actor.walletAddress)) throw new DomainError("BUYER_WALLET_MISMATCH", "Fund this order from the wallet connected as the buyer", 409);
-    if (order.supplierWalletAddress && !sameAddress(order.supplierWalletAddress, input.supplierAddress)) throw new DomainError("SUPPLIER_WALLET_MISMATCH", "Funding must pay the supplier wallet recorded on the order", 409);
-    if (order.arbitratorWalletAddress && !sameAddress(order.arbitratorWalletAddress, input.arbitratorAddress)) throw new DomainError("ARBITRATOR_WALLET_MISMATCH", "Funding must use the arbitrator wallet recorded on the order", 409);
+    // These guards must fail closed: a party field left unset on the order is a missing
+    // safeguard, not an implicit pass, or a buyer could name any payout address once one of
+    // these was never recorded (the exact hole a walletless supplier accept used to leave open).
+    if (!sameAddress(input.buyerAddress, actor.walletAddress)) throw new DomainError("BUYER_WALLET_MISMATCH", "Fund this order from the wallet connected as the buyer", 409);
+    if (!order.supplierWalletAddress) throw new DomainError("SUPPLIER_WALLET_REQUIRED", "The supplier has not attached a payout wallet to this order yet", 409);
+    if (!sameAddress(order.supplierWalletAddress, input.supplierAddress)) throw new DomainError("SUPPLIER_WALLET_MISMATCH", "Funding must pay the supplier wallet recorded on the order", 409);
+    if (!order.arbitratorWalletAddress) throw new DomainError("ARBITRATOR_WALLET_REQUIRED", "The order has no arbitrator payout wallet recorded yet", 409);
+    if (!sameAddress(order.arbitratorWalletAddress, input.arbitratorAddress)) throw new DomainError("ARBITRATOR_WALLET_MISMATCH", "Funding must use the arbitrator wallet recorded on the order", 409);
     let verificationStatus: "verified_on_chain" | "external_reference" = "external_reference";
     let deadlines = { deliveryDeadlineMs: input.deliveryDeadlineMs, inspectionWindowMs: input.inspectionWindowMs };
     if (this.fundingVerifier) {

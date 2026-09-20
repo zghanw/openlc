@@ -24,7 +24,13 @@ describe("trade lifecycle API", () => {
   });
   it("issues a demo Google session and completes invite, funding, and dispute transitions", async () => {
     const control = controlledContext();
-    const fallback: TokenVerifier = { verify: async (token) => ({ id: token }) };
+    // Funding is a wallet-gated action (task 7 fix round 1), so the identities actually used to
+    // fund/accept below are wallet-carrying, even though the demo Google login endpoint itself
+    // (checked first) is unaffected and still issues a usable, walletless session.
+    const buyerWallet = `0x${"a".repeat(40)}`;
+    const supplierWallet = `0x${"b".repeat(40)}`;
+    const arbitratorWallet = `0x${"c".repeat(40)}`;
+    const fallback: TokenVerifier = { verify: async (token) => JSON.parse(token) };
     const verifier = new DemoAwareTokenVerifier(fallback, true);
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx, "http://localhost:3000/workspace");
@@ -33,10 +39,11 @@ describe("trade lifecycle API", () => {
     const login = await app.request("/auth/demo/google", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "buyer@example.com", name: "Buyer Example" }) });
     expect(login.status).toBe(200);
     const buyerSession = await login.json() as { accessToken: string; user: { id: string } };
-    const buyerHeaders = auth(buyerSession.accessToken);
+    const buyerHeaders = auth(JSON.stringify({ id: buyerSession.user.id, email: "buyer@example.com", name: "Buyer Example", walletAddress: buyerWallet }));
 
     const created = await app.request("/v1/orders", { method: "POST", headers: buyerHeaders, body: JSON.stringify({
       reference: "PO-100", supplierEmail: "supplier@example.com", supplierName: "Supplier Example", arbitratorId: ARBITRATOR,
+      arbitratorWalletAddress: arbitratorWallet,
       assetType: "USDC", amountUnits: "100000000", description: "100 cartons of cooking oil", deliveryDate: "2026-09-04", deliveryLocation: "PJ receiving bay",
       lineItems: [{ id: "line-1", description: "Cooking oil", quantity: "100", unit: "carton", unitPriceUnits: "1000000" }],
     }) });
@@ -54,26 +61,26 @@ describe("trade lifecycle API", () => {
     const resent = await resentResponse.json() as any;
     expect(resent.inviteToken).not.toBe(invite.inviteToken);
 
-    const supplierSession = issueDemoGoogleSession("supplier@example.com", "Supplier Example");
-    const accepted = await app.request(`/v1/invites/${encodeURIComponent(invite.inviteToken)}/accept`, { method: "POST", headers: auth(supplierSession.accessToken), body: JSON.stringify({ email: "supplier@example.com", name: "Supplier Example" }) });
+    const supplierHeaders = auth(JSON.stringify({ id: SUPPLIER, email: "supplier@example.com", name: "Supplier Example", walletAddress: supplierWallet }));
+    const accepted = await app.request(`/v1/invites/${encodeURIComponent(invite.inviteToken)}/accept`, { method: "POST", headers: supplierHeaders, body: JSON.stringify({ email: "supplier@example.com", name: "Supplier Example" }) });
     expect(accepted.status).toBe(410);
-    const acceptedFresh = await app.request(`/v1/invites/${encodeURIComponent(resent.inviteToken)}/accept`, { method: "POST", headers: auth(supplierSession.accessToken), body: JSON.stringify({ email: "supplier@example.com", name: "Supplier Example" }) });
+    const acceptedFresh = await app.request(`/v1/invites/${encodeURIComponent(resent.inviteToken)}/accept`, { method: "POST", headers: supplierHeaders, body: JSON.stringify({ email: "supplier@example.com", name: "Supplier Example" }) });
     expect(acceptedFresh.status).toBe(200);
     expect((await acceptedFresh.json() as any).status).toBe("supplier_confirmed");
 
     const funded = await app.request(`/v1/orders/${order.id}/funding`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({
-      packageId: `0x${"1".repeat(40)}`, escrowObjectId: "2", transactionDigest: `0x${"a".repeat(64)}`, buyerAddress: `0x${"a".repeat(40)}`,
-      supplierAddress: `0x${"b".repeat(40)}`, arbitratorAddress: `0x${"c".repeat(40)}`,
+      packageId: `0x${"1".repeat(40)}`, escrowObjectId: "2", transactionDigest: `0x${"a".repeat(64)}`, buyerAddress: buyerWallet,
+      supplierAddress: supplierWallet, arbitratorAddress: arbitratorWallet,
     }) });
     expect(funded.status).toBe(200);
     expect((await funded.json() as any).status).toBe("funded");
-    const fundingBody = { packageId: `0x${"1".repeat(40)}`, escrowObjectId: "2", transactionDigest: `0x${"a".repeat(64)}`, buyerAddress: `0x${"a".repeat(40)}`, supplierAddress: `0x${"b".repeat(40)}`, arbitratorAddress: `0x${"c".repeat(40)}` };
+    const fundingBody = { packageId: `0x${"1".repeat(40)}`, escrowObjectId: "2", transactionDigest: `0x${"a".repeat(64)}`, buyerAddress: buyerWallet, supplierAddress: supplierWallet, arbitratorAddress: arbitratorWallet };
     const retryFunding = await app.request(`/v1/orders/${order.id}/funding`, { method: "POST", headers: buyerHeaders, body: JSON.stringify(fundingBody) });
     expect(retryFunding.status).toBe(200);
     const replacementFunding = await app.request(`/v1/orders/${order.id}/funding`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({ ...fundingBody, escrowObjectId: "999" }) });
     expect(replacementFunding.status).toBe(409);
 
-    expect((await app.request(`/v1/orders/${order.id}/shipment`, { method: "POST", headers: auth(supplierSession.accessToken), body: JSON.stringify({ carrier: "GDEX", trackingNumber: "GD-API-1", dispatchedAt: "2026-09-01T00:00:00.000Z", transactionDigest: `0x${"b".repeat(64)}`, evidenceSha256: "03".repeat(32) }) })).status).toBe(200);
+    expect((await app.request(`/v1/orders/${order.id}/shipment`, { method: "POST", headers: supplierHeaders, body: JSON.stringify({ carrier: "GDEX", trackingNumber: "GD-API-1", dispatchedAt: "2026-09-01T00:00:00.000Z", transactionDigest: `0x${"b".repeat(64)}`, evidenceSha256: "03".repeat(32) }) })).status).toBe(200);
     expect((await app.request(`/v1/orders/${order.id}/delivery`, { method: "POST", headers: buyerHeaders })).status).toBe(200);
 
     const opened = await app.request(`/v1/orders/${order.id}/dispute`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({
@@ -90,14 +97,18 @@ describe("trade lifecycle API", () => {
     const lateRefund = await app.request(`/v1/orders/${order.id}/deadline-settlement`, { method: "POST", headers: buyerHeaders, body: JSON.stringify({ kind: "refund_unshipped", transactionDigest: `0x${"d".repeat(64)}` }) });
     expect(lateRefund.status).toBe(409);
 
-    const responded = await app.request(`/v1/disputes/${payload.dispute.id}/supplier-response`, { method: "POST", headers: auth(supplierSession.accessToken), body: JSON.stringify({ agrees: false, statement: "Dispatch evidence shows the goods left intact." }) });
+    const responded = await app.request(`/v1/disputes/${payload.dispute.id}/supplier-response`, { method: "POST", headers: supplierHeaders, body: JSON.stringify({ agrees: false, statement: "Dispatch evidence shows the goods left intact." }) });
     expect(responded.status).toBe(200);
     expect((await responded.json() as any).status).toBe("negotiation_open");
   });
 
   it("does not allow invite reuse by a different account", async () => {
     const control = controlledContext();
-    const fallback: TokenVerifier = { verify: async (token) => ({ id: token }) };
+    // `first` must actually complete the accept below, which now always binds a wallet, so it
+    // authenticates as a wallet session (via this JSON-token fallback); `other` never gets that
+    // far (rejected as a duplicate accept before any wallet check), so a plain demo Google
+    // session is enough for it.
+    const fallback: TokenVerifier = { verify: async (token) => JSON.parse(token) };
     const verifier = new DemoAwareTokenVerifier(fallback, true);
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
@@ -106,8 +117,8 @@ describe("trade lifecycle API", () => {
     const created = await app.request("/v1/orders", { method: "POST", headers: auth(buyer.accessToken), body: JSON.stringify({ reference: "PO-101", supplierEmail: "supplier2@example.com", supplierName: "Supplier Two", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "1", description: "A sample item", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "1", description: "Sample", quantity: "1", unit: "unit", unitPriceUnits: "1" }] }) });
     const order = await created.json() as any;
     const invite = await (await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth(buyer.accessToken) })).json() as any;
-    const first = issueDemoGoogleSession("supplier2@example.com", "Supplier Two");
-    expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(first.accessToken), body: "{}" })).status).toBe(200);
+    const firstToken = JSON.stringify({ id: SUPPLIER, email: "supplier2@example.com", name: "Supplier Two", walletAddress: `0x${"2".repeat(40)}` });
+    expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(firstToken), body: "{}" })).status).toBe(200);
     const other = issueDemoGoogleSession("other@example.com", "Other");
     expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(other.accessToken), body: "{}" })).status).toBe(409);
   });
@@ -130,9 +141,9 @@ describe("trade lifecycle API", () => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const buyer = { id: BUYER, email: "buyer-direct@example.com", name: "Direct Buyer" };
-    const supplier = { id: SUPPLIER, email: "supplier-direct@example.com", name: "Direct Supplier" };
-    const order = await trades.createOrder({ reference: "DIRECT-PO", supplierEmail: supplier.email, supplierName: supplier.name, arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "100000", description: "Direct settlement goods", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "100000" }] }, buyer);
+    const buyer = { id: BUYER, email: "buyer-direct@example.com", name: "Direct Buyer", walletAddress: "0xa" };
+    const supplier = { id: SUPPLIER, email: "supplier-direct@example.com", name: "Direct Supplier", walletAddress: "0xb" };
+    const order = await trades.createOrder({ reference: "DIRECT-PO", supplierEmail: supplier.email, supplierName: supplier.name, arbitratorWalletAddress: "0xc", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "100000", description: "Direct settlement goods", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "100000" }] }, buyer);
     const invite = await trades.createInvite(order.id, buyer);
     await trades.acceptInvite(invite.inviteToken!, supplier, { email: supplier.email, name: supplier.name });
     await trades.recordFunding(order.id, buyer, { packageId: "0x1", escrowObjectId: "0x2", transactionDigest: "funding-direct", buyerAddress: "0xa", supplierAddress: "0xb", arbitratorAddress: "0xc" });
@@ -151,7 +162,7 @@ describe("trade lifecycle API", () => {
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
     const buyer = { id: BUYER, email: "buyer-workspace@example.com", name: "Workspace Buyer" };
-    const supplier = { id: SUPPLIER, email: "supplier-workspace@example.com", name: "Workspace Supplier" };
+    const supplier = { id: SUPPLIER, email: "supplier-workspace@example.com", name: "Workspace Supplier", walletAddress: "0xb" };
     const order = await trades.createOrder({
       reference: "PO-WORKSPACE", supplierEmail: supplier.email!, supplierName: supplier.name, arbitratorId: ARBITRATOR,
       assetType: "USDC", amountUnits: "500000", description: "Invited goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
@@ -215,10 +226,10 @@ describe("trade lifecycle API", () => {
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
     const supplier = { id: SUPPLIER, email: "supplier-init@example.com", name: "FreshSource" };
-    const buyer = { id: BUYER, email: "buyer-init@example.com", name: "GreenBite" };
+    const buyer = { id: BUYER, email: "buyer-init@example.com", name: "GreenBite", walletAddress: `0x${"a".repeat(64)}` };
     const order = await trades.createOrder({
       reference: "PO-SUP-1", initiatorRole: "supplier", buyerEmail: buyer.email, buyerName: "GreenBite Trading", arbitratorId: ARBITRATOR,
-      supplierWalletAddress: `0x${"b".repeat(64)}`,
+      supplierWalletAddress: `0x${"b".repeat(64)}`, arbitratorWalletAddress: `0x${"c".repeat(64)}`,
       assetType: "USDC", amountUnits: "5000", description: "Olive oil", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
       lineItems: [{ id: "line", description: "Olive oil 5L", quantity: "50", unit: "tins", unitPriceUnits: "100" }],
     }, supplier);
@@ -259,7 +270,7 @@ describe("trade lifecycle API", () => {
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
     const buyer = { id: BUYER, email: "buyer-terms@example.com", name: "Buyer" };
-    const supplier = { id: SUPPLIER, email: "supplier-terms@example.com", name: "Supplier" };
+    const supplier = { id: SUPPLIER, email: "supplier-terms@example.com", name: "Supplier", walletAddress: "0xb" };
     const order = await trades.createOrder({
       reference: "PO-TERMS", supplierEmail: supplier.email, arbitratorId: ARBITRATOR,
       assetType: "USDC", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
@@ -274,10 +285,10 @@ describe("trade lifecycle API", () => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const buyer = { id: BUYER, email: "buyer-accept@example.com", name: "Buyer" };
-    const supplier = { id: SUPPLIER, email: "supplier-accept@example.com", name: "Supplier" };
+    const buyer = { id: BUYER, email: "buyer-accept@example.com", name: "Buyer", walletAddress: `0x${"a".repeat(64)}` };
+    const supplier = { id: SUPPLIER, email: "supplier-accept@example.com", name: "Supplier", walletAddress: `0x${"b".repeat(64)}` };
     const order = await trades.createOrder({
-      reference: "PO-ACCEPT", supplierEmail: supplier.email, arbitratorId: ARBITRATOR,
+      reference: "PO-ACCEPT", supplierEmail: supplier.email, arbitratorWalletAddress: `0x${"c".repeat(64)}`, arbitratorId: ARBITRATOR,
       assetType: "USDC", amountUnits: "3000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
       lineItems: [{ id: "a", description: "Oil", quantity: "10", unit: "drums", unitPriceUnits: "200" }, { id: "b", description: "Flour", quantity: "5", unit: "bags", unitPriceUnits: "200" }],
     }, buyer);
@@ -309,7 +320,7 @@ describe("trade lifecycle API", () => {
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
     const buyer = { id: BUYER, email: "buyer-doc@example.com", name: "Buyer" };
-    const supplier = { id: SUPPLIER, email: "supplier-doc@example.com", name: "Supplier" };
+    const supplier = { id: SUPPLIER, email: "supplier-doc@example.com", name: "Supplier", walletAddress: "0xb" };
     const stranger = { id: "44444444-4444-4444-8444-444444444444", email: "other@example.com", name: "Other" };
     const order = await trades.createOrder({
       reference: "PO-DOC", supplierEmail: supplier.email, arbitratorId: ARBITRATOR,
@@ -343,9 +354,9 @@ describe("trade lifecycle API", () => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const buyer = { id: BUYER, email: "buyer-claim@example.com", name: "Buyer" };
-    const supplier = { id: SUPPLIER, email: "supplier-claim@example.com", name: "Supplier" };
-    const order = await trades.createOrder({ reference: "PO-CLAIM", supplierEmail: supplier.email, arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "100000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ", lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "100000" }] }, buyer);
+    const buyer = { id: BUYER, email: "buyer-claim@example.com", name: "Buyer", walletAddress: "0xa" };
+    const supplier = { id: SUPPLIER, email: "supplier-claim@example.com", name: "Supplier", walletAddress: "0xb" };
+    const order = await trades.createOrder({ reference: "PO-CLAIM", supplierEmail: supplier.email, arbitratorWalletAddress: "0xc", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "100000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ", lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "100000" }] }, buyer);
     await trades.createInvite(order.id, buyer);
     await trades.acceptInvitation(order.id, supplier);
     const deadline = control.ctx.now().getTime() + 5 * 24 * 60 * 60 * 1000;
@@ -365,10 +376,10 @@ describe("trade lifecycle API", () => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const buyer = { id: BUYER, email: "buyer-deadline@example.com", name: "Buyer" };
-    const supplier = { id: SUPPLIER, email: "supplier-deadline@example.com", name: "Supplier" };
+    const buyer = { id: BUYER, email: "buyer-deadline@example.com", name: "Buyer", walletAddress: "0xa" };
+    const supplier = { id: SUPPLIER, email: "supplier-deadline@example.com", name: "Supplier", walletAddress: "0xb" };
     const create = async (reference: string) => {
-      const order = await trades.createOrder({ reference, supplierEmail: supplier.email, arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "5000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ", lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "5000" }] }, buyer);
+      const order = await trades.createOrder({ reference, supplierEmail: supplier.email, arbitratorWalletAddress: "0xc", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "5000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ", lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "5000" }] }, buyer);
       await trades.createInvite(order.id, buyer);
       await trades.acceptInvitation(order.id, supplier);
       return order;
@@ -407,9 +418,10 @@ describe("trade lifecycle API", () => {
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
     const buyerWallet = `0x${"1".repeat(40)}`;
     const supplierWallet = `0x${"2".repeat(40)}`;
+    const arbitratorWallet = `0x${"c".repeat(40)}`;
     const buyer = { id: BUYER, name: "Wallet Buyer", walletAddress: buyerWallet };
     const order = await trades.createOrder({
-      reference: "PO-WALLET", supplierWalletAddress: supplierWallet, arbitratorId: ARBITRATOR,
+      reference: "PO-WALLET", supplierWalletAddress: supplierWallet, arbitratorWalletAddress: arbitratorWallet, arbitratorId: ARBITRATOR,
       assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
       lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
     }, buyer);
@@ -426,13 +438,15 @@ describe("trade lifecycle API", () => {
     expect(accepted.supplierId).toBe(SUPPLIER);
     expect(accepted.supplierWalletAddress).toBe(supplierWallet);
 
-    const fundingBase = { packageId: `0x${"9".repeat(40)}`, escrowObjectId: "1", transactionDigest: `0x${"a".repeat(64)}`, arbitratorAddress: `0x${"c".repeat(40)}` };
+    const fundingBase = { packageId: `0x${"9".repeat(40)}`, escrowObjectId: "1", transactionDigest: `0x${"a".repeat(64)}`, arbitratorAddress: arbitratorWallet };
     await expect(trades.recordFunding(order.id, buyer, { ...fundingBase, buyerAddress: `0x${"5".repeat(40)}`, supplierAddress: supplierWallet }))
       .rejects.toMatchObject({ code: "BUYER_WALLET_MISMATCH", status: 409 });
     await expect(trades.recordFunding(order.id, buyer, { ...fundingBase, buyerAddress: buyerWallet, supplierAddress: `0x${"7".repeat(40)}` }))
       .rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 409 });
     const funded = await trades.recordFunding(order.id, buyer, { ...fundingBase, buyerAddress: buyerWallet, supplierAddress: supplierWallet });
     expect(funded.status).toBe("funded");
+    // The recorded funding must actually name the real parties, not just report success.
+    expect(funded.funding).toMatchObject({ buyerAddress: buyerWallet, supplierAddress: supplierWallet, arbitratorAddress: arbitratorWallet });
   });
 
   it("Feature Zero: a wallet-only account with no email creates an order and invite, a second wallet accepts via token, and a third cannot steal it", async () => {
@@ -516,5 +530,91 @@ describe("trade lifecycle API", () => {
       lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
     }, actor);
     expect(asSupplier.supplierId).toBe(actor.id);
+  });
+
+  // --- Fix round 1: a supplier acceptance must always bind a wallet, recordFunding's party
+  // guards must fail closed, and createOrder must catch a self-dealing wallet up front. ---
+
+  it("refuses to accept an email-bound invite from a session with no wallet: email alone no longer binds a payout wallet", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const buyer = { id: BUYER, email: "buyer-nowallet2@example.com", name: "Buyer" };
+    const order = await trades.createOrder({
+      reference: "PO-EMAIL-NOWALLET", supplierEmail: "supplier-nowallet2@example.com", arbitratorId: ARBITRATOR,
+      assetType: "USDC", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer);
+    const invite = await trades.createInvite(order.id, buyer);
+    const walletlessSupplier = { id: SUPPLIER, email: "supplier-nowallet2@example.com", name: "Supplier" };
+    await expect(trades.acceptInvite(invite.inviteToken!, walletlessSupplier, { email: walletlessSupplier.email, name: walletlessSupplier.name }))
+      .rejects.toMatchObject({ code: "WALLET_REQUIRED", status: 403 });
+    // Never left the order half-accepted with no wallet on file.
+    expect((await trades.getOrder(order.id, buyer)).supplierId).toBeUndefined();
+  });
+
+  it("refuses funding when the order has no supplier payout wallet recorded, and never records the funding", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    // A supplier-initiated order sets supplierId immediately (the creator IS the supplier), with
+    // no accept step to bind a wallet - the only remaining way order.supplierWalletAddress can be
+    // unset while supplierId is set, which recordFunding must still catch.
+    const supplier = { id: SUPPLIER, email: "supplier-nowallet3@example.com", name: "NoWallet Supplier" };
+    const buyer = { id: BUYER, email: "buyer-nowallet3@example.com", name: "Buyer", walletAddress: "0xa" };
+    const order = await trades.createOrder({
+      reference: "PO-NO-SUPPLIER-WALLET", initiatorRole: "supplier", buyerEmail: buyer.email, arbitratorId: ARBITRATOR,
+      assetType: "USDC", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, supplier);
+    expect(order.supplierWalletAddress).toBeUndefined();
+    await trades.createInvite(order.id, supplier);
+    await trades.acceptInvitation(order.id, buyer);
+    await expect(trades.recordFunding(order.id, buyer, {
+      packageId: "0x1", escrowObjectId: "0x2", transactionDigest: "fund-no-supplier-wallet",
+      buyerAddress: "0xa", supplierAddress: "0xb", arbitratorAddress: "0xc",
+    })).rejects.toMatchObject({ code: "SUPPLIER_WALLET_REQUIRED", status: 409 });
+    expect((await trades.getOrder(order.id, buyer)).funding).toBeUndefined();
+    expect((await trades.getOrder(order.id, buyer)).status).toBe("supplier_confirmed");
+  });
+
+  it("rejects a buyer naming their own wallet as the supplier, or an arbitrator wallet that collides with a party", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const buyerWallet = `0x${"9".repeat(40)}`;
+    const supplierWallet = `0x${"8".repeat(40)}`;
+    const buyer = { id: BUYER, name: "Self Dealer", walletAddress: buyerWallet };
+    const base = {
+      arbitratorId: ARBITRATOR, assetType: "BOT", amountUnits: "1000", description: "Goods",
+      deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    };
+    // The escrow contract requires buyer, supplier, and arbitrator to be three distinct
+    // addresses and reverts otherwise - all three collisions are caught at creation instead.
+    await expect(trades.createOrder({ ...base, reference: "PO-SELF-DEAL-1", supplierWalletAddress: buyerWallet }, buyer))
+      .rejects.toMatchObject({ code: "INVALID_PARTIES", status: 400 });
+    await expect(trades.createOrder({ ...base, reference: "PO-SELF-DEAL-2", supplierWalletAddress: supplierWallet, arbitratorWalletAddress: buyerWallet }, buyer))
+      .rejects.toMatchObject({ code: "INVALID_PARTIES", status: 400 });
+    await expect(trades.createOrder({ ...base, reference: "PO-SELF-DEAL-3", supplierWalletAddress: supplierWallet, arbitratorWalletAddress: supplierWallet }, buyer))
+      .rejects.toMatchObject({ code: "INVALID_PARTIES", status: 400 });
+  });
+
+  it("requires the named supplier wallet or email to preview an invite, not just any signed-in session", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const supplierWallet = `0x${"2".repeat(40)}`;
+    const buyer = { id: BUYER, name: "Buyer", walletAddress: `0x${"1".repeat(40)}` };
+    const order = await trades.createOrder({
+      reference: "PO-PREVIEW", supplierWalletAddress: supplierWallet, arbitratorId: ARBITRATOR,
+      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer);
+    const invited = await trades.createInvite(order.id, buyer);
+    const stranger = { id: SUPPLIER, walletAddress: `0x${"9".repeat(40)}` };
+    await expect(trades.previewInvite(invited.inviteToken!, stranger)).rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 403 });
+    const named = { id: SUPPLIER, walletAddress: supplierWallet };
+    expect((await trades.previewInvite(invited.inviteToken!, named)).id).toBe(order.id);
   });
 });
