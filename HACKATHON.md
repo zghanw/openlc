@@ -65,7 +65,7 @@ There is no live pitch. Judges open the link, connect a wallet and try it, so th
 | Kickoff | Sun 20 Sep, T+0 | This file | `/hackathon-kickoff` | Hao Wen |
 | Spec | Sun 20 Sep 12:00, T+11h | Done: [`docs/hackathon-build/spec.md`](docs/hackathon-build/spec.md) + [`plan.md`](docs/hackathon-build/plan.md) (22 tasks, 1-11 = Feature Zero) | `hackathon-spec` | Hao Wen + Claude |
 | Name + X day 1 | Sun 20 Sep evening | Name chosen, X account created, post #1 (build in public: "porting a Sui escrow to BOT Chain") | | Hao Wen |
-| Contract | Sun 20 Sep 23:00, T+22h | `OpenLCEscrow.sol` + Hardhat suite (Move test parity + EVM cases: reentrancy, reverting receiver), deployed and verified on testnet | `hackathon-build` | Claude |
+| Contract | Sun 20 Sep 23:00, T+22h | **Done 12:45** — `OpenLCEscrow.sol`, 41 tests, deployed + source-verified on testnet: [`0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5`](https://scan.bohr.life/address/0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5) | `hackathon-build` | Claude |
 | **Feature Zero** | Mon 21 Sep 22:00, T+45h | On BOT Chain testnet, deployed to a preview URL: MetaMask sign-in → create order → second wallet accepts → fund → ship with evidence → partial claim pays the undisputed part in the same transaction. Built market-ready, not a stub. | `hackathon-build` | Claude, tested by Hao Wen |
 | Brand + design system | Tue 22 Sep 12:00, T+59h | Name, logo, favicon, palette and type applied to the Feature Zero UI | `hackathon-ui` | Hao Wen + Claude |
 | Core build | Tue 22 Sep 23:00, T+70h | Backend EVM verifiers; dispute → AI mediation → both parties sign the split → execute on-chain; deadline refunds and claims; landing page with BOT Chain footer; domain live | `hackathon-build` | Claude |
