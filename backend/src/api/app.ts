@@ -223,7 +223,7 @@ export function createApp(
       });
     });
     app.patch("/v1/orders/:id/documents/:documentId/anchor", async (c) => {
-      const body = z.object({ transactionDigest: z.string().min(1) }).parse(await c.req.json().catch(() => ({})));
+      const body = z.object({ transactionDigest: txHash }).parse(await c.req.json().catch(() => ({})));
       return c.json(await trades.anchorDocument(c.req.param("id"), c.get("actor"), c.req.param("documentId"), body.transactionDigest));
     });
     app.post("/v1/orders/:id/acceptance", async (c) => c.json(await trades.acceptDelivery(c.req.param("id"), c.get("actor"), acceptDeliverySchema.parse(await c.req.json()))));
@@ -317,7 +317,7 @@ export function createApp(
   });
   app.get("/v1/demo/orders", (c) => {
     if (!demo) throw new DomainError("DEMO_DISABLED", "Demo controls are disabled", 404);
-    return c.json({ disclosure: "Demo controls explicitly label simulated, seeded, live-AI, and external-Sui steps.", orders: demo.list() });
+    return c.json({ disclosure: "Demo controls explicitly label simulated, seeded, live-AI, and external-BOT-Chain steps.", orders: demo.list() });
   });
   app.post("/v1/demo/orders/reset", (c) => {
     if (!demo) throw new DomainError("DEMO_DISABLED", "Demo controls are disabled", 404);

@@ -488,7 +488,7 @@ export class TradeService {
     if (!["supplier_confirmed", "funded"].includes(order.status)) throw new DomainError("INVALID_STATE", "This order is not ready for funding");
     if (!input.packageId || !input.escrowObjectId || !input.transactionDigest) throw new DomainError("INVALID_FUNDING", "Escrow contract address, escrow id, and transaction hash are required", 400);
     if (order.funding) {
-      const same = order.funding.packageId === input.packageId && sameEscrowId(order.funding.escrowObjectId, input.escrowObjectId) && order.funding.transactionDigest === input.transactionDigest && sameAddress(order.funding.buyerAddress, input.buyerAddress) && sameAddress(order.funding.supplierAddress, input.supplierAddress) && sameAddress(order.funding.arbitratorAddress, input.arbitratorAddress);
+      const same = sameAddress(order.funding.packageId, input.packageId) && sameEscrowId(order.funding.escrowObjectId, input.escrowObjectId) && order.funding.transactionDigest === input.transactionDigest && sameAddress(order.funding.buyerAddress, input.buyerAddress) && sameAddress(order.funding.supplierAddress, input.supplierAddress) && sameAddress(order.funding.arbitratorAddress, input.arbitratorAddress);
       if (same) return structuredClone(order);
       throw new DomainError("FUNDING_ALREADY_RECORDED", "This order is already bound to a different escrow funding transaction", 409);
     }

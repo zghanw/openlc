@@ -417,10 +417,18 @@ export class EvmFundingVerifier implements EscrowFundingVerifier {
     const receipt = await this.receiptOf(hash, "release");
     const sender = await this.senderOf(hash, "release");
     if (sender !== buyer) failFunding("The release was not signed by the buyer wallet");
-    const plan = defaultPlan(order);
-    // release_full has no dedicated event in the ported contract either; the escrow record itself
-    // (status Settled, mode BuyerConfirmation, the whole remaining balance to the supplier) is the proof.
-    await this.confirmSettled(id, MODE_BUYER_CONFIRMATION, "0", plan.deliveryUnits);
+    // releaseFull shares the contract's private _settle helper with every other settlement path, so
+    // it unconditionally emits SettlementExecuted too. Decoding it from this specific receipt (via
+    // decodeEvent, so the lookalike-address guard applies) proves this transaction hash is the one
+    // that actually released the funds, not merely some other buyer-signed transaction.
+    const executed = this.event(receipt, "SettlementExecuted");
+    if (!sameId(executed.id, id) || Number(executed.mode) !== MODE_BUYER_CONFIRMATION || executed.buyerRefund.toString() !== "0") {
+      failFunding("SettlementExecuted does not describe a full release to the supplier");
+    }
+    // releaseFull is legal before or after shipment, so the amount released varies with how much was
+    // already paid out in milestones; anchor the event's own figure against the escrow record instead
+    // of hardcoding an expected total.
+    await this.confirmSettled(id, MODE_BUYER_CONFIRMATION, "0", executed.supplierRelease.toString());
     return { checkpoint: String(receipt.blockNumber) };
   }
 

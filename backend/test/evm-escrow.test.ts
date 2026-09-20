@@ -207,6 +207,12 @@ describe("EvmFundingVerifier.verifyShipment", () => {
     await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader: wrongSignerReader }).verifyShipment(fundedOrder(), SHIPMENT_TX, FILE_HASH))
       .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
   });
+
+  it("refuses a correctly-shaped Shipped log emitted by a lookalike contract", async () => {
+    const reader = new FakeReader().setReceipt(SHIPMENT_TX, receipt([shippedLog(LOOKALIKE)])).setSender(SHIPMENT_TX, SUPPLIER_ADDR);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyShipment(fundedOrder(), SHIPMENT_TX, FILE_HASH))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -225,6 +231,18 @@ describe("EvmFundingVerifier.verifyEvidenceAnchor", () => {
     await expect(verifier.verifyEvidenceAnchor(fundedOrder(), ANCHOR_TX, FILE_HASH)).resolves.toMatchObject({ checkpoint: "42" });
     // The anchor transaction happened, but no event in it carries this particular file's hash.
     await expect(verifier.verifyEvidenceAnchor(fundedOrder(), ANCHOR_TX, OTHER_FILE_HASH)).rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
+
+  it("refuses a correctly-shaped EvidenceAnchored log emitted by a lookalike contract", async () => {
+    const reader = new FakeReader().setReceipt(ANCHOR_TX, receipt([evidenceAnchoredLog(LOOKALIKE)])).setSender(ANCHOR_TX, BUYER_ADDR);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyEvidenceAnchor(fundedOrder(), ANCHOR_TX, FILE_HASH))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a sender that is neither the buyer nor the supplier", async () => {
+    const reader = new FakeReader().setReceipt(ANCHOR_TX, receipt([evidenceAnchoredLog(ESCROW)])).setSender(ANCHOR_TX, ARBITRATOR_ADDR);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyEvidenceAnchor(fundedOrder(), ANCHOR_TX, FILE_HASH))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
   });
 });
 
@@ -260,6 +278,20 @@ describe("EvmFundingVerifier.verifyDisputeOpened", () => {
     await expect(verifier.verifyDisputeOpened(fundedOrder(), { ...input, disputeTransactionDigest: FUNDING_TX }))
       .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
   });
+
+  it("refuses a correctly-shaped DisputeOpened log emitted by a lookalike contract", async () => {
+    const reader = new FakeReader().setReceipt(DISPUTE_TX, receipt([disputeOpenedLog(LOOKALIKE)])).setSender(DISPUTE_TX, BUYER_ADDR);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyDisputeOpened(fundedOrder(), { disputeTransactionDigest: DISPUTE_TX, disputedUnits: "30000", requestedBuyerUnits: "20000" }))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a dispute not signed by the buyer", async () => {
+    const reader = new FakeReader()
+      .setReceipt(DISPUTE_TX, receipt([disputeOpenedLog(ESCROW), undisputedReleasedLog(ESCROW, { amount: "40000" })]))
+      .setSender(DISPUTE_TX, SUPPLIER_ADDR);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyDisputeOpened(fundedOrder(), { disputeTransactionDigest: DISPUTE_TX, disputedUnits: "30000", requestedBuyerUnits: "20000" }))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -267,18 +299,65 @@ describe("EvmFundingVerifier.verifyDisputeOpened", () => {
 // ---------------------------------------------------------------------------
 
 describe("EvmFundingVerifier.verifyFullRelease", () => {
-  it("confirms the release via getEscrow and rejects a wrong signer or an escrow that isn't settled yet", async () => {
+  it("confirms the release via its own SettlementExecuted event and getEscrow", async () => {
     const settled = baseEscrowRecord({ status: 2, mode: 0, settledBuyerRefund: "0", settledSupplierRelease: "70000" });
-    const okReader = new FakeReader().setReceipt(RELEASE_TX, receipt([])).setSender(RELEASE_TX, BUYER_ADDR).setEscrow("1", settled);
-    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader: okReader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
+    const reader = new FakeReader()
+      .setReceipt(RELEASE_TX, receipt([settlementExecutedLog(ESCROW, { mode: 0, buyerRefund: "0", supplierRelease: "70000" })]))
+      .setSender(RELEASE_TX, BUYER_ADDR)
+      .setEscrow("1", settled);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
       .resolves.toMatchObject({ checkpoint: "42" });
+  });
 
-    const wrongSignerReader = new FakeReader().setReceipt(RELEASE_TX, receipt([])).setSender(RELEASE_TX, SUPPLIER_ADDR).setEscrow("1", settled);
-    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader: wrongSignerReader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
+  it("rejects a release not signed by the buyer", async () => {
+    const settled = baseEscrowRecord({ status: 2, mode: 0, settledBuyerRefund: "0", settledSupplierRelease: "70000" });
+    const reader = new FakeReader()
+      .setReceipt(RELEASE_TX, receipt([settlementExecutedLog(ESCROW, { mode: 0, buyerRefund: "0", supplierRelease: "70000" })]))
+      .setSender(RELEASE_TX, SUPPLIER_ADDR)
+      .setEscrow("1", settled);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
       .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
 
-    const stillOpenReader = new FakeReader().setReceipt(RELEASE_TX, receipt([])).setSender(RELEASE_TX, BUYER_ADDR).setEscrow("1", baseEscrowRecord({ status: 0 }));
-    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader: stillOpenReader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
+  it("rejects when getEscrow still reports the escrow as open", async () => {
+    const reader = new FakeReader()
+      .setReceipt(RELEASE_TX, receipt([settlementExecutedLog(ESCROW, { mode: 0, buyerRefund: "0", supplierRelease: "70000" })]))
+      .setSender(RELEASE_TX, BUYER_ADDR)
+      .setEscrow("1", baseEscrowRecord({ status: 0 }));
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a receipt with no SettlementExecuted event at all", async () => {
+    const reader = new FakeReader().setReceipt(RELEASE_TX, receipt([])).setSender(RELEASE_TX, BUYER_ADDR);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a SettlementExecuted event with the wrong mode (ClaimUninspected presented as a full release)", async () => {
+    const reader = new FakeReader()
+      .setReceipt(RELEASE_TX, receipt([settlementExecutedLog(ESCROW, { mode: 4, buyerRefund: "0", supplierRelease: "70000" })]))
+      .setSender(RELEASE_TX, BUYER_ADDR)
+      .setEscrow("1", baseEscrowRecord({ status: 2, mode: 4, settledBuyerRefund: "0", settledSupplierRelease: "70000" }));
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a SettlementExecuted event for a different escrow id", async () => {
+    const reader = new FakeReader()
+      .setReceipt(RELEASE_TX, receipt([settlementExecutedLog(ESCROW, { id: "2", mode: 0, buyerRefund: "0", supplierRelease: "70000" })]))
+      .setSender(RELEASE_TX, BUYER_ADDR)
+      .setEscrow("1", baseEscrowRecord({ status: 2, mode: 0, settledBuyerRefund: "0", settledSupplierRelease: "70000" }));
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
+
+  it("refuses a correctly-shaped SettlementExecuted log emitted by a lookalike contract", async () => {
+    const reader = new FakeReader()
+      .setReceipt(RELEASE_TX, receipt([settlementExecutedLog(LOOKALIKE, { mode: 0, buyerRefund: "0", supplierRelease: "70000" })]))
+      .setSender(RELEASE_TX, BUYER_ADDR)
+      .setEscrow("1", baseEscrowRecord({ status: 2, mode: 0, settledBuyerRefund: "0", settledSupplierRelease: "70000" }));
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyFullRelease(fundedOrder(), { transactionDigest: RELEASE_TX }))
       .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
   });
 });
@@ -327,6 +406,14 @@ describe("EvmFundingVerifier.verifyDeadlineSettlement", () => {
     await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader: wrongSignerReader }).verifyDeadlineSettlement(fundedOrder(), { kind: "claim_uninspected", transactionDigest: DEADLINE_TX }))
       .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
   });
+
+  it("refuses a correctly-shaped SettlementExecuted log emitted by a lookalike contract", async () => {
+    const reader = new FakeReader()
+      .setReceipt(DEADLINE_TX, receipt([settlementExecutedLog(LOOKALIKE, { mode: 4, buyerRefund: "0", supplierRelease: "70000" })]))
+      .setSender(DEADLINE_TX, SUPPLIER_ADDR);
+    await expect(new EvmFundingVerifier({ escrowAddress: ESCROW, reader }).verifyDeadlineSettlement(fundedOrder(), { kind: "claim_uninspected", transactionDigest: DEADLINE_TX }))
+      .rejects.toMatchObject({ code: "ESCROW_FUNDING_VERIFICATION_FAILED" });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -343,15 +430,18 @@ function settlementExecutedLogFor(addr: string, buyerRefund: string, supplierRel
   return log(addr, "SettlementExecuted", ["1", BUYER_ADDR, SUPPLIER_ADDR, buyerRefund, supplierRelease, proposalHash, 1]);
 }
 
-function fullSettlementReader(options: { buyerRefund?: string; supplierRelease?: string; proposalHash?: string; escrowStatus?: number } = {}): FakeReader {
+function fullSettlementReader(options: {
+  buyerRefund?: string; supplierRelease?: string; proposalHash?: string; escrowStatus?: number;
+  fundingAddress?: string; fundingSender?: string; disputeSender?: string;
+} = {}): FakeReader {
   const buyerRefund = options.buyerRefund ?? "12000";
   const supplierRelease = options.supplierRelease ?? "18000";
   const proposalHash = options.proposalHash ?? `0x${PROPOSAL_HASH}`;
   return new FakeReader()
-    .setReceipt(FUNDING_TX, receipt([settlementFundingLog()]))
-    .setSender(FUNDING_TX, BUYER_ADDR)
+    .setReceipt(FUNDING_TX, receipt([settlementFundingLog(options.fundingAddress ?? ESCROW)]))
+    .setSender(FUNDING_TX, options.fundingSender ?? BUYER_ADDR)
     .setReceipt(DISPUTE_TX, receipt([settlementDisputeLog()]))
-    .setSender(DISPUTE_TX, BUYER_ADDR)
+    .setSender(DISPUTE_TX, options.disputeSender ?? BUYER_ADDR)
     .setReceipt(SETTLEMENT_TX, receipt([settlementExecutedLogFor(ESCROW, buyerRefund, supplierRelease, proposalHash)]))
     .setEscrow("1", baseEscrowRecord({ status: options.escrowStatus ?? 2, settledBuyerRefund: buyerRefund, settledSupplierRelease: supplierRelease }));
 }
@@ -415,5 +505,20 @@ describe("EvmSettlementVerifier.verify (dispute settlement)", () => {
     dispute.onchainEscrow!.disputeTransactionDigest = FUNDING_TX;
     const verifier = new EvmSettlementVerifier({ escrowAddress: ESCROW, reader: fullSettlementReader() });
     await expect(verifier.verify(dispute, settlementProof)).rejects.toMatchObject({ code: "ESCROW_SETTLEMENT_VERIFICATION_FAILED" });
+  });
+
+  it("refuses a correctly-shaped EscrowCreated log emitted by a lookalike contract", async () => {
+    const verifier = new EvmSettlementVerifier({ escrowAddress: ESCROW, reader: fullSettlementReader({ fundingAddress: LOOKALIKE }) });
+    await expect(verifier.verify(settlementDispute(), settlementProof)).rejects.toMatchObject({ code: "ESCROW_SETTLEMENT_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a funding transaction not signed by the buyer", async () => {
+    const verifier = new EvmSettlementVerifier({ escrowAddress: ESCROW, reader: fullSettlementReader({ fundingSender: SUPPLIER_ADDR }) });
+    await expect(verifier.verify(settlementDispute(), settlementProof)).rejects.toMatchObject({ code: "ESCROW_SETTLEMENT_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a dispute transaction not signed by the buyer", async () => {
+    const verifier = new EvmSettlementVerifier({ escrowAddress: ESCROW, reader: fullSettlementReader({ disputeSender: SUPPLIER_ADDR }) });
+    await expect(verifier.verify(settlementDispute(), settlementProof)).rejects.toMatchObject({ code: "ESCROW_SETTLEMENT_VERIFICATION_FAILED" });
   });
 });
