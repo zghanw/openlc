@@ -6,7 +6,11 @@
   "type": "module",
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy.js --network botchainTestnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network botchainMainnet",
+    "export-abi": "node scripts/export-abi.js",
+    "check-abi": "node scripts/export-abi.js --check"
   },
   "license": "MIT",
   "devDependencies": {

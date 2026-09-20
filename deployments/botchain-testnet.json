@@ -1,0 +1,10 @@
+{
+  "chainId": 968,
+  "contract": "OpenLCEscrow",
+  "address": "0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5",
+  "deployBlock": 24026875,
+  "txHash": "0x1349fb2c495b230df17f4bb70e5ec623d39a9fd8845c567b3e2b34a7e267d21a",
+  "deployer": "0x1221C500Dfd0D3E477ed741a849edEa303d689Ca",
+  "deployedAt": "2026-09-20T04:29:35.174Z",
+  "explorer": "https://scan.bohr.life/address/0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5"
+}
