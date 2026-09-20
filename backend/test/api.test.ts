@@ -47,16 +47,16 @@ describe("HTTP API", () => {
 
     const identity = new IdentityService(new MemoryIdentityStore(), {
       sessionSecret: "test-only-session-secret-that-is-at-least-thirty-two-bytes",
-      zkLoginSaltSecret: "test-only-zklogin-salt-secret-at-least-thirty-two-bytes",
+      chainId: 968,
     });
     const enabled = createApp(service, verifier, undefined, undefined, undefined, undefined, false, identity);
     const response = await enabled.request("/auth/wallet/challenge", {
       method: "POST",
       headers: { "content-type": "application/json", origin: "http://localhost:3000" },
-      body: JSON.stringify({ address: `0x${"1".repeat(64)}` }),
+      body: JSON.stringify({ address: `0x${"1".repeat(40)}` }),
     });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ message: expect.stringContaining("Sign in to PayProof") });
+    expect(await response.json()).toMatchObject({ message: expect.stringContaining("Sign in to OpenLC") });
   });
 
   it("does not expose internal errors", async () => {

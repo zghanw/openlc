@@ -1,7 +1,5 @@
-import { createHmac } from "node:crypto";
+import { getAddress, verifyMessage } from "ethers";
 import { SignJWT, jwtVerify } from "jose";
-import { normalizeSuiAddress } from "@mysten/sui/utils";
-import { verifyPersonalMessageSignature } from "@mysten/sui/verify";
 import { DomainError, type Actor } from "../domain/types.js";
 import type {
   IdentityStore,
@@ -12,7 +10,7 @@ const encoder = new TextEncoder();
 
 export interface IdentityServiceOptions {
   sessionSecret: string;
-  zkLoginSaltSecret: string;
+  chainId: number;
   now?: () => Date;
 }
 
@@ -26,67 +24,39 @@ export class IdentityService {
   ) {
     if (options.sessionSecret.length < 32)
       throw new Error("PAYPROOF_SESSION_SECRET must contain at least 32 characters");
-    if (options.zkLoginSaltSecret.length < 32)
-      throw new Error("ZKLOGIN_SALT_MASTER_KEY must contain at least 32 characters");
     this.now = options.now ?? (() => new Date());
     this.sessionKey = encoder.encode(options.sessionSecret);
-  }
-
-  async resolveSupabaseUser(actor: Actor): Promise<PayProofAccount> {
-    return this.store.upsertSupabaseAccount({
-      supabaseUserId: actor.id,
-      email: actor.email,
-      name: actor.name,
-    });
   }
 
   async account(id: string): Promise<PayProofAccount | undefined> {
     return this.store.findAccountById(id);
   }
 
-  zkLoginSalt(accountId: string): string {
-    const digest = createHmac("sha256", this.options.zkLoginSaltSecret)
-      .update(`payproof:zklogin:${accountId}`)
-      .digest()
-      .subarray(0, 16);
-    return BigInt(`0x${digest.toString("hex")}`).toString(10);
-  }
-
-  async linkZkLoginAddress(input: {
-    accountId: string;
-    address: string;
-    issuer: string;
-    audience: string;
-  }): Promise<PayProofAccount> {
+  /** Checksums the address (EIP-55) and rejects anything that is not a valid EVM address. */
+  private normalizeAddress(address: string): string {
     try {
-      return await this.store.linkSuiAddress({
-        ...input,
-        address: normalizeSuiAddress(input.address),
-        kind: "zklogin",
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message === "SUI_ADDRESS_ALREADY_LINKED")
-        throw new DomainError(
-          "SUI_ADDRESS_ALREADY_LINKED",
-          "This Sui address is already linked to another PayProof account",
-          409,
-        );
-      throw error;
+      return getAddress(address);
+    } catch {
+      throw new DomainError(
+        "INVALID_WALLET_ADDRESS",
+        `${address} is not a valid EVM wallet address`,
+        400,
+      );
     }
   }
 
   async createWalletChallenge(address: string, origin: string) {
-    const normalized = normalizeSuiAddress(address);
+    const normalized = this.normalizeAddress(address);
     const issuedAt = this.now();
     const expiresAt = new Date(issuedAt.getTime() + 5 * 60_000);
     const id = crypto.randomUUID();
     const nonce = crypto.randomUUID();
     const message = [
-      "Sign in to PayProof",
+      "Sign in to OpenLC",
       "",
       `Address: ${normalized}`,
       `Origin: ${origin}`,
-      "Network: Sui",
+      `Network: BOT Chain (chain ${this.options.chainId})`,
       `Nonce: ${nonce}`,
       `Issued at: ${issuedAt.toISOString()}`,
       `Expires at: ${expiresAt.toISOString()}`,
@@ -107,7 +77,7 @@ export class IdentityService {
     address: string;
     signature: string;
   }): Promise<{ account: PayProofAccount; accessToken: string }> {
-    const normalized = normalizeSuiAddress(input.address);
+    const normalized = this.normalizeAddress(input.address);
     const challenge = await this.store.getChallenge(input.challengeId);
     if (!challenge)
       throw new DomainError("CHALLENGE_NOT_FOUND", "The wallet challenge was not found", 404);
@@ -118,19 +88,22 @@ export class IdentityService {
     if (new Date(challenge.expiresAt).getTime() <= this.now().getTime())
       throw new DomainError("CHALLENGE_EXPIRED", "The wallet challenge has expired", 410);
 
+    let recovered: string;
     try {
-      await verifyPersonalMessageSignature(
-        encoder.encode(challenge.message),
-        input.signature,
-        { address: normalized },
-      );
+      recovered = verifyMessage(challenge.message, input.signature);
     } catch {
       throw new DomainError(
         "INVALID_WALLET_SIGNATURE",
-        "The signature does not prove control of the connected Sui address",
+        "The signature does not prove control of the connected wallet address",
         401,
       );
     }
+    if (recovered !== normalized)
+      throw new DomainError(
+        "INVALID_WALLET_SIGNATURE",
+        "The signature does not prove control of the connected wallet address",
+        401,
+      );
 
     const consumed = await this.store.consumeChallenge(
       input.challengeId,
@@ -151,10 +124,12 @@ export class IdentityService {
       if (!payload.sub) throw new Error("missing subject");
       const account = await this.store.findAccountById(payload.sub);
       if (!account) throw new Error("account not found");
+      if (!account.walletAddress) throw new Error("account has no verified wallet address");
       return {
         id: account.id,
         email: account.email,
         name: account.name,
+        walletAddress: account.walletAddress,
       };
     } catch {
       throw new DomainError("UNAUTHORIZED", "Invalid or expired user token", 401);
@@ -162,7 +137,7 @@ export class IdentityService {
   }
 
   private async issueSession(account: PayProofAccount): Promise<string> {
-    return new SignJWT({ address: account.verifiedSuiAddress, auth: "sui-wallet" })
+    return new SignJWT({ address: account.walletAddress, auth: "evm-wallet" })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setIssuer("payproof")
       .setAudience("payproof-api")

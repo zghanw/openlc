@@ -1,42 +1,35 @@
-import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { Wallet } from "ethers";
 import { describe, expect, it } from "vitest";
-import { CompositeTokenVerifier, MappedSupabaseTokenVerifier } from "../src/api/identity-auth.js";
+import { WalletSessionVerifier } from "../src/api/identity-auth.js";
 import { IdentityService } from "../src/service/identity-service.js";
 import { MemoryIdentityStore } from "../src/store/identity-store.js";
 
 const options = {
   sessionSecret: "test-only-session-secret-that-is-at-least-thirty-two-bytes",
-  zkLoginSaltSecret: "test-only-zklogin-salt-secret-at-least-thirty-two-bytes",
+  chainId: 968,
 };
 
-describe("mapped authentication", () => {
-  it("maps repeat Supabase JWT subjects to one PayProof actor", async () => {
+describe("wallet session authentication", () => {
+  it("accepts the session issued from a signed wallet challenge", async () => {
     const identity = new IdentityService(new MemoryIdentityStore(), options);
-    const supabase = { verify: async () => ({ id: "supabase-user", email: "buyer@example.com" }) };
-    const verifier = new MappedSupabaseTokenVerifier(supabase, identity);
-    const first = await verifier.verify("first-token");
-    const second = await verifier.verify("refreshed-token");
-    expect(second.id).toBe(first.id);
-    expect(second.email).toBe("buyer@example.com");
-  });
-
-  it("accepts a PayProof wallet session without sending it to Supabase", async () => {
-    const identity = new IdentityService(new MemoryIdentityStore(), options);
-    const keypair = Ed25519Keypair.generate();
-    const challenge = await identity.createWalletChallenge(keypair.toSuiAddress(), "http://localhost:3000");
-    const { signature } = await keypair.signPersonalMessage(new TextEncoder().encode(challenge.message));
+    const wallet = Wallet.createRandom();
+    const challenge = await identity.createWalletChallenge(wallet.address, "http://localhost:3000");
+    const signature = await wallet.signMessage(challenge.message);
     const session = await identity.verifyWalletChallenge({
       challengeId: challenge.id,
-      address: keypair.toSuiAddress(),
+      address: wallet.address,
       signature,
     });
-    let supabaseCalls = 0;
-    const supabase = { verify: async () => { supabaseCalls += 1; throw new Error("not a Supabase token"); } };
-    const verifier = new CompositeTokenVerifier(
-      new MappedSupabaseTokenVerifier(supabase, identity),
-      identity,
-    );
-    expect((await verifier.verify(session.accessToken)).id).toBe(session.account.id);
-    expect(supabaseCalls).toBe(0);
+
+    const verifier = new WalletSessionVerifier(identity);
+    const actor = await verifier.verify(session.accessToken);
+    expect(actor.id).toBe(session.account.id);
+    expect(actor.walletAddress).toBe(wallet.address);
+  });
+
+  it("rejects a token that is not a valid wallet session", async () => {
+    const identity = new IdentityService(new MemoryIdentityStore(), options);
+    const verifier = new WalletSessionVerifier(identity);
+    await expect(verifier.verify("garbage")).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 });

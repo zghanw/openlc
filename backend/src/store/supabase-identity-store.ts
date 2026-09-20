@@ -1,6 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
-  IdentityKind,
   IdentityStore,
   PayProofAccount,
   WalletChallenge,
@@ -11,7 +10,7 @@ type AccountRow = {
   supabase_user_id?: string | null;
   email?: string | null;
   display_name?: string | null;
-  payproof_sui_identities?: Array<{ address: string }>;
+  openlc_wallet_identities?: Array<{ address: string }>;
 };
 
 export class SupabaseIdentityStore implements IdentityStore {
@@ -29,28 +28,14 @@ export class SupabaseIdentityStore implements IdentityStore {
       supabaseUserId: row.supabase_user_id ?? undefined,
       email: row.email ?? undefined,
       name: row.display_name ?? undefined,
-      verifiedSuiAddress: row.payproof_sui_identities?.[0]?.address,
+      walletAddress: row.openlc_wallet_identities?.[0]?.address,
     };
-  }
-
-  async upsertSupabaseAccount(input: {
-    supabaseUserId: string;
-    email?: string;
-    name?: string;
-  }): Promise<PayProofAccount> {
-    const { data, error } = await this.client.rpc("resolve_supabase_account", {
-      p_supabase_user_id: input.supabaseUserId,
-      p_email: input.email ?? null,
-      p_display_name: input.name ?? null,
-    });
-    if (error) throw new Error(`Supabase account resolution failed: ${error.message}`);
-    return this.account(data as AccountRow);
   }
 
   async findAccountById(id: string): Promise<PayProofAccount | undefined> {
     const { data, error } = await this.client
-      .from("payproof_accounts")
-      .select("*,payproof_sui_identities(address)")
+      .from("openlc_accounts")
+      .select("*,openlc_wallet_identities(address)")
       .eq("id", id)
       .maybeSingle();
     if (error) throw new Error(`Supabase account lookup failed: ${error.message}`);
@@ -59,13 +44,13 @@ export class SupabaseIdentityStore implements IdentityStore {
 
   async findAccountByAddress(address: string): Promise<PayProofAccount | undefined> {
     const { data, error } = await this.client
-      .from("payproof_sui_identities")
-      .select("payproof_accounts(*)")
+      .from("openlc_wallet_identities")
+      .select("openlc_accounts(*)")
       .eq("address", address)
       .maybeSingle();
-    if (error) throw new Error(`Supabase Sui identity lookup failed: ${error.message}`);
-    const account = data?.payproof_accounts as unknown as AccountRow | undefined;
-    return account ? { ...this.account(account), verifiedSuiAddress: address } : undefined;
+    if (error) throw new Error(`Supabase wallet identity lookup failed: ${error.message}`);
+    const account = data?.openlc_accounts as unknown as AccountRow | undefined;
+    return account ? { ...this.account(account), walletAddress: address } : undefined;
   }
 
   async createWalletAccount(address: string): Promise<PayProofAccount> {
@@ -73,25 +58,7 @@ export class SupabaseIdentityStore implements IdentityStore {
       p_address: address,
     });
     if (error) throw new Error(`Supabase wallet account resolution failed: ${error.message}`);
-    return { ...this.account(data as AccountRow), verifiedSuiAddress: address };
-  }
-
-  async linkSuiAddress(input: {
-    accountId: string;
-    address: string;
-    kind: IdentityKind;
-    issuer?: string;
-    audience?: string;
-  }): Promise<PayProofAccount> {
-    const { data, error } = await this.client.rpc("link_sui_identity", {
-      p_account_id: input.accountId,
-      p_address: input.address,
-      p_kind: input.kind,
-      p_issuer: input.issuer ?? null,
-      p_audience: input.audience ?? null,
-    });
-    if (error) throw new Error(error.code === "23505" ? "SUI_ADDRESS_ALREADY_LINKED" : `Supabase Sui identity link failed: ${error.message}`);
-    return { ...this.account(data as AccountRow), verifiedSuiAddress: input.address };
+    return { ...this.account(data as AccountRow), walletAddress: address };
   }
 
   async createChallenge(challenge: WalletChallenge): Promise<void> {

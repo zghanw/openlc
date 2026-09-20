@@ -1,11 +1,11 @@
 import { serve } from "@hono/node-server";
 import { MediationOrchestrator } from "./ai/mediation.js";
 import { loadPolicyCorpus } from "./policy/policy-corpus.js";
-import { createApp } from "./api/app.js";
-import { SupabaseTokenVerifier } from "./api/supabase-auth.js";
-import { CompositeTokenVerifier, MappedSupabaseTokenVerifier } from "./api/identity-auth.js";
+import { createApp, type TokenVerifier } from "./api/app.js";
+import { WalletSessionVerifier } from "./api/identity-auth.js";
 import { DemoAwareTokenVerifier } from "./api/demo-auth.js";
 import { config } from "./config.js";
+import { DomainError } from "./domain/types.js";
 import { DemoOrderService } from "./demo/demo-service.js";
 import { MemoryDocumentStore, SupabaseDocumentStore } from "./store/document-store.js";
 import { GeminiEmbedder, GeminiJsonModel } from "./integrations/gemini.js";
@@ -20,8 +20,6 @@ import { SupabaseTradeStore } from "./store/supabase-trade-store.js";
 import { TradeService } from "./service/trade-service.js";
 import { IdentityService } from "./service/identity-service.js";
 import { SupabaseIdentityStore } from "./store/supabase-identity-store.js";
-import { EnokiSponsor } from "./integrations/enoki-sponsor.js";
-import { EnokiZkLoginIssuer, GoogleOidcTokenVerifier, HttpZkProofProvider, ZkLoginService } from "./service/zklogin-service.js";
 import { OrganizationService } from "./service/organization-service.js";
 import { MemoryOrganizationStore } from "./store/organization-store.js";
 import { SupabaseOrganizationStore } from "./store/supabase-organization-store.js";
@@ -31,39 +29,21 @@ const store = config.store === "supabase"
   ? new SupabaseDisputeStore(config.supabaseUrl(), config.supabaseSecretKey())
   : new MemoryDisputeStore();
 const service = new DisputeService(store, systemContext);
-const supabaseVerifier = new SupabaseTokenVerifier(config.supabaseUrl(), config.supabasePublishableKey());
 const sessionSecret = config.payProofSessionSecret();
-const saltSecret = config.zkLoginSaltMasterKey();
-const identity = sessionSecret && saltSecret
+const identity = sessionSecret
   ? new IdentityService(new SupabaseIdentityStore(config.supabaseUrl(), config.supabaseSecretKey()), {
       sessionSecret,
-      zkLoginSaltSecret: saltSecret,
+      chainId: config.botchainChainId,
     })
   : undefined;
-const mappedSupabaseVerifier = identity
-  ? new MappedSupabaseTokenVerifier(supabaseVerifier, identity)
-  : supabaseVerifier;
-const productionVerifier = identity
-  ? new CompositeTokenVerifier(mappedSupabaseVerifier, identity)
-  : mappedSupabaseVerifier;
+// No PAYPROOF_SESSION_SECRET means wallet sign-in cannot be configured; there is no other
+// production authentication path left to fall back to, so every bearer token is rejected.
+const noWalletAuth: TokenVerifier = {
+  verify: async () => { throw new DomainError("UNAUTHORIZED", "Invalid or expired user token", 401); },
+};
+const productionVerifier: TokenVerifier = identity ? new WalletSessionVerifier(identity) : noWalletAuth;
 const verifier = new DemoAwareTokenVerifier(productionVerifier, config.demoMode);
-const googleClientIds = config.googleOauthClientIds();
-const proverUrl = config.zkLoginProverUrl();
-const enokiKey = config.enokiPrivateKey();
 const legacyEscrowPackageIds = (process.env.SUI_LEGACY_ESCROW_PACKAGE_IDS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
-// Enoki hosts the prover and the salt, so it wins when configured. The raw prover
-// stays as the fallback for a locally hosted setup.
-const zkLogin = identity && googleClientIds.length > 0 && (enokiKey || proverUrl)
-  ? new ZkLoginService(
-      identity,
-      new GoogleOidcTokenVerifier(googleClientIds),
-      proverUrl ? new HttpZkProofProvider(proverUrl) : undefined,
-      enokiKey ? new EnokiZkLoginIssuer(enokiKey, config.suiNetwork) : undefined,
-    )
-  : undefined;
-if (enokiKey) console.log(`zkLogin proofs issued by Enoki on ${config.suiNetwork}`);
-const sponsor = enokiKey ? new EnokiSponsor(enokiKey, config.suiNetwork, config.suiEscrowPackageId, legacyEscrowPackageIds) : undefined;
-if (sponsor) console.log(`Gas sponsored by Enoki for ${config.suiEscrowPackageId}::escrow`);
 let mediator: MediationOrchestrator | undefined;
 if (process.env.GEMINI_API_KEY) {
   const embedder = new GeminiEmbedder(config.geminiApiKey(), config.embeddingModel);
@@ -116,5 +96,5 @@ const documentStore = config.store === "supabase"
   ? new SupabaseDocumentStore(config.supabaseUrl(), config.supabaseSecretKey(), config.documentsBucket)
   : new MemoryDocumentStore();
 const trades = new TradeService(tradeStore, service, systemContext, process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders", fundingVerifier, organizations, invitationEmail, documentStore);
-const app = createApp(service, verifier, mediator, demo, settlementVerifier, trades, config.demoMode, identity, zkLogin, organizations, sponsor);
+const app = createApp(service, verifier, mediator, demo, settlementVerifier, trades, config.demoMode, identity, organizations);
 serve({ fetch: app.fetch, port: config.port }, ({ port }) => console.log(`PayProof dispute backend listening on http://localhost:${port}`));

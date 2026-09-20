@@ -2,14 +2,14 @@ create table if not exists public.payproof_organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 1 and 160),
   slug text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{1,78}[a-z0-9]$'),
-  created_by_account_id uuid not null references public.payproof_accounts(id),
+  created_by_account_id uuid not null references public.openlc_accounts(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table if not exists public.payproof_organization_memberships (
   organization_id uuid not null references public.payproof_organizations(id) on delete cascade,
-  account_id uuid not null references public.payproof_accounts(id) on delete cascade,
+  account_id uuid not null references public.openlc_accounts(id) on delete cascade,
   authority text not null check (authority in ('owner', 'admin', 'member')),
   can_buy boolean not null default false,
   can_supply boolean not null default false,
@@ -38,7 +38,7 @@ grant select on public.payproof_organizations, public.payproof_organization_memb
 create or replace function public.current_payproof_account_id() returns uuid
 language sql stable security definer set search_path = ''
 as $$
-  select id from public.payproof_accounts where supabase_user_id = auth.uid()
+  select id from public.openlc_accounts where supabase_user_id = auth.uid()
 $$;
 
 drop policy if exists "members can read their organizations" on public.payproof_organizations;
@@ -90,7 +90,7 @@ as $$
 declare result public.payproof_organizations;
 declare result_slug text;
 begin
-  if not exists (select 1 from public.payproof_accounts where id = p_account_id) then
+  if not exists (select 1 from public.openlc_accounts where id = p_account_id) then
     raise exception 'PAYPROOF_ACCOUNT_NOT_FOUND';
   end if;
   result_slug := trim(both '-' from regexp_replace(lower(trim(p_name)), '[^a-z0-9]+', '-', 'g'));
@@ -141,7 +141,7 @@ drop policy if exists "trade parties can read" on public.trade_orders;
 create policy "trade parties can read" on public.trade_orders
 for select to authenticated using (
   exists (
-    select 1 from public.payproof_accounts account
+    select 1 from public.openlc_accounts account
     where account.supabase_user_id = auth.uid()
       and (
         account.id::text in (buyer_id, supplier_id, arbitrator_id)

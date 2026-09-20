@@ -22,6 +22,7 @@
     "@mysten/sui": "^2.27.1",
     "@supabase/supabase-js": "^2.57.4",
     "dotenv": "^17.2.2",
+    "ethers": "^6.17.0",
     "hono": "^4.9.8",
     "jose": "^6.2.10",
     "nodemailer": "^9.1.1",

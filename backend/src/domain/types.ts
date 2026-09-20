@@ -251,6 +251,7 @@ export interface Actor {
   arbitrator?: boolean;
   email?: string;
   name?: string;
+  walletAddress?: string;
 }
 
 export interface DomainContext {

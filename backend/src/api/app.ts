@@ -9,9 +9,7 @@ import type { TradeService } from "../service/trade-service.js";
 import type { SuiSettlementVerifier } from "../integrations/sui-settlement.js";
 import { issueDemoGoogleSession } from "./demo-auth.js";
 import type { IdentityService } from "../service/identity-service.js";
-import type { ZkLoginService } from "../service/zklogin-service.js";
 import type { OrganizationService } from "../service/organization-service.js";
-import type { EnokiSponsor } from "../integrations/enoki-sponsor.js";
 
 export interface TokenVerifier { verify(token: string): Promise<Actor>; }
 
@@ -100,9 +98,7 @@ export function createApp(
   trades?: TradeService,
   demoAuthEnabled = false,
   identity?: IdentityService,
-  zkLogin?: ZkLoginService,
   organizations?: OrganizationService,
-  sponsor?: EnokiSponsor,
 ) {
   const app = new Hono<{ Variables: { actor: Actor } }>();
   app.use("*", cors({
@@ -153,20 +149,6 @@ export function createApp(
     await next();
   });
   app.get("/v1/me", (c) => c.json(c.get("actor")));
-  if (sponsor) {
-    // Signed in callers only, and the sponsor itself restricts which move calls it will pay for.
-    app.post("/v1/sui/sponsor", async (c) => {
-      const body = z.object({
-        transactionKindBytes: z.string().min(1).max(200_000),
-        sender: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
-      }).parse(await c.req.json());
-      return c.json(await sponsor.sponsor(body));
-    });
-    app.post("/v1/sui/sponsor/:digest/execute", async (c) => {
-      const body = z.object({ signature: z.string().min(1).max(20_000) }).parse(await c.req.json());
-      return c.json(await sponsor.execute(c.req.param("digest"), body.signature));
-    });
-  }
   if (organizations) {
     app.get("/v1/workspace", async (c) => c.json(await organizations.workspace(c.get("actor"))));
     app.patch("/v1/workspace", async (c) => {
@@ -181,17 +163,6 @@ export function createApp(
     app.patch("/v1/organizations/:id/trust-profile", async (c) => {
       const body = z.object({ published: z.boolean() }).parse(await c.req.json());
       return c.json(await organizations.setTrustPublished(c.get("actor"), c.req.param("id"), body.published));
-    });
-  }
-  if (zkLogin) {
-    app.post("/v1/auth/zklogin/complete", async (c) => {
-      const body = z.object({
-        googleIdToken: z.string().min(100).max(20_000),
-        ephemeralPublicKey: z.string().min(40).max(100),
-        randomness: z.string().regex(/^\d+$/).max(100),
-        maxEpoch: z.number().int().positive().safe(),
-      }).parse(await c.req.json());
-      return c.json(await zkLogin.complete(c.get("actor").id, body));
     });
   }
   if (trades) {
