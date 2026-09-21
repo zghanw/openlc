@@ -15,7 +15,7 @@ import { withExtras } from "@/lib/local-order-extras";
 import { STATUS, demoNextStatus, isDisputed, nextAction } from "@/lib/order-status";
 import type { InvitationDelivery } from "@/lib/payproof-api";
 import { advanceSample, confirmSample, deliverSample, recordSampleInspection, shipSample, withStatus } from "@/lib/sample-orders";
-import { explorerTransactionUrl } from "@/lib/sui-dapp-kit";
+import { escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
 import { clearPendingInvite } from "@/lib/pending-invite";
 
 export const DEMO_CONTROLS = true;
@@ -78,6 +78,7 @@ export function ActionPanel({ order, company, inviteToken, onChange, onInviteCon
       </div>
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
       {error && <Notice tone="error" onDismiss={() => setError("")}>{error}</Notice>}
+      {live && !escrowConfigured && <Notice tone="warning">{ESCROW_NOT_CONFIGURED_REASON}</Notice>}
 
       {(order.status === "awaiting_supplier" || order.status === "awaiting_buyer" || order.status === "changes_requested") && !action.owner.startsWith("you") && order.initiatorRole === (order.role === "BUYER" ? "buyer" : "supplier") && (
         <InvitationControls {...step} />
@@ -234,10 +235,10 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
       <dl className="fact-list">
         <div><dt>Amount to secure</dt><dd><strong>{money(order.value)} {order.currency}</strong>{order.releasePlan && <small>{money(order.releasePlan.depositValue)} {order.currency} releases in this transaction</small>}</dd></div>
         <div><dt>Released to</dt><dd>{order.supplier}<small>{live ? short(payout) : "Verified payout address"}</small></dd></div>
-        <div><dt>Signed by</dt><dd>{live ? (escrow.signingAddress ? short(escrow.signingAddress) : "No Sui address in this session") : "Your business wallet"}<small>{live && escrow.hasZkLogin ? "Google zkLogin address" : live ? "Connected wallet" : ""}</small></dd></div>
+        <div><dt>Signed by</dt><dd>{live ? (escrow.signingAddress ? short(escrow.signingAddress) : "No wallet connected in this session") : "Your business wallet"}<small>{live ? "Connected wallet" : ""}</small></dd></div>
       </dl>
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={Boolean(busy)} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
+        <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured)} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={`Fund ${money(order.value)} ${order.currency} into escrow`}
         description={order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} is paid to ${order.supplier} now. The remaining ${money(order.releasePlan.dispatchValue + order.releasePlan.deliveryValue)} ${order.currency} stays in the escrow contract.` : "The amount moves from your Sui address into the escrow contract for this order. ProofPay cannot withdraw it."}
@@ -283,7 +284,7 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
         ? `The delivery deadline passed on ${when} without shipment. The escrow contract lets you reclaim ${amount}.`
         : `The inspection window closed on ${when} without a decision. The escrow contract lets you claim ${amount}.`}</p>
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={Boolean(busy)} onClick={() => setOpen(true)}>{buyer ? "Reclaim the escrow" : "Claim the escrow"}<ArrowRight size={14} aria-hidden="true" /></Button>
+        <Button className="btn-primary" disabled={Boolean(busy) || !escrowConfigured} onClick={() => setOpen(true)}>{buyer ? "Reclaim the escrow" : "Claim the escrow"}<ArrowRight size={14} aria-hidden="true" /></Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={buyer ? "Reclaim the escrow" : "Claim the escrow"}
         description={buyer
@@ -320,7 +321,7 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
       </div>
       <FileField label="Attach dispatch note or carrier receipt" hint="Required. Its fingerprint is anchored to the shipment release on Sui." accept=".pdf,.png,.jpg,.jpeg,.webp" onFile={setFile} file={file} />
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={!valid || Boolean(busy)} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
+        <Button className="btn-primary" disabled={!valid || Boolean(busy) || (live && !escrowConfigured)} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title="Mark as shipped"
         description={`${order.buyer} will see the carrier, tracking number and expected arrival.${order.releasePlan ? ` ${money(order.releasePlan.dispatchValue)} ${order.currency} is released now.` : ""}${live ? " One Sui transaction records shipment, anchors the evidence and releases the agreed amount." : ""}`}
@@ -481,7 +482,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
 
       {choice === "intact" && (
         <div className="action-buttons">
-          <Button className="btn-primary" disabled={Boolean(busy)} onClick={() => setConfirmOpen(true)}>Accept delivery and release {money(order.value)} {order.currency}</Button>
+          <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured)} onClick={() => setConfirmOpen(true)}>Accept delivery and release {money(order.value)} {order.currency}</Button>
         </div>
       )}
 
@@ -520,7 +521,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
               {note.trim().length < 10 && <p className="action-note">Describe what was wrong in at least 10 characters before you can open the claim. You have written {note.trim().length}.</p>}
               <div className="action-buttons">
                 {DEMO_CONTROLS && live && <Button variant="outline" disabled={!claimReady || Boolean(busy)} onClick={() => setDemoClaimOpen(true)}><FastForward size={14} aria-hidden="true" />Open claim without signing (demo)</Button>}
-                <Button className="btn-primary" disabled={!claimReady || Boolean(busy)} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
+                <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || (live && !escrowConfigured)} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
               </div>
             </>
           )}
@@ -557,7 +558,7 @@ function SettlementRecord({ order }: { order: DemoOrder }) {
           : settlement?.source === "claim_uninspected" ? "The inspection window closed without a decision, so the supplier claimed the escrow."
           : "Delivery accepted in full. The whole escrow was released to the supplier."}</dd></div>
         <div><dt>Sui transaction</dt><dd>{settlement?.transactionDigest && settlement.verifiedOnChain
-          ? <a className="link" href={explorerTransactionUrl(settlement.transactionDigest)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={12} aria-hidden="true" /></a>
+          ? <a className="link" href={explorerTxUrl(settlement.transactionDigest)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={12} aria-hidden="true" /></a>
           : order.source === "sample" ? "Sample order, no on-chain record" : "Recorded without on-chain verification"}</dd></div>
       </dl>
     </div>

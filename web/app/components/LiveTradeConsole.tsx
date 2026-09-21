@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  useCurrentAccount,
-  useCurrentClient,
-  useDAppKit,
-} from "@mysten/dapp-kit-react";
-import { ConnectButton } from "@mysten/dapp-kit-react/ui";
-import { Transaction } from "@mysten/sui/transactions";
-import { useEffect, useMemo, useState } from "react";
+import { Contract, sha256, toUtf8Bytes } from "ethers";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -36,21 +30,25 @@ import {
   type TradeOrder,
 } from "@/lib/payproof-api";
 import {
-  ESCROW_PACKAGE_ID,
-  explorerObjectUrl,
-  explorerTransactionUrl,
-  SUI_TYPE,
-  TESTNET_USDC_TYPE,
-} from "@/lib/sui-dapp-kit";
-import { loadZkLoginSession, zkLoginSigner, type ZkLoginSession } from "@/lib/auth";
+  ESCROW_ADDRESS,
+  escrowConfigured,
+  ESCROW_NOT_CONFIGURED_REASON,
+  explorerTxUrl,
+  parseBot,
+} from "@/lib/chain";
+import ESCROW_ABI from "@/lib/openlc-escrow.abi.json";
+import { describeTxError, shortAddress, useWallet } from "@/lib/wallet";
 import { INSPECTION_WINDOW_MS, deliveryDeadlineMs } from "@/lib/escrow-actions";
 
 const DEMO_ARBITRATOR_ID = "99999999-9999-4999-8999-999999999999";
-const DEFAULT_SUPPLIER_ADDRESS = `0x${"b".repeat(64)}`;
-const DEFAULT_ARBITRATOR_ADDRESS = `0x${"c".repeat(64)}`;
+const DEFAULT_SUPPLIER_ADDRESS = `0x${"b".repeat(40)}`;
+const DEFAULT_ARBITRATOR_ADDRESS = `0x${"c".repeat(40)}`;
 
 type Role = "buyer" | "supplier";
 
+/** A generic decimal-string <-> integer-units converter (exact BigInt string math, never
+ *  Math.round(value * 10 ** decimals)). Kept local since this demo console predates chain.ts's
+ *  parseBot/formatBot, which now do the same thing fixed at BOT's 18 decimals. */
 function unitsFor(value: string, decimals: number): string {
   const clean = value.trim();
   if (!/^\d+(\.\d+)?$/.test(clean)) throw new Error("Enter a positive amount");
@@ -71,30 +69,6 @@ function displayUnits(value: string, decimals: number): string {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
-function hexBytes(value: string): number[] {
-  const clean = value.replace(/^0x/, "");
-  if (!/^[a-f\d]{64}$/i.test(clean))
-    throw new Error("The order hash must contain 32 bytes");
-  return Array.from({ length: 32 }, (_, index) =>
-    Number.parseInt(clean.slice(index * 2, index * 2 + 2), 16),
-  );
-}
-
-function eventJson(value: unknown): Record<string, unknown> {
-  const event = value as
-    | { json?: Record<string, unknown>; parsedJson?: Record<string, unknown> }
-    | undefined;
-  return event?.json ?? event?.parsedJson ?? {};
-}
-
-async function proposalHashBytes(proposalId: string): Promise<number[]> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(proposalId),
-  );
-  return Array.from(new Uint8Array(digest));
-}
-
 function errorText(error: unknown): string {
   return error instanceof Error
     ? error.message
@@ -106,12 +80,12 @@ function short(value?: string): string {
   return `${value.slice(0, 8)}…${value.slice(-6)}`;
 }
 
+/** Every escrow amount here is native BOT, 18 decimals. */
+const decimals = 18;
+
 export function LiveTradeConsole() {
-  const account = useCurrentAccount();
-  const client = useCurrentClient();
-  const dAppKit = useDAppKit();
+  const wallet = useWallet();
   const [session, setSession] = useState<DemoSession | null>(null);
-  const [zkSession, setZkSession] = useState<ZkLoginSession | null>(null);
   const [role, setRole] = useState<Role>("buyer");
   const [orders, setOrders] = useState<TradeOrder[]>([]);
   const [activeOrder, setActiveOrder] = useState<TradeOrder | null>(null);
@@ -129,7 +103,7 @@ export function LiveTradeConsole() {
     supplierEmail: "supplier@freshsource.demo",
     supplierName: "FreshSource Foods Sdn. Bhd.",
     amount: "30000",
-    asset: "USDC",
+    asset: "BOT",
     description: "Premium cooking oils, 100 cartons",
     deliveryDate: "08 Sep 2026",
     deliveryLocation: "GreenBite Receiving Bay · PJ",
@@ -148,21 +122,7 @@ export function LiveTradeConsole() {
     "Dispatch photos show the cartons left our warehouse intact; the damage likely occurred after handover.",
   );
 
-  const decimals = orderForm.asset === "USDC" ? 6 : 9;
-  const assetType = orderForm.asset === "USDC" ? TESTNET_USDC_TYPE : SUI_TYPE;
-  const activeDecimals =
-    activeOrder?.assetType === TESTNET_USDC_TYPE
-      ? 6
-      : activeOrder
-        ? 9
-        : decimals;
-  const activeAssetLabel =
-    activeOrder?.assetType === TESTNET_USDC_TYPE
-      ? "USDC"
-      : activeOrder
-        ? "SUI"
-      : orderForm.asset;
-  const signingAddress = account?.address ?? zkSession?.address;
+  const signingAddress = wallet.account;
   const latestProposal =
     dispute?.proposals.find((proposal) => proposal.status === "open") ??
     dispute?.proposals.at(-1);
@@ -181,7 +141,6 @@ export function LiveTradeConsole() {
       : undefined;
 
   useEffect(() => {
-    setZkSession(loadZkLoginSession());
     const current = loadSession();
     if (current) {
       setSession(current);
@@ -198,14 +157,21 @@ export function LiveTradeConsole() {
     });
   }, []);
 
-  async function signAndExecute(transaction: Transaction) {
-    if (zkSession) {
-      return client.signAndExecuteTransaction({
-        transaction,
-        signer: zkLoginSigner(zkSession),
-      });
+  /** Sends one write call against the escrow contract, waits for the receipt, and turns a revert
+   *  into a plain-English message the same way escrow-actions.ts does. */
+  async function sendTx(method: string, args: unknown[], value?: bigint) {
+    if (!escrowConfigured) throw new Error(ESCROW_NOT_CONFIGURED_REASON);
+    const signer = await wallet.getSigner();
+    const contract = new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tx = value !== undefined ? await (contract as any)[method](...args, { value }) : await (contract as any)[method](...args);
+      const receipt = await tx.wait();
+      if (!receipt) throw new Error("The transaction did not confirm.");
+      return { receipt, contract };
+    } catch (cause) {
+      throw new Error(describeTxError(cause));
     }
-    return dAppKit.signAndExecuteTransaction({ transaction });
   }
 
   useEffect(() => {
@@ -271,7 +237,7 @@ export function LiveTradeConsole() {
       setDispute(null);
       setMediation(null);
       setNotice(
-        `Viewing ${nextRole} orders. Your verified Google identity stays the same.`,
+        `Viewing ${nextRole} orders. Your verified identity stays the same.`,
       );
       return;
     }
@@ -297,7 +263,7 @@ export function LiveTradeConsole() {
       setSession(next);
       setRole(nextRole);
       setNotice(
-        `Signed in as ${next.user.name}. This is a simulated Google session for the testnet demo.`,
+        `Signed in as ${next.user.name}. This is a simulated demo session for the testnet demo.`,
       );
     } catch (caught) {
       setError(errorText(caught));
@@ -339,7 +305,7 @@ export function LiveTradeConsole() {
           supplierWalletAddress: orderForm.supplierAddress,
           arbitratorWalletAddress: orderForm.arbitratorAddress,
           arbitratorId: DEMO_ARBITRATOR_ID,
-          assetType,
+          assetType: "BOT",
           amountUnits,
           description: orderForm.description,
           deliveryDate: orderForm.deliveryDate,
@@ -446,7 +412,7 @@ export function LiveTradeConsole() {
 
   async function fundEscrow() {
     if (!activeOrder || !signingAddress) {
-      setError("Sign in with Google or connect the buyer wallet before funding escrow.");
+      setError("Connect the buyer wallet before funding escrow.");
       return;
     }
     if (!activeOrder.supplierId) {
@@ -456,62 +422,56 @@ export function LiveTradeConsole() {
     setBusy("fund");
     setError("");
     try {
-      const tx = new Transaction();
-      const paymentCoin = tx.coin({
-        balance: BigInt(activeOrder.amountUnits),
-        type: activeOrder.assetType,
-      });
       const supplierAddress =
         activeOrder.supplierWalletAddress || orderForm.supplierAddress;
       const arbitratorAddress =
         activeOrder.arbitratorWalletAddress || orderForm.arbitratorAddress;
-      tx.moveCall({
-        target: `${ESCROW_PACKAGE_ID}::escrow::create`,
-        typeArguments: [activeOrder.assetType],
-        arguments: [
-          paymentCoin,
-          tx.pure.address(supplierAddress),
-          tx.pure.address(arbitratorAddress),
-          tx.pure.vector("u8", hexBytes(activeOrder.orderHash)),
-          tx.pure.string(activeOrder.reference),
-          tx.pure.u64(deliveryDeadlineMs(activeOrder.deliveryDate)),
-          tx.pure.u64(INSPECTION_WINDOW_MS),
-          tx.object.clock(),
+      const total = BigInt(activeOrder.amountUnits);
+      const deadlineMs = deliveryDeadlineMs(activeOrder.deliveryDate);
+      const { receipt, contract } = await sendTx(
+        "createEscrow",
+        [
+          supplierAddress,
+          arbitratorAddress,
+          activeOrder.orderHash,
+          activeOrder.reference,
+          0n,
+          0n,
+          total,
+          BigInt(Math.floor(deadlineMs / 1000)),
+          BigInt(Math.floor(INSPECTION_WINDOW_MS / 1000)),
         ],
-      });
-      const result = (await signAndExecute(tx)) as any;
-      if (result.FailedTransaction)
-        throw new Error(
-          result.FailedTransaction.status?.error?.message ??
-            "The escrow funding transaction failed.",
-        );
-      const digest = result.Transaction.digest as string;
-      const indexed = (await client.waitForTransaction({
-        digest,
-        include: { events: true, effects: true, objectTypes: true },
-        timeout: 60_000,
-        pollSchedule: [0, 500, 1_000, 2_000],
-      })) as any;
-      const events = indexed.Transaction?.events ?? [];
-      const created = events.find((event: any) =>
-        String(event.eventType ?? "").includes("::escrow::EscrowCreated"),
+        total,
       );
-      const objectId = String(eventJson(created).escrow_id ?? "");
-      if (!objectId || objectId === "undefined")
+      let escrowId: bigint | undefined;
+      for (const log of receipt.logs) {
+        try {
+          const parsed = contract.interface.parseLog(log);
+          if (parsed?.name === "EscrowCreated") {
+            escrowId = parsed.args.id as bigint;
+            break;
+          }
+        } catch {
+          /* not our event, skip */
+        }
+      }
+      if (escrowId === undefined)
         throw new Error(
-          "Escrow funded, but the EscrowCreated event was not indexed.",
+          "Escrow funded, but the EscrowCreated event was not found in the transaction receipt.",
         );
       const updated = await apiRequest<TradeOrder>(
         `/v1/orders/${activeOrder.id}/funding`,
         {
           method: "POST",
           body: JSON.stringify({
-            packageId: ESCROW_PACKAGE_ID,
-            escrowObjectId: objectId,
-            transactionDigest: digest,
+            packageId: ESCROW_ADDRESS,
+            escrowObjectId: escrowId.toString(),
+            transactionDigest: receipt.hash,
             buyerAddress: signingAddress,
             supplierAddress,
             arbitratorAddress,
+            deliveryDeadlineMs: deadlineMs,
+            inspectionWindowMs: INSPECTION_WINDOW_MS,
           }),
         },
       );
@@ -520,7 +480,7 @@ export function LiveTradeConsole() {
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
       setNotice(
-        "Escrow funded and independently verified against the Sui transaction.",
+        "Escrow funded and independently verified against the BOT Chain transaction.",
       );
     } catch (caught) {
       setError(errorText(caught));
@@ -602,39 +562,22 @@ export function LiveTradeConsole() {
     setBusy("dispute");
     setError("");
     try {
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${ESCROW_PACKAGE_ID}::escrow::open_dispute`,
-        typeArguments: [activeOrder.assetType],
-        arguments: [
-          tx.object(activeOrder.funding.escrowObjectId),
-          tx.pure.u64(unitsFor(disputeForm.disputed, activeDecimals)),
-          tx.pure.u64(unitsFor(disputeForm.requested, activeDecimals)),
-          tx.object.clock(),
-        ],
-      });
-      const result = (await signAndExecute(tx)) as any;
-      if (result.FailedTransaction)
-        throw new Error(
-          result.FailedTransaction.status?.error?.message ??
-            "The dispute transaction failed.",
-        );
-      const disputeTx = result.Transaction.digest as string;
-      await client.waitForTransaction({
-        digest: disputeTx,
-        include: { events: true },
-        timeout: 60_000,
-        pollSchedule: [0, 500, 1_000, 2_000],
-      });
+      const disputedUnits = unitsFor(disputeForm.disputed, decimals);
+      const requestedUnits = unitsFor(disputeForm.requested, decimals);
+      const { receipt } = await sendTx("openDispute", [
+        BigInt(activeOrder.funding.escrowObjectId),
+        BigInt(disputedUnits),
+        BigInt(requestedUnits),
+      ]);
       const resultData = await apiRequest<{
         order: TradeOrder;
         dispute: Dispute;
       }>(`/v1/orders/${activeOrder.id}/dispute`, {
         method: "POST",
         body: JSON.stringify({
-          disputeTransactionDigest: disputeTx,
-          disputedUnits: unitsFor(disputeForm.disputed, activeDecimals),
-          requestedBuyerUnits: unitsFor(disputeForm.requested, activeDecimals),
+          disputeTransactionDigest: receipt.hash,
+          disputedUnits,
+          requestedBuyerUnits: requestedUnits,
           claim: disputeForm.claim,
           evidenceStatement: disputeForm.evidence,
           negotiationDeadline: new Date(
@@ -701,7 +644,7 @@ export function LiveTradeConsole() {
       setDispute(updated);
       await refreshOrder(activeOrder!.id);
       setNotice(
-        "Supplier agreement recorded. Both parties must now sign the exact allocation on Sui.",
+        "Supplier agreement recorded. Both parties must now sign the exact allocation on-chain.",
       );
     } catch (caught) {
       setError(errorText(caught));
@@ -744,7 +687,7 @@ export function LiveTradeConsole() {
       setDispute(updated);
       await refreshOrder(activeOrder!.id);
       setNotice(
-        "Human acceptance recorded. The other party must accept the exact same allocation before Sui execution.",
+        "Human acceptance recorded. The other party must accept the exact same allocation before on-chain execution.",
       );
     } catch (caught) {
       setError(errorText(caught));
@@ -825,39 +768,22 @@ export function LiveTradeConsole() {
     }
     if (!dispute) return;
     if (dispute.status !== "settlement_pending") {
-      setError("The off-chain agreement must be pending before Sui approvals.");
+      setError("The off-chain agreement must be pending before on-chain approvals.");
       return;
     }
     setBusy(`approve-${side}`);
     setError("");
     try {
-      const hash = await proposalHashBytes(settlementTarget.proposalId);
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${ESCROW_PACKAGE_ID}::escrow::approve_${side}`,
-        typeArguments: [activeOrder.assetType],
-        arguments: [
-          tx.object(activeOrder.funding.escrowObjectId),
-          tx.pure.u64(settlementTarget.buyerUnits),
-          tx.pure.u64(settlementTarget.supplierUnits),
-          tx.pure.vector("u8", hash),
-        ],
-      });
-      const result = (await signAndExecute(tx)) as any;
-      if (result.FailedTransaction)
-        throw new Error(
-          result.FailedTransaction.status?.error?.message ??
-            "The approval transaction failed.",
-        );
-      await client.waitForTransaction({
-        digest: result.Transaction.digest,
-        include: { effects: true },
-        timeout: 60_000,
-        pollSchedule: [0, 500, 1_000, 2_000],
-      });
+      const hash = sha256(toUtf8Bytes(settlementTarget.proposalId));
+      await sendTx("approveSettlement", [
+        BigInt(activeOrder.funding.escrowObjectId),
+        BigInt(settlementTarget.buyerUnits),
+        BigInt(settlementTarget.supplierUnits),
+        hash,
+      ]);
       await refreshOrder(activeOrder!.id);
       setNotice(
-        `${side === "buyer" ? "Buyer" : "Supplier"} approval recorded on Sui.`,
+        `${side === "buyer" ? "Buyer" : "Supplier"} approval recorded on BOT Chain.`,
       );
     } catch (caught) {
       setError(errorText(caught));
@@ -876,52 +802,24 @@ export function LiveTradeConsole() {
     setBusy("settle");
     setError("");
     try {
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${ESCROW_PACKAGE_ID}::escrow::execute_settlement`,
-        typeArguments: [activeOrder.assetType],
-        arguments: [
-          tx.object(activeOrder.funding.escrowObjectId),
-          tx.object.clock(),
-        ],
-      });
-      const result = (await signAndExecute(tx)) as any;
-      if (result.FailedTransaction)
-        throw new Error(
-          result.FailedTransaction.status?.error?.message ??
-            "The settlement transaction failed.",
-        );
-      const digest = result.Transaction.digest as string;
-      const indexed = (await client.waitForTransaction({
-        digest,
-        include: { events: true, effects: true },
-        timeout: 60_000,
-        pollSchedule: [0, 500, 1_000, 2_000],
-      })) as any;
-      const executed = (indexed.Transaction?.events ?? []).find((event: any) =>
-        String(event.eventType ?? "").includes("::escrow::SettlementExecuted"),
-      );
-      const receipt = String(eventJson(executed).receipt_id ?? "");
-      if (!receipt)
-        throw new Error(
-          "Settlement finalized, but its receipt event was not indexed.",
-        );
+      const { receipt } = await sendTx("executeSettlement", [
+        BigInt(activeOrder.funding.escrowObjectId),
+      ]);
       const updated = await apiRequest<Dispute>(
         `/v1/disputes/${dispute.id}/settlement-execution`,
         {
           method: "POST",
           body: JSON.stringify({
-            transactionDigest: digest,
-            packageId: ESCROW_PACKAGE_ID,
+            transactionDigest: receipt.hash,
+            packageId: ESCROW_ADDRESS,
             escrowObjectId: activeOrder.funding.escrowObjectId,
-            receiptObjectId: receipt,
           }),
         },
       );
       setDispute(updated);
       await refreshOrder(activeOrder!.id);
       setNotice(
-        "Settlement verified on Sui. The immutable receipt is ready to inspect.",
+        "Settlement verified on BOT Chain. The immutable record is ready to inspect.",
       );
     } catch (caught) {
       setError(errorText(caught));
@@ -1071,7 +969,7 @@ export function LiveTradeConsole() {
                     <label>
                       <span>Settlement asset</span>
                       <select value={orderForm.asset} disabled>
-                        <option value="USDC">Testnet USDC</option>
+                        <option value="BOT">BOT</option>
                       </select>
                     </label>
                     <label className="live-field-wide">
@@ -1191,13 +1089,8 @@ export function LiveTradeConsole() {
                       <h3>{activeOrder.description}</h3>
                       <p>
                         {activeOrder.supplierName} ·{" "}
-                        {displayUnits(
-                          activeOrder.amountUnits,
-                          activeOrder.assetType === TESTNET_USDC_TYPE ? 6 : 9,
-                        )}{" "}
-                        {activeOrder.assetType === TESTNET_USDC_TYPE
-                          ? "USDC"
-                          : "SUI"}
+                        {displayUnits(activeOrder.amountUnits, decimals)}{" "}
+                        BOT
                       </p>
                     </div>
                     <span
@@ -1288,7 +1181,7 @@ export function LiveTradeConsole() {
                             <Landmark size={15} />
                             <span>
                               <strong>
-                                Available balance {balance} {activeAssetLabel}
+                                Available balance {balance} BOT
                               </strong>
                               <small>
                                 Card top-up is simulated for this demo.
@@ -1314,7 +1207,13 @@ export function LiveTradeConsole() {
                                 balance.
                               </small>
                             </span>
-                            <ConnectButton />
+                            {signingAddress ? (
+                              <span className="wallet-connect-label">{shortAddress(signingAddress)}</span>
+                            ) : (
+                              <button type="button" className="wallet-connect-label" onClick={() => void wallet.connect()} disabled={wallet.connecting}>
+                                {wallet.connecting ? "Connecting…" : "Connect wallet"}
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
@@ -1323,7 +1222,7 @@ export function LiveTradeConsole() {
                         <Button
                           className="app-primary"
                           onClick={() => void fundEscrow()}
-                          disabled={busy === "fund" || !account}
+                          disabled={busy === "fund" || !signingAddress || !escrowConfigured}
                         >
                           <LockKeyhole size={15} />
                           Fund escrow
@@ -1363,8 +1262,8 @@ export function LiveTradeConsole() {
                         </small>
                       </span>
                       <a
-                        href={explorerObjectUrl(
-                          activeOrder.funding!.escrowObjectId,
+                        href={explorerTxUrl(
+                          activeOrder.funding!.transactionDigest,
                         )}
                         target="_blank"
                         rel="noreferrer"
@@ -1393,7 +1292,7 @@ export function LiveTradeConsole() {
                     <Button
                       className="app-primary"
                       onClick={() => void releaseUndisputed()}
-                      disabled={busy === "release-undisputed" || !account}
+                      disabled={busy === "release-undisputed" || !signingAddress}
                     >
                       <ArrowRight size={15} />
                       Release undisputed funds on Sui
@@ -1425,11 +1324,7 @@ export function LiveTradeConsole() {
                               })
                             }
                           />
-                          <b>
-                            {activeOrder.assetType === TESTNET_USDC_TYPE
-                              ? "USDC"
-                              : "SUI"}
-                          </b>
+                          <b>BOT</b>
                         </div>
                       </label>
                       <label>
@@ -1444,11 +1339,7 @@ export function LiveTradeConsole() {
                               })
                             }
                           />
-                          <b>
-                            {activeOrder.assetType === TESTNET_USDC_TYPE
-                              ? "USDC"
-                              : "SUI"}
-                          </b>
+                          <b>BOT</b>
                         </div>
                       </label>
                       <label className="live-field-wide">
@@ -1558,12 +1449,12 @@ export function LiveTradeConsole() {
                           <strong>
                             {displayUnits(
                               latestProposal.buyerUnits,
-                              activeDecimals,
+                              decimals,
                             )}{" "}
                             refund ·{" "}
                             {displayUnits(
                               latestProposal.supplierUnits,
-                              activeDecimals,
+                              decimals,
                             )}{" "}
                             release
                           </strong>
@@ -1675,12 +1566,12 @@ export function LiveTradeConsole() {
                           <strong>
                             {displayUnits(
                               settlementTarget.buyerUnits,
-                              activeDecimals,
+                              decimals,
                             )}{" "}
                             refund ·{" "}
                             {displayUnits(
                               settlementTarget.supplierUnits,
-                              activeDecimals,
+                              decimals,
                             )}{" "}
                             release
                           </strong>
@@ -1745,7 +1636,7 @@ export function LiveTradeConsole() {
                           </small>
                         </span>
                         <a
-                          href={explorerTransactionUrl(
+                          href={explorerTxUrl(
                             dispute.settlement.execution.transactionDigest,
                           )}
                           target="_blank"

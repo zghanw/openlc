@@ -18,9 +18,10 @@ import { withExtras } from "@/lib/local-order-extras";
 import { STATUS, isDisputed } from "@/lib/order-status";
 import { clearSession, loadSession, signOutSession } from "@/lib/payproof-api";
 import { savePendingInvite } from "@/lib/pending-invite";
-import { beginGoogleZkLogin } from "@/lib/auth";
+import { authenticateConnectedWallet } from "@/lib/auth";
 import { advanceSample, guidedDemoNextLabel } from "@/lib/sample-orders";
-import { explorerObjectUrl } from "@/lib/sui-dapp-kit";
+import { explorerTxUrl } from "@/lib/chain";
+import { shortAddress, useWallet } from "@/lib/wallet";
 import { useWorkspace } from "@/lib/use-workspace";
 
 export default function OrderPage() {
@@ -135,7 +136,7 @@ export default function OrderPage() {
           <div><dt>Supplier</dt><dd><strong>{order.supplier}</strong>{order.raw?.supplierEmail && <small>{order.raw.supplierEmail}</small>}</dd></div>
           <div><dt>Expected delivery</dt><dd><strong>{formatDate(order.delivery)}</strong>{order.shipment?.carrier && <small>{order.shipment.carrier}</small>}</dd></div>
           <div><dt>Delivery location</dt><dd><strong>{order.deliveryLocation}</strong></dd></div>
-          <div><dt>Escrow<HelpHint text="Funds are held by the Sui escrow contract, not by ProofPay, and are released according to the inspection result and the Dispute Resolution Policy." /></dt><dd><strong>{escrowState}</strong>{order.funding && <><small className="escrow-object-id" title={order.funding.escrowObjectId}>{order.funding.escrowObjectId.slice(0, 10)}...{order.funding.escrowObjectId.slice(-6)}</small><span className="escrow-object-actions"><button type="button" className="escrow-copy-button" onClick={() => void copyEscrowObject()} aria-label="Copy escrow object ID">{escrowCopied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}{escrowCopied ? "Copied" : "Copy"}</button>{order.source === "backend" && order.funding.verificationStatus === "verified_on_chain" && <a className="link" href={explorerObjectUrl(order.funding.escrowObjectId)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={11} aria-hidden="true" /></a>}</span></>}</dd></div>
+          <div><dt>Escrow<HelpHint text="Funds are held by the Sui escrow contract, not by ProofPay, and are released according to the inspection result and the Dispute Resolution Policy." /></dt><dd><strong>{escrowState}</strong>{order.funding && <><small className="escrow-object-id" title={order.funding.escrowObjectId}>#{order.funding.escrowObjectId}</small><span className="escrow-object-actions"><button type="button" className="escrow-copy-button" onClick={() => void copyEscrowObject()} aria-label="Copy escrow ID">{escrowCopied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}{escrowCopied ? "Copied" : "Copy"}</button>{order.source === "backend" && order.funding.verificationStatus === "verified_on_chain" && <a className="link" href={explorerTxUrl(order.funding.transactionDigest)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={11} aria-hidden="true" /></a>}</span></>}</dd></div>
         </dl>
       </LiftCard>
       {order.source === "sample" && <Notice tone="info">This is a sample order for demonstration. Every action changes only this sample. Nothing is sent to the backend or to Sui.</Notice>}
@@ -233,28 +234,47 @@ export default function OrderPage() {
 
 function InviteGate({ error }: { error: string }) {
   const [actionError, setActionError] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
   const currentSession = loadSession();
   const needsAccountSwitch = Boolean(currentSession);
+  const wallet = useWallet();
+
+  const signIn = async () => {
+    if (!wallet.account) return;
+    setActionError("");
+    setSigningIn(true);
+    try {
+      if (needsAccountSwitch) { try { await signOutSession(); } catch { clearSession(); } }
+      await authenticateConnectedWallet({ address: wallet.account, sign: wallet.signMessage });
+      window.location.reload();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "Wallet sign-in could not be completed.");
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
   return (
     <div className="gate-shell">
       <header className="gate-header"><Logo /><span>Order invitation</span></header>
       <main className="gate-main">
         <section aria-labelledby="invite-sign-in-title">
           <span className="gate-icon"><ShieldCheck size={22} aria-hidden="true" /></span>
-          <h1 id="invite-sign-in-title">{needsAccountSwitch ? "Switch account to review this order" : "Sign in to review this order"}</h1>
+          <h1 id="invite-sign-in-title">{needsAccountSwitch ? "Switch wallet to review this order" : "Connect a wallet to review this order"}</h1>
           <p>{needsAccountSwitch
-            ? <>You are signed in as <strong>{currentSession?.user.email || "a different account"}</strong>. Use the Google account that received this invitation.</>
-            : "Use the Google account that received the invitation. Your invitation stays attached and opens automatically after sign-in."}</p>
-          <div className="gate-assurance"><LockKeyhole size={15} aria-hidden="true" /><span><strong>The order remains private</strong><small>ProofPay checks the signed-in email before showing commercial terms.</small></span></div>
-          {(actionError || (error && !needsAccountSwitch)) && <p className="form-error" role="alert">{actionError || error}</p>}
-          <Button className="btn-primary" onClick={() => {
-            setActionError("");
-            const returnTo = `${window.location.pathname}${window.location.search}`;
-            void (async () => {
-              if (needsAccountSwitch) { try { await signOutSession(); } catch { clearSession(); } }
-              await beginGoogleZkLogin(returnTo);
-            })().catch((cause) => setActionError(cause instanceof Error ? cause.message : "Google sign-in could not be started."));
-          }}>{needsAccountSwitch ? "Switch Google account" : "Continue with Google"}<ArrowRight size={14} aria-hidden="true" /></Button>
+            ? <>You are signed in as <strong>{currentSession?.user.email || "a different account"}</strong>. Connect the wallet that received this invitation.</>
+            : "Connect the wallet that received the invitation. Your invitation stays attached and opens automatically after sign-in."}</p>
+          <div className="gate-assurance"><LockKeyhole size={15} aria-hidden="true" /><span><strong>The order remains private</strong><small>ProofPay checks the signed-in wallet before showing commercial terms.</small></span></div>
+          {(actionError || wallet.error || (error && !needsAccountSwitch)) && <p className="form-error" role="alert">{actionError || wallet.error || error}</p>}
+          {!wallet.account ? (
+            <Button className="btn-primary" disabled={wallet.connecting} onClick={() => void wallet.connect()}>
+              {wallet.connecting ? "Connecting…" : "Connect MetaMask"}<ArrowRight size={14} aria-hidden="true" />
+            </Button>
+          ) : (
+            <Button className="btn-primary" disabled={signingIn} onClick={() => void signIn()}>
+              {signingIn ? "Signing in…" : needsAccountSwitch ? `Switch to ${shortAddress(wallet.account)}` : "Sign in with this wallet"}<ArrowRight size={14} aria-hidden="true" />
+            </Button>
+          )}
           <Button variant="outline" asChild><a href="/orders/sample-demo-1001"><FastForward size={14} aria-hidden="true" />Open guided demo</a></Button>
           <small className="legal-copy">By continuing you agree to the <a href="/legal/terms">Terms of Service</a> and the <a href="/legal/dispute-policy">Dispute Resolution Policy</a>.</small>
           <a className="gate-back" href="/">Return to ProofPay</a>

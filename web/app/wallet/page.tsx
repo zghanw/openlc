@@ -10,8 +10,13 @@ import { AppShell, HelpHint, Notice, PageTitle } from "@/app/components/app-shel
 import { type DemoOrder, formatOrderMoney as money } from "@/lib/demo-orders";
 import { type PaymentRequest, parsePaymentRequest, useEscrowActions } from "@/lib/escrow-actions";
 import { type ReleaseStageKey, releaseProgress } from "@/app/components/release-plan";
-import { explorerTransactionUrl, suiDAppKit, TESTNET_USDC_TYPE } from "@/lib/sui-dapp-kit";
+import { BOTCHAIN, explorerTxUrl, formatBot } from "@/lib/chain";
 import { useWorkspace } from "@/lib/use-workspace";
+import { JsonRpcProvider } from "ethers";
+
+/** The QR pay/receive feature has no BOT Chain equivalent yet (the contract does not port a
+ *  direct-payment path) - this legacy identifier only satisfies the payload shape below. */
+const LEGACY_QR_ASSET_TYPE = "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC";
 import { AnimatedAmount, LiftCard } from "@/app/components/motion";
 
 /** "in" and "out" change the wallet balance. "escrow" moves money the contract holds, so it
@@ -95,19 +100,18 @@ export default function WalletPage() {
 
   const readBalances = useCallback(async (): Promise<Balances | null> => {
     if (!address) return null;
-    const client = suiDAppKit.getClient("testnet");
-    const usdc = await client.getBalance({ owner: address, coinType: TESTNET_USDC_TYPE });
-    return { usdc: Number(usdc.balance.balance) / 1_000_000 };
+    const wei = await new JsonRpcProvider(BOTCHAIN.rpcUrl).getBalance(address);
+    return { usdc: Number(formatBot(wei)) };
   }, [address]);
 
   const refreshBalances = useCallback(() => readBalances()
-    .then((value) => { setBalances(value); setBalanceNote("Balances read from Sui Testnet."); })
+    .then((value) => { setBalances(value); setBalanceNote(`Balance read from ${BOTCHAIN.chainName}.`); })
     .catch((cause) => setBalanceNote(cause instanceof Error ? `The balance could not be read: ${cause.message}` : "The balance could not be read.")), [readBalances]);
 
   useEffect(() => {
     if (!workspace.ready) return;
     setMovements(loadMovements(workspace.accountKey));
-    if (!address) { setBalances(null); setBalanceNote(workspace.live ? "Sign in with Google zkLogin or connect a Sui wallet to load the on-chain balance." : "Sign in to load your balance."); return; }
+    if (!address) { setBalances(null); setBalanceNote(workspace.live ? "Connect MetaMask to load your on-chain balance." : "Sign in to load your balance."); return; }
     void refreshBalances();
   }, [workspace.ready, workspace.accountKey, workspace.live, address, refreshBalances]);
 
@@ -193,7 +197,7 @@ export default function WalletPage() {
                 </span>
                 <div>
                   <strong>{item.title}</strong>
-                  <small>{item.orderId ? <a className="link" href={`/orders/${encodeURIComponent(item.orderId)}`}>{item.detail}</a> : item.detail}. {new Date(item.at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}{item.transactionDigest && <> <a className="link" href={explorerTransactionUrl(item.transactionDigest)} target="_blank" rel="noreferrer">Receipt on Suiscan<ExternalLink size={11} aria-hidden="true" /></a></>}</small>
+                  <small>{item.orderId ? <a className="link" href={`/orders/${encodeURIComponent(item.orderId)}`}>{item.detail}</a> : item.detail}. {new Date(item.at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}{item.transactionDigest && <> <a className="link" href={explorerTxUrl(item.transactionDigest)} target="_blank" rel="noreferrer">Receipt on Suiscan<ExternalLink size={11} aria-hidden="true" /></a></>}</small>
                 </div>
                 <span className={`pill ${item.state === "pending" ? "pill-attention" : item.type === "escrow" ? "pill-neutral" : "pill-success"}`}>{item.state === "pending" ? "Pending" : item.type === "escrow" ? "From escrow" : "Complete"}</span>
                 <strong className={`num ${item.type === "in" ? "amount-in" : item.type === "escrow" ? "amount-escrow" : ""}`}>{item.type === "in" ? "+" : item.type === "out" ? "-" : ""}{money(item.amount)} {item.currency ?? "USDC"}</strong>
@@ -378,7 +382,7 @@ function PaymentQrDialog({ open, onOpenChange, company, address, onPaid }: { ope
   }, [open]);
 
   const payload = useMemo(() => JSON.stringify({
-    v: 1, network: "sui:testnet", to: address || "unknown", merchant: company, amount: amount || "0.00", currency: "USDC", coinType: TESTNET_USDC_TYPE,
+    v: 1, network: "sui:testnet", to: address || "unknown", merchant: company, amount: amount || "0.00", currency: "USDC", coinType: LEGACY_QR_ASSET_TYPE,
     reference: reference || "Sale", session: `PP-${sessionId}`,
   } satisfies PaymentRequest), [address, company, amount, reference, sessionId]);
 
@@ -391,26 +395,17 @@ function PaymentQrDialog({ open, onOpenChange, company, address, onPaid }: { ope
     setScanning(false);
     try {
       const parsed = parsePaymentRequest(text);
-      if (parsed.currency !== "USDC" || parsed.coinType !== TESTNET_USDC_TYPE) throw new Error("PayProof only supports USDC payment requests.");
       setRequest(parsed);
       setPayError("");
     } catch (cause) { setRequest(null); setPayError(cause instanceof Error ? cause.message : "That is not a payment request."); }
   }, []);
   const scanError = useCallback((message: string) => { setScanning(false); setPasteOpen(true); setPayError(message); }, []);
 
+  // A direct wallet-to-wallet payment outside any escrow order has no BOT Chain equivalent: the
+  // ported contract only ever moves BOT into or out of an escrow (spec.md - payproof::pay was not
+  // ported). Fail closed with a clear reason instead of a dead "Pay" button.
   const pay = async () => {
-    if (!request) return;
-    setPaying(true);
-    setPayError("");
-    try {
-      const result = await escrow.payRequest(request);
-      setPaid(result);
-      onPaid({ id: crypto.randomUUID(), type: "out", title: `Paid ${request.merchant || "a merchant"}`, detail: `${request.reference}, session ${request.session}`, amount: Number(request.amount), currency: "USDC", at: new Date().toISOString(), state: "complete", transactionDigest: result.digest });
-    } catch (cause) {
-      setPayError(cause instanceof Error ? cause.message : "The payment failed.");
-    } finally {
-      setPaying(false);
-    }
+    setPayError("Direct payments outside an escrow order aren't available on BOT Chain yet. Fund an escrow from the order page instead.");
   };
 
   return (
@@ -428,7 +423,7 @@ function PaymentQrDialog({ open, onOpenChange, company, address, onPaid }: { ope
                 <span className="order-created-mark"><Check size={22} aria-hidden="true" /></span>
                 <strong>Paid</strong>
                 <p>{money(Number(request?.amount ?? 0))} {request?.currency} went to {request?.merchant || "the merchant"}. Your receipt object is owned by your address and can be verified against the request hash.</p>
-                <p className="form-note"><a className="link" href={explorerTransactionUrl(paid.digest)} target="_blank" rel="noreferrer">View the payment on Suiscan<ExternalLink size={12} aria-hidden="true" /></a>{paid.receiptObjectId && <> Receipt <code>{paid.receiptObjectId.slice(0, 10)}...{paid.receiptObjectId.slice(-6)}</code></>}</p>
+                <p className="form-note"><a className="link" href={explorerTxUrl(paid.digest)} target="_blank" rel="noreferrer">View the payment on Suiscan<ExternalLink size={12} aria-hidden="true" /></a>{paid.receiptObjectId && <> Receipt <code>{paid.receiptObjectId.slice(0, 10)}...{paid.receiptObjectId.slice(-6)}</code></>}</p>
                 <Button variant="outline" type="button" onClick={() => { setPaid(null); setRequest(null); setPasted(""); }}>Pay someone else</Button>
               </div>
             ) : request ? (

@@ -14,7 +14,7 @@ import { acceptClaimProposal, enforceClaimDeadline, loadClaim, proposeClaimSplit
 import { useEscrowActions } from "@/lib/escrow-actions";
 import { getLiveOrder } from "@/lib/live-orders";
 import { agreeSample, escalateSample, executeSampleSettlement, mediateSample, proposeSample, rejectSample, respondSample } from "@/lib/sample-orders";
-import { explorerTransactionUrl } from "@/lib/sui-dapp-kit";
+import { escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
 
 type Props = { order: DemoOrder; claim: ClaimView; company: string; onOrderChange: (order: DemoOrder) => void; onClaimChange: (claim: ClaimView) => void; railId?: string };
 
@@ -180,6 +180,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
 
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
       {error && <Notice tone="error" onDismiss={() => setError("")}>{error}</Notice>}
+      {live && !escrowConfigured && <Notice tone="warning">{ESCROW_NOT_CONFIGURED_REASON}</Notice>}
       {mediationNote && mediationNote.outcome === "abstain" && (
         <Notice tone="info" onDismiss={() => setMediationNote(null)}>
           <strong>The AI mediator did not propose a split.</strong> {mediationNote.reason}
@@ -304,8 +305,8 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
               </dl>
               <p>Both parties sign the exact split on Sui, then either party executes it.</p>
-              <Button className="btn-primary" disabled={Boolean(busy) || signed[mySide]} onClick={() => void approve()}>{signed[mySide] ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
-              <Button variant="outline" disabled={Boolean(busy)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
+              <Button className="btn-primary" disabled={Boolean(busy) || signed[mySide] || (live && !escrowConfigured)} onClick={() => void approve()}>{signed[mySide] ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
+              <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
               {live && <small className="muted">Execution succeeds only after both signatures are on chain.</small>}
             </div>
           )}
@@ -316,7 +317,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
               <dl className="fact-list">
                 <div><dt>Back to buyer</dt><dd><strong>{money(claim.settlement.buyerValue)} {order.currency}</strong></dd></div>
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
-                <div><dt>Sui transaction</dt><dd>{claim.settlement.transactionDigest && claim.settlement.executionStatus === "verified_on_chain" && live ? <a className="link" href={explorerTransactionUrl(claim.settlement.transactionDigest)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={12} aria-hidden="true" /></a> : "Sample record"}</dd></div>
+                <div><dt>Sui transaction</dt><dd>{claim.settlement.transactionDigest && claim.settlement.executionStatus === "verified_on_chain" && live ? <a className="link" href={explorerTxUrl(claim.settlement.transactionDigest)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={12} aria-hidden="true" /></a> : "Sample record"}</dd></div>
               </dl>
             </div>
           )}

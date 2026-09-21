@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { AppShell, EmptyArt, HelpHint, Notice, PageTitle, RoleTag, SampleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
 import { type DemoOrder, claimOwner, formatOrderMoney as money } from "@/lib/demo-orders";
 import { nextAction } from "@/lib/order-status";
-import { suiDAppKit, TESTNET_USDC_TYPE } from "@/lib/sui-dapp-kit";
+import { BOTCHAIN, formatBot } from "@/lib/chain";
 import { useWorkspace } from "@/lib/use-workspace";
+import { JsonRpcProvider } from "ethers";
 import { AnimatedAmount, LiftCard } from "@/app/components/motion";
 
 type QueueItem = { key: string; href: string; reference: string; title: string; detail: string; counterparty: string; role: "BUYER" | "SUPPLIER"; value: number; currency: string; status?: string; sample: boolean };
@@ -19,8 +20,8 @@ export default function OverviewPage() {
   useEffect(() => {
     const address = workspace.session?.suiAddress;
     if (!address) { setBalance(null); return; }
-    suiDAppKit.getClient("testnet").getBalance({ owner: address, coinType: TESTNET_USDC_TYPE })
-      .then((result) => setBalance(Number(result.balance.balance) / 1_000_000))
+    new JsonRpcProvider(BOTCHAIN.rpcUrl).getBalance(address)
+      .then((wei) => setBalance(Number(formatBot(wei))))
       .catch(() => setBalance(null));
   }, [workspace.session?.suiAddress]);
 
@@ -64,7 +65,7 @@ export default function OverviewPage() {
           <span className="ledger-icon"><WalletCards size={18} aria-hidden="true" /></span>
           <span className="ledger-label">Available in wallet</span>
           {balance === null ? <strong className="text">Not connected</strong> : <strong><AnimatedAmount value={balance} decimals={2} /> <small>USDC</small></strong>}
-          <small>{balance === null ? (workspace.live ? "Sign in with Google or connect a Sui wallet to load the balance." : "Sign in to load your balance.") : "Spendable now. Separate from escrow."}</small>
+          <small>{balance === null ? (workspace.live ? "Connect MetaMask to load your balance." : "Sign in to load your balance.") : "Spendable now. Separate from escrow."}</small>
           <span className="ledger-link">Open wallet<ArrowRight size={13} aria-hidden="true" /></span>
         </LiftCard>
         <div className="ledger-cell">

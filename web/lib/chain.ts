@@ -1,0 +1,89 @@
+/**
+ * BOT Chain network config, the escrow contract's address/deploy block (fail-closed when unset),
+ * explorer links, and exact decimal-string <-> wei conversions for the native BOT asset.
+ *
+ * Never do `Math.round(value * 10 ** 18)` anywhere in this app: it silently loses precision past
+ * about 15 significant digits. `parseBot`/`formatBot` below go through ethers' string-based
+ * decimal math instead, which is exact at any magnitude.
+ */
+import { formatUnits, parseUnits } from "ethers";
+
+export type BotChainNetwork = {
+  chainIdDec: number;
+  chainIdHex: string;
+  chainName: string;
+  rpcUrl: string;
+  explorerBase: string;
+};
+
+const NETWORKS: Record<number, BotChainNetwork> = {
+  968: {
+    chainIdDec: 968,
+    chainIdHex: "0x3c8",
+    chainName: "BOT Chain Testnet",
+    rpcUrl: "https://rpc.bohr.life",
+    explorerBase: "https://scan.bohr.life",
+  },
+  677: {
+    chainIdDec: 677,
+    chainIdHex: "0x2a5",
+    chainName: "BOT Chain",
+    rpcUrl: "https://rpc.botchain.ai",
+    explorerBase: "https://scan.botchain.ai",
+  },
+};
+
+const configuredChainId = Number(process.env.NEXT_PUBLIC_BOTCHAIN_CHAIN_ID ?? "968");
+
+/** The network this deployment targets. Defaults to testnet (968) on any unset or unknown value. */
+export const BOTCHAIN: BotChainNetwork = NETWORKS[configuredChainId] ?? NETWORKS[968];
+
+/** The exact object MetaMask's `wallet_addEthereumChain` expects for this network. */
+export const BOTCHAIN_ADD_CHAIN_PARAMS = {
+  chainId: BOTCHAIN.chainIdHex,
+  chainName: BOTCHAIN.chainName,
+  nativeCurrency: { name: "BOT", symbol: "BOT", decimals: 18 },
+  rpcUrls: [BOTCHAIN.rpcUrl],
+  blockExplorerUrls: [BOTCHAIN.explorerBase],
+};
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const configuredEscrowAddress = (process.env.NEXT_PUBLIC_OPENLC_ESCROW_ADDRESS ?? "").trim();
+const configuredDeployBlock = Number(process.env.NEXT_PUBLIC_OPENLC_ESCROW_DEPLOY_BLOCK ?? "0");
+
+export const ESCROW_ADDRESS = /^0x[0-9a-fA-F]{40}$/.test(configuredEscrowAddress)
+  ? configuredEscrowAddress
+  : ZERO_ADDRESS;
+
+export const ESCROW_DEPLOY_BLOCK =
+  Number.isSafeInteger(configuredDeployBlock) && configuredDeployBlock > 0 ? configuredDeployBlock : 0;
+
+/** Fails closed: every chain action must check this and refuse with a visible reason rather than
+ *  throwing a raw error at click time when the deployment has no escrow address configured yet. */
+export const escrowConfigured = ESCROW_ADDRESS !== ZERO_ADDRESS && ESCROW_DEPLOY_BLOCK > 0;
+
+export const ESCROW_NOT_CONFIGURED_REASON =
+  "The escrow contract is not configured for this deployment yet (NEXT_PUBLIC_OPENLC_ESCROW_ADDRESS / NEXT_PUBLIC_OPENLC_ESCROW_DEPLOY_BLOCK). Chain actions are disabled until it is.";
+
+/** Throws the same fail-closed message every escrow action should surface when unconfigured. */
+export function requireEscrowConfigured(): void {
+  if (!escrowConfigured) throw new Error(ESCROW_NOT_CONFIGURED_REASON);
+}
+
+export function explorerTxUrl(hash: string): string {
+  return `${BOTCHAIN.explorerBase}/tx/${hash}`;
+}
+
+export function explorerAddressUrl(address: string): string {
+  return `${BOTCHAIN.explorerBase}/address/${address}`;
+}
+
+/** Wei (or any BigNumberish) -> an exact decimal string, e.g. 1200000000000000000n -> "1.2". */
+export function formatBot(wei: bigint | string | number): string {
+  return formatUnits(wei, 18);
+}
+
+/** An exact decimal string -> wei, e.g. "1.2" -> 1200000000000000000n. Never float math. */
+export function parseBot(decimal: string): bigint {
+  return parseUnits(decimal, 18);
+}

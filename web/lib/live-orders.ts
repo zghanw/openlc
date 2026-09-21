@@ -3,29 +3,30 @@
 import { apiRequest, backendUrl, loadSession, type InvitationDelivery, type TradeInvitation, type TradeOrder, type WorkspaceProfile } from "@/lib/payproof-api";
 import { type DemoOrder, type DocumentKind, type ExtractedPurchaseOrder, type InspectionLine, type OrderDocument, type OrderEvent, type OrderInspection, formatOrderMoney as money, itemSummary } from "@/lib/demo-orders";
 import { STATUS, type OrderStatus } from "@/lib/order-status";
-import { DEFAULT_ARBITRATOR_ADDRESS, SUI_TYPE, TESTNET_USDC_TYPE } from "@/lib/sui-dapp-kit";
+import { formatBot, parseBot } from "@/lib/chain";
 
-/** Orders carry their own coin type, so scale and label follow the order rather than a global constant.
- *  New orders settle in Circle's testnet USDC; orders created while SUI was the default keep the SUI type. */
-type AssetLabel = "Testnet SUI" | "Testnet USDC";
-const ASSETS: Record<string, { decimals: number; symbol: string; label: AssetLabel }> = {
-  [SUI_TYPE]: { decimals: 9, symbol: "SUI", label: "Testnet SUI" },
-  [TESTNET_USDC_TYPE]: { decimals: 6, symbol: "USDC", label: "Testnet USDC" },
-};
-const DEFAULT_ASSET = ASSETS[TESTNET_USDC_TYPE];
+/** Arbitrator wallet written into every escrow. Set NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS to the
+ *  real arbitrator address; this placeholder is syntactically valid but not a real signer. */
+export const DEFAULT_ARBITRATOR_ADDRESS =
+  process.env.NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS?.trim() || `0x${"c".repeat(40)}`;
 
-const assetOf = (assetType?: string) => (assetType && ASSETS[assetType]) || DEFAULT_ASSET;
-export const assetSymbol = (assetType?: string) => assetOf(assetType).symbol;
-export const assetLabel = (assetType?: string): AssetLabel => assetOf(assetType).label;
 const DEFAULT_ARBITRATOR_ID = process.env.NEXT_PUBLIC_DEFAULT_ARBITRATOR_ID?.trim()
   || "00000000-0000-4000-8000-000000000001";
 
-export function fromUnits(units: string, assetType?: string): number {
-  return Number(BigInt(units)) / 10 ** assetOf(assetType).decimals;
+/** One asset now: native BOT, 18 decimals. There is no per-order asset table any more. */
+export const assetSymbol = (): "BOT" => "BOT";
+export const assetLabel = (): "Native BOT" => "Native BOT";
+
+/** Wei -> a display number. Never used for a transaction amount - see parseBot/formatBot in
+ *  chain.ts for the exact decimal-string math those need. */
+export function fromUnits(units: string): number {
+  return Number(formatBot(BigInt(units || "0")));
 }
 
-export function toUnits(value: number, assetType?: string): string {
-  return BigInt(Math.round(value * 10 ** assetOf(assetType).decimals)).toString();
+/** A display number -> a wei decimal string, via ethers' parseUnits (never Math.round(value * 10**18),
+ *  which silently loses precision at 18 decimals). */
+export function toUnits(value: number): string {
+  return parseBot(String(value)).toString();
 }
 
 function inspectionFromOrder(order: TradeOrder): OrderInspection | undefined {
@@ -34,9 +35,9 @@ function inspectionFromOrder(order: TradeOrder): OrderInspection | undefined {
   const lines: InspectionLine[] = record.lines.map((line) => ({ lineId: line.lineId, accepted: Number(line.accepted), missing: Number(line.missing), damaged: Number(line.damaged) }));
   const acceptedValue = lines.reduce((sum, line) => {
     const item = order.lineItems.find((candidate) => candidate.id === line.lineId);
-    return sum + (item ? line.accepted * fromUnits(item.unitPriceUnits, order.assetType) : 0);
+    return sum + (item ? line.accepted * fromUnits(item.unitPriceUnits) : 0);
   }, 0);
-  return { lines, note: record.note ?? "", recordedAt: record.recordedAt, acceptedValue, heldValue: Math.max(0, fromUnits(order.amountUnits, order.assetType) - acceptedValue) };
+  return { lines, note: record.note ?? "", recordedAt: record.recordedAt, acceptedValue, heldValue: Math.max(0, fromUnits(order.amountUnits) - acceptedValue) };
 }
 
 function liveEvents(order: TradeOrder): OrderEvent[] {
@@ -49,7 +50,7 @@ function liveEvents(order: TradeOrder): OrderEvent[] {
   } else if (order.supplierId && order.buyerId && step >= 1) {
     events.push({ at: order.updatedAt, label: "Order confirmed", detail: "Both parties confirmed the order terms." });
   }
-  if (order.funding) events.push({ at: order.funding.fundedAt, label: "Escrow funded", detail: order.funding.verificationStatus === "verified_on_chain" ? `${money(fromUnits(order.amountUnits, order.assetType))} ${assetSymbol(order.assetType)} secured and verified on Sui.` : `${money(fromUnits(order.amountUnits, order.assetType))} ${assetSymbol(order.assetType)} recorded from an external Sui reference.` });
+  if (order.funding) events.push({ at: order.funding.fundedAt, label: "Escrow funded", detail: order.funding.verificationStatus === "verified_on_chain" ? `${money(fromUnits(order.amountUnits))} ${assetSymbol()} secured and verified on BOT Chain.` : `${money(fromUnits(order.amountUnits))} ${assetSymbol()} recorded from an external chain reference.` });
   if (order.shipment) events.push({ at: order.shipment.dispatchedAt, label: "Shipped", detail: `${order.supplierName} dispatched the goods with ${order.shipment.carrier}${order.shipment.trackingNumber ? `, tracking ${order.shipment.trackingNumber}` : ""}.` });
   else if (step >= 3) events.push({ at: order.updatedAt, label: "Shipped", detail: `${order.supplierName} marked the order in transit.` });
   if (order.deliveryRecord) events.push({ at: order.deliveryRecord.recordedAt, label: "Delivered", detail: order.deliveryRecord.reference ? `Delivery recorded, reference ${order.deliveryRecord.reference}.` : "Delivery was recorded." });
@@ -61,7 +62,7 @@ function liveEvents(order: TradeOrder): OrderEvent[] {
   if (order.settlement) events.push({ at: order.updatedAt, label: "Settled", detail: order.settlement.source === "full_acceptance" ? "Delivery accepted in full. The whole escrow was released to the supplier."
     : order.settlement.source === "refund_unshipped" ? "The delivery deadline passed without shipment. The escrow was returned to the buyer."
     : order.settlement.source === "claim_uninspected" ? "The inspection window closed without a decision. The escrow was released to the supplier."
-    : order.settlement.verifiedOnChain ? "Settlement verified on Sui." : "Settlement recorded." });
+    : order.settlement.verifiedOnChain ? "Settlement verified on BOT Chain." : "Settlement recorded." });
   return events;
 }
 
@@ -85,7 +86,7 @@ export function tradeOrderToView(order: TradeOrder, profile?: WorkspaceProfile):
   const role: DemoOrder["role"] = isBuyer ? "BUYER" : isSupplier ? "SUPPLIER" : invited && pendingSide === "buyer" ? "BUYER" : "SUPPLIER";
   const items = order.lineItems.map((item) => ({
     id: item.id, description: item.description, quantity: Number(item.quantity), unit: item.unit,
-    unitPrice: fromUnits(item.unitPriceUnits, order.assetType),
+    unitPrice: fromUnits(item.unitPriceUnits),
   }));
   const buyer = order.buyerName || order.buyerEmail || "Buyer organisation";
   const supplier = order.supplierName || order.supplierEmail;
@@ -96,14 +97,14 @@ export function tradeOrderToView(order: TradeOrder, profile?: WorkspaceProfile):
     id: order.id, reference: order.reference, role, initiatorRole: order.initiatorRole ?? "buyer",
     counterparty: role === "BUYER" ? supplier : buyer, buyer, supplier,
     item: itemSummary(items, order.description),
-    items, status, value: fromUnits(order.amountUnits, order.assetType),
+    items, status, value: fromUnits(order.amountUnits),
     delivery: order.deliveryDate, deliveryLocation: order.deliveryLocation,
-    settlementAsset: assetLabel(order.assetType), currency: assetSymbol(order.assetType),
+    settlementAsset: assetLabel(), currency: assetSymbol(),
     releasePlan: order.releasePlan ? {
-      depositValue: fromUnits(order.releasePlan.depositUnits, order.assetType),
-      dispatchValue: fromUnits(order.releasePlan.dispatchUnits, order.assetType),
-      deliveryValue: fromUnits(order.releasePlan.deliveryUnits, order.assetType),
-    } : { depositValue: 0, dispatchValue: 0, deliveryValue: fromUnits(order.amountUnits, order.assetType) },
+      depositValue: fromUnits(order.releasePlan.depositUnits),
+      dispatchValue: fromUnits(order.releasePlan.dispatchUnits),
+      deliveryValue: fromUnits(order.releasePlan.deliveryUnits),
+    } : { depositValue: 0, dispatchValue: 0, deliveryValue: fromUnits(order.amountUnits) },
     version: order.version, inviteToken: undefined,
     source: "backend",
     documents: documentsOf(order),
@@ -118,7 +119,7 @@ export function tradeOrderToView(order: TradeOrder, profile?: WorkspaceProfile):
     funding: order.funding,
     disputeId: order.disputeId,
     settlement: order.settlement ? {
-      buyerValue: fromUnits(order.settlement.buyerUnits, order.assetType), supplierValue: fromUnits(order.settlement.supplierUnits, order.assetType),
+      buyerValue: fromUnits(order.settlement.buyerUnits), supplierValue: fromUnits(order.settlement.supplierUnits),
       transactionDigest: order.settlement.transactionDigest, verifiedOnChain: order.settlement.verifiedOnChain, source: order.settlement.source,
     } : undefined,
     raw: order,
@@ -155,9 +156,9 @@ export async function createLiveOrder(input: CreateLiveOrderInput): Promise<{ or
     body: JSON.stringify({
       reference: input.reference.trim() || `PO-${Date.now().toString().slice(-8)}`,
       initiatorRole: input.initiatorRole, ...counterparty,
-      arbitratorId: DEFAULT_ARBITRATOR_ID, arbitratorWalletAddress: DEFAULT_ARBITRATOR_ADDRESS, assetType: TESTNET_USDC_TYPE, amountUnits: toUnits(amount, TESTNET_USDC_TYPE),
+      arbitratorId: DEFAULT_ARBITRATOR_ID, arbitratorWalletAddress: DEFAULT_ARBITRATOR_ADDRESS, assetType: "BOT", amountUnits: toUnits(amount),
       releasePlan: (() => {
-        const totalUnits = BigInt(toUnits(amount, TESTNET_USDC_TYPE));
+        const totalUnits = BigInt(toUnits(amount));
         const depositUnits = totalUnits * BigInt(input.releasePercentages.deposit) / 100n;
         const dispatchUnits = totalUnits * BigInt(input.releasePercentages.dispatch) / 100n;
         return { depositUnits: depositUnits.toString(), dispatchUnits: dispatchUnits.toString(), deliveryUnits: (totalUnits - depositUnits - dispatchUnits).toString() };
@@ -166,7 +167,7 @@ export async function createLiveOrder(input: CreateLiveOrderInput): Promise<{ or
       deliveryDate: input.deliveryDate, deliveryLocation: input.deliveryLocation,
       lineItems: input.items.map((item) => ({
         id: item.id, description: item.description, quantity: String(item.quantity), unit: item.unit,
-        unitPriceUnits: toUnits(item.unitPrice, TESTNET_USDC_TYPE),
+        unitPriceUnits: toUnits(item.unitPrice),
       })),
     }),
   });
@@ -214,7 +215,7 @@ export async function loadInvitations(): Promise<LiveInvitation[]> {
   return invitations.map((invitation) => ({
     orderId: invitation.orderId, reference: invitation.reference, counterpartyName: invitation.counterpartyName ?? invitation.buyerName,
     invitedRole: invitation.invitedRole ?? "supplier",
-    invitedEmail: invitation.invitedEmail, value: fromUnits(invitation.amountUnits, invitation.assetType), currency: assetSymbol(invitation.assetType),
+    invitedEmail: invitation.invitedEmail, value: fromUnits(invitation.amountUnits), currency: assetSymbol(),
     deliveryDate: invitation.deliveryDate, expiresAt: invitation.expiresAt,
   }));
 }
@@ -280,28 +281,6 @@ export async function acceptLiveDelivery(id: string, input: AcceptanceInput): Pr
   }));
 }
 
-const placeholderId = (prefix: string) => `${prefix}${Date.now().toString(16).padStart(40, "0")}`;
-
-/**
- * Demo control only: records a funding reference without an on-chain
- * transaction. The backend accepts this only when its Sui verifier is off and
- * marks the record as an external reference.
- */
-export async function recordDemoFunding(order: DemoOrder): Promise<DemoOrder> {
-  const raw = order.raw;
-  if (!raw) throw new Error("Only live orders can record funding.");
-  const session = loadSession();
-  return withProfile(apiRequest<TradeOrder>(`/v1/orders/${encodeURIComponent(order.id)}/funding`, {
-    method: "POST",
-    body: JSON.stringify({
-      packageId: process.env.NEXT_PUBLIC_PAYPROOF_PACKAGE_ID?.trim() || "0x09016642916e5558256e4d5dbc2745c4eb4585c0f163a7f96d99438c77960501",
-      escrowObjectId: placeholderId("0x"), transactionDigest: `demo-${Date.now()}`,
-      buyerAddress: session?.suiAddress || placeholderId("0x"), supplierAddress: raw.supplierWalletAddress || placeholderId("0x"),
-      arbitratorAddress: raw.arbitratorWalletAddress || DEFAULT_ARBITRATOR_ADDRESS,
-    }),
-  }));
-}
-
 /** Uploads a file to the order's document store and returns the refreshed order. */
 export async function uploadOrderDocument(orderId: string, file: File, kind: DocumentKind, extras: { transcript?: string; extracted?: ExtractedPurchaseOrder; anchorTransactionDigest?: string } = {}): Promise<DemoOrder> {
   const session = loadSession();
@@ -329,9 +308,4 @@ export async function openOrderDocument(orderId: string, documentId: string): Pr
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank", "noopener");
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
-
-/** Demo control only: full acceptance without the release_full transaction. */
-export async function recordDemoAcceptance(order: DemoOrder, inspection?: { lines: InspectionLine[]; note?: string }): Promise<DemoOrder> {
-  return acceptLiveDelivery(order.id, { transactionDigest: `demo-release-${Date.now()}`, inspection });
 }

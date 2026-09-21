@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { STATUS, TERMS, statusLabel, statusTone } from "@/lib/order-status";
 import { MotionShell } from "@/app/components/motion";
 import { clearSession, loadSession, signOutSession, updateWorkspaceName } from "@/lib/payproof-api";
-import { clearZkLoginSession } from "@/lib/auth";
+import { BOTCHAIN } from "@/lib/chain";
+import { useWallet } from "@/lib/wallet";
 
 export function Logo() {
   return (
@@ -104,7 +105,6 @@ function UserMenu({ company, email }: { company: string; email?: string }) {
   }, [open]);
   const signOut = async () => {
     try { await signOutSession(); } catch { clearSession(); }
-    clearZkLoginSession();
     window.location.href = "/";
   };
   const beginEdit = () => {
@@ -178,6 +178,8 @@ function UserMenu({ company, email }: { company: string; email?: string }) {
 export function AppShell({ active, company, children, actionCount = 0 }: { active: "overview" | "orders" | "wallet" | "none"; company: string; children: ReactNode; actionCount?: number }) {
   const [email, setEmail] = useState<string>();
   useEffect(() => { setEmail(loadSession()?.user.email); }, []);
+  const wallet = useWallet();
+  const wrongNetwork = Boolean(wallet.account) && !wallet.isCorrectNetwork;
   return (
     <MotionShell>
     <div className="shell">
@@ -192,6 +194,14 @@ export function AppShell({ active, company, children, actionCount = 0 }: { activ
         </nav>
         <UserMenu company={company} email={email} />
       </header>
+      {wrongNetwork && (
+        <Notice tone="warning">
+          <span>Your wallet is connected to the wrong network. This app needs <strong>{BOTCHAIN.chainName}</strong>.</span>
+          <Button size="sm" variant="outline" disabled={wallet.switchingNetwork} onClick={() => void wallet.ensureBotChain()}>
+            {wallet.switchingNetwork ? "Switching…" : `Switch to ${BOTCHAIN.chainName}`}
+          </Button>
+        </Notice>
+      )}
       <main className="shell-main">{children}</main>
       <footer className="shell-footer">
         <span>ProofPay on Sui Testnet</span>

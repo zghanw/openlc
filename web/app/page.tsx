@@ -1,11 +1,8 @@
 "use client";
 
 import { type PointerEvent as ReactPointerEvent, useEffect } from "react";
-import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
-import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import {
   ArrowRight,
-  ArrowLeftRight,
   BadgeCheck,
   Box,
   Building2,
@@ -40,12 +37,8 @@ import {
 } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  demoGoogleLogin,
-  hasSupabaseConfig,
-  startSupabaseGoogleLogin,
-} from "@/lib/payproof-api";
-import { authenticateConnectedWallet, beginGoogleZkLogin } from "@/lib/auth";
+import { authenticateConnectedWallet } from "@/lib/auth";
+import { shortAddress, useWallet } from "@/lib/wallet";
 
 const flow = [
   {
@@ -85,295 +78,56 @@ function Logo() {
   );
 }
 
-function GoogleMark() {
-  return (
-    <span className="google-mark" aria-hidden="true">
-      G
-    </span>
-  );
-}
-
-function LegacyGoogleLoginBanner() {
+/** MetaMask-only sign-in: connect, then sign a readable challenge message to prove ownership. */
+function WalletSignInBanner() {
   const router = useRouter();
-  const account = useCurrentAccount();
-  const [busy, setBusy] = useState(false);
+  const wallet = useWallet();
+  const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState("");
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
-  const shortenAddress = (address: string) =>
-    `${address.slice(0, 6)}\u2026${address.slice(-4)}`;
-
-  async function login() {
-    setBusy(true);
+  async function signIn() {
+    if (!wallet.account) return;
+    setSigningIn(true);
     setError("");
     try {
-      if (hasSupabaseConfig()) {
-        await startSupabaseGoogleLogin();
-      } else {
-        await demoGoogleLogin("buyer@greenbite.demo", "Shen En");
-        router.push("/workspace");
-      }
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "The demo sign-in service is unavailable.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button className="google-cta">
-          <GoogleMark />
-          Continue with Google
-          <ArrowRight size={17} />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="google-auth-dialog">
-        <div className="google-auth-orbit" aria-hidden="true">
-          <span />
-          <i />
-        </div>
-        <div className="google-auth-topline">
-          <div className="google-auth-brand">
-            <GoogleMark />
-            <strong>Google</strong>
-          </div>
-          <span>
-            <LockKeyhole size={13} />
-            Secure sign-in
-          </span>
-        </div>
-
-        <DialogHeader className="google-auth-heading">
-          <DialogTitle>Continue with Google</DialogTitle>
-          <DialogDescription>
-            Creates your secure PayProof account through a verified Sui
-            identity.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div
-          className="google-auth-route"
-          aria-label="Google, real Sui zkLogin, and a PayProof account with a Sui address for signing"
-        >
-          <div>
-            <span className="google-route-icon">
-              <GoogleMark />
-            </span>
-            <small>IDENTITY</small>
-            <strong>Google</strong>
-          </div>
-          <span className="google-route-line">
-            <i />
-            <ArrowRight size={15} />
-          </span>
-          <div>
-            <span className="proofpay-route-icon zklogin-route-icon">
-              <Fingerprint size={18} />
-            </span>
-            <small>PAYMENT PROOF</small>
-            <strong>Real Sui zkLogin</strong>
-          </div>
-          <span className="google-route-line">
-            <i />
-            <ArrowRight size={15} />
-          </span>
-          <div>
-            <span
-              className="proofpay-route-icon brand-logo-mark"
-              aria-hidden="true"
-            >
-              <img src="/assets/proofpay-logo.jpg" alt="" width="40" height="40" />
-            </span>
-            <small>ACCOUNT</small>
-            <strong>PayProof account + Sui address for signing</strong>
-          </div>
-        </div>
-
-        <div className="google-auth-role">
-          <span>
-            <ArrowLeftRight size={18} />
-          </span>
-          <div>
-            <small>ONE ACCOUNT · ROLE SET PER ORDER</small>
-            <strong>ProofPay Business Workspace</strong>
-          </div>
-          <BadgeCheck size={18} />
-        </div>
-
-        <button
-          className="google-auth-continue"
-          type="button"
-          onClick={() => void login()}
-          disabled={busy}
-        >
-          <GoogleMark />
-          <span>
-            <strong>{busy ? "Signing in…" : "Continue with Google"}</strong>
-            <small>Creates your secure PayProof account</small>
-          </span>
-          <ArrowRight size={17} />
-        </button>
-
-        <button
-          className="auth-more-options"
-          type="button"
-          aria-expanded={showMoreOptions}
-          onClick={() => setShowMoreOptions((visible) => !visible)}
-        >
-          <span>More sign-in options</span>
-          <ChevronRight size={15} className={showMoreOptions ? "open" : ""} />
-        </button>
-
-        {showMoreOptions && (
-          <div className="wallet-auth-option">
-            <div className="wallet-auth-copy">
-              <span className="wallet-auth-icon">
-                <WalletCards size={18} />
-              </span>
-              <div>
-                <small>ALTERNATIVE LOGIN PATH</small>
-                <strong>Connect existing Sui wallet</strong>
-                <small>
-                  Creates your PayProof account using that verified address.
-                </small>
-              </div>
-            </div>
-            <ConnectButton>
-              <span className="wallet-connect-label">
-                {account ? "Wallet connected" : "Connect wallet"}
-                <ArrowRight size={14} />
-              </span>
-            </ConnectButton>
-            {account && (
-              <p className="wallet-auth-verified" role="status">
-                <BadgeCheck size={14} />
-                <span>
-                  <strong>Verified Sui address</strong>
-                  <small>{shortenAddress(account.address)}</small>
-                </span>
-              </p>
-            )}
-          </div>
-        )}
-
-        {error && (
-          <p className="google-auth-error" role="alert">
-            {error}
-          </p>
-        )}
-
-        <p className="google-auth-privacy">
-          <ShieldCheck size={14} />
-          Supabase stores private app data. Sui signs and records escrow
-          transactions. ProofPay never sees or stores your Google password.
-        </p>
-        <div className="google-auth-foot">
-          <strong>Powered by Sui</strong>
-          <span>PRIVATE APP DATA IN SUPABASE</span>
-          <span>NO PASSWORD COLLECTION</span>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function GoogleLoginBanner() {
-  const router = useRouter();
-  const account = useCurrentAccount();
-  const dAppKit = useDAppKit();
-  const [busy, setBusy] = useState(false);
-  const [walletOpen, setWalletOpen] = useState(false);
-  const [error, setError] = useState("");
-  const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
-
-  async function googleLogin() {
-    setBusy(true);
-    setError("");
-    try {
-      await beginGoogleZkLogin();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Google sign-in could not be started.");
-      setBusy(false);
-    }
-  }
-
-  async function walletLogin() {
-    if (!account) return;
-    setBusy(true);
-    setError("");
-    try {
-      await authenticateConnectedWallet({
-        address: account.address,
-        sign: (message) => dAppKit.signPersonalMessage({ message }),
-      });
+      await authenticateConnectedWallet({ address: wallet.account, sign: wallet.signMessage });
       router.push("/workspace");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Wallet ownership could not be verified.");
     } finally {
-      setBusy(false);
+      setSigningIn(false);
     }
   }
 
   return (
     <div className="auth-entry">
-      <button className="google-cta" type="button" onClick={() => void googleLogin()} disabled={busy}>
-        <GoogleMark />
-        <span>
-          <strong>{busy ? "Preparing sign-in…" : "Continue with Google"}</strong>
-          <small>Includes a Sui zkLogin address</small>
-        </span>
-        <ArrowRight size={17} />
-      </button>
-
-      <button className="auth-more-options" type="button" aria-expanded={walletOpen} onClick={() => setWalletOpen((open) => !open)}>
-        <span>Other sign-in options</span>
-        <ChevronRight size={15} className={walletOpen ? "open" : ""} />
-      </button>
-
-      {walletOpen && (
-      <>
-      <div className="auth-choice-divider"><span>or use an existing wallet</span></div>
-
-      <div className="wallet-auth-option wallet-auth-inline">
-        <div className="wallet-auth-copy">
-          <span className="wallet-auth-icon"><WalletCards size={18} /></span>
-          <div>
-            <strong>Connect existing Sui wallet</strong>
-            <small>For users who already manage a Sui wallet.</small>
-          </div>
-        </div>
-        <ConnectButton>
-          <span className="wallet-connect-label">
-            {account ? "Wallet connected" : "Connect wallet"}
-            <ArrowRight size={14} />
+      {!wallet.hasWallet ? (
+        <p className="google-auth-error" role="alert">No wallet found. Install MetaMask, then reload this page to sign in.</p>
+      ) : !wallet.account ? (
+        <button className="google-cta" type="button" onClick={() => void wallet.connect()} disabled={wallet.connecting}>
+          <WalletCards size={18} />
+          <span>
+            <strong>{wallet.connecting ? "Connecting…" : "Connect MetaMask"}</strong>
+            <small>Sign in with your wallet, no password</small>
           </span>
-        </ConnectButton>
-        {account && (
-          <>
-            <p className="wallet-auth-verified" role="status">
-              <BadgeCheck size={14} />
-              <span><strong>Connected address</strong><small>{shortAddress(account.address)}</small></span>
-            </p>
-            <button className="wallet-signin-button" type="button" onClick={() => void walletLogin()} disabled={busy}>
-              <ShieldCheck size={15} />
-              Sign in with this wallet
-              <ArrowRight size={14} />
-            </button>
-            <small className="wallet-signin-help">You will sign a readable message. No transaction or fee.</small>
-          </>
-        )}
-      </div>
-      </>
+          <ArrowRight size={17} />
+        </button>
+      ) : (
+        <>
+          <p className="wallet-auth-verified" role="status">
+            <BadgeCheck size={14} />
+            <span><strong>Connected</strong><small>{shortAddress(wallet.account)}</small></span>
+          </p>
+          <button className="wallet-signin-button" type="button" onClick={() => void signIn()} disabled={signingIn}>
+            <ShieldCheck size={15} />
+            {signingIn ? "Signing in…" : "Sign in with this wallet"}
+            <ArrowRight size={14} />
+          </button>
+          <small className="wallet-signin-help">You will sign a readable message. No transaction or fee.</small>
+        </>
       )}
-
-      {error && <p className="google-auth-error" role="alert">{error}</p>}
-      <p className="auth-entry-assurance"><LockKeyhole size={13} /> Google uses Sui zkLogin. Wallet sign-in verifies ownership without spending funds.</p>
+      {(error || wallet.error) && <p className="google-auth-error" role="alert">{error || wallet.error}</p>}
+      <p className="auth-entry-assurance"><LockKeyhole size={13} /> Wallet sign-in proves you control the address. No password or seed phrase is ever collected.</p>
     </div>
   );
 }
@@ -482,7 +236,7 @@ function AccessPanel() {
       </div>
       <h2>Open your workspace.</h2>
       <p>Purchase or supply from one account. Your role is set separately on each order.</p>
-      <GoogleLoginBanner />
+      <WalletSignInBanner />
       <small className="legal-copy consent-copy">
         By continuing you agree to the{" "}
         <a href="/legal/terms">Terms of Service</a> and the{" "}

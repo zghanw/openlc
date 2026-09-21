@@ -207,7 +207,7 @@ export type DemoOrder = {
   releasePlan?: { depositValue: number; dispatchValue: number; deliveryValue: number };
   delivery: string;
   deliveryLocation: string;
-  settlementAsset: "Testnet SUI" | "Testnet USDC";
+  settlementAsset: "Testnet SUI" | "Testnet USDC" | "Native BOT";
   /** Symbol shown next to every amount on this order. */
   currency: string;
   deadlines?: OrderDeadlines;
