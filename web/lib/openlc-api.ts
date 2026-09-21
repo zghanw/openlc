@@ -3,7 +3,7 @@
 export type DemoSession = {
   accessToken: string;
   user: { id: string; email: string; name: string };
-  mode: "demo-google" | "supabase" | "wallet";
+  mode: "wallet";
   walletAddress?: string;
 };
 
@@ -246,23 +246,6 @@ export function hasSupabaseConfig(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_KEY);
 }
 
-export async function startSupabaseGoogleLogin(): Promise<void> {
-  if (!hasSupabaseConfig())
-    throw new Error(
-      "Supabase Google OAuth is not configured for this frontend build.",
-    );
-  const { createClient } = await import("@supabase/supabase-js");
-  const client = createClient(SUPABASE_URL!, SUPABASE_KEY!, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  });
-  const { data, error } = await client.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: `${window.location.origin}/workspace` },
-  });
-  if (error) throw new Error(error.message);
-  if (data.url) window.location.assign(data.url);
-}
-
 export async function restoreSupabaseSession(): Promise<DemoSession | null> {
   if (!hasSupabaseConfig()) return null;
   const { createClient } = await import("@supabase/supabase-js");
@@ -273,7 +256,7 @@ export async function restoreSupabaseSession(): Promise<DemoSession | null> {
   if (error || !data.session?.access_token || !data.session.user) return null;
   const session: DemoSession = {
     accessToken: data.session.access_token,
-    mode: "supabase",
+    mode: "wallet",
     user: {
       id: data.session.user.id,
       email: data.session.user.email ?? "",
@@ -314,22 +297,6 @@ export async function signOutSession(): Promise<void> {
     auth: { persistSession: true, autoRefreshToken: true },
   });
   await client.auth.signOut();
-}
-
-export async function demoGoogleLogin(
-  email: string,
-  name: string,
-): Promise<DemoSession> {
-  const response = await fetch(`${BACKEND_URL}/auth/demo/google`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, name }),
-  });
-  if (!response.ok) throw new Error(await readError(response));
-  const payload = (await response.json()) as Omit<DemoSession, "mode">;
-  const session = { ...payload, mode: "demo-google" as const };
-  saveSession(session);
-  return session;
 }
 
 export async function apiRequest<T>(

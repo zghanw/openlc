@@ -5,10 +5,9 @@ import { backendUrl, saveSession, type DemoSession } from "@/lib/openlc-api";
 /**
  * Wallet sign-in only. POSTs for a challenge, signs the returned message with the connected
  * wallet's personal_sign (EIP-191, via ethers' signMessage), verifies it, and stores the session
- * exactly like every other sign-in path so payproof-api.ts keeps working unchanged.
+ * exactly like every other sign-in path so openlc-api.ts keeps working unchanged.
  *
- * The zkLogin, Google OAuth and Supabase-OAuth paths this file used to hold are gone: BOT Chain
- * has no zkLogin equivalent, and MetaMask is the only sign-in surface now.
+ * MetaMask is the only sign-in surface.
  */
 export async function authenticateConnectedWallet(input: {
   address: string;

@@ -47,7 +47,7 @@ export type OrderDocument = {
   /** Path in the backend document store. Present when both parties can open the file. */
   storagePath?: string;
   remote?: boolean;
-  /** The Sui transaction that bound this file's fingerprint to the escrow. */
+  /** The BOT Chain transaction that anchored this file's fingerprint to the escrow. */
   anchor?: { transactionDigest: string; verificationStatus: "verified_on_chain" | "external_reference" };
   /** Public demo asset that can be opened without the private document API. */
   url?: string;

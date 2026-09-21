@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { AppShell, HelpHint, Notice, PageTitle } from "@/app/components/app-shell";
 import { type DemoOrder, formatOrderMoney as money } from "@/lib/demo-orders";
-import { describeEscrowError, type PaymentRequest, parsePaymentRequest, useEscrowActions } from "@/lib/escrow-actions";
+import { describeEscrowError, useEscrowActions } from "@/lib/escrow-actions";
 import { type ReleaseStageKey, releaseProgress } from "@/app/components/release-plan";
 import { BOTCHAIN, ESCROW_ADDRESS, escrowConfigured, explorerAddressUrl, explorerTxUrl, formatBot } from "@/lib/chain";
 import { useWallet } from "@/lib/wallet";
@@ -20,7 +20,6 @@ import { AnimatedAmount, LiftCard } from "@/app/components/motion";
 /** "in" and "out" change the wallet balance. "escrow" moves money the contract holds, so it
  *  is shown without a sign: the buyer already paid it in when the order was funded. */
 type Movement = { id: string; type: "in" | "out" | "escrow"; title: string; detail: string; amount: number; currency?: string; at: string; state: "pending" | "complete"; transactionDigest?: string; stage?: ReleaseStageKey | "escrow"; orderId?: string };
-type Method = "card" | "bank";
 type Balances = { bot: number };
 
 function sumOrders(orders: DemoOrder[], pick: (order: DemoOrder) => number = (order) => order.value): string {
@@ -74,22 +73,11 @@ function escrowMovements(orders: DemoOrder[]): Movement[] {
   return out;
 }
 
-const MOVEMENTS_KEY = "openlc_wallet_movements";
-const BANKS = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Malaysia"];
-
-function loadMovements(accountKey: string): Movement[] {
-  try { return JSON.parse(localStorage.getItem(`${MOVEMENTS_KEY}:${accountKey}`) ?? "[]") as Movement[]; } catch { return []; }
-}
-function saveMovements(accountKey: string, movements: Movement[]) {
-  localStorage.setItem(`${MOVEMENTS_KEY}:${accountKey}`, JSON.stringify(movements));
-}
-
 export default function WalletPage() {
   const workspace = useWorkspace();
   const wallet = useWallet();
   const [balances, setBalances] = useState<Balances | null>(null);
   const [balanceNote, setBalanceNote] = useState("");
-  const [movements, setMovements] = useState<Movement[]>([]);
   const [notice, setNotice] = useState("");
   const address = workspace.session?.walletAddress ?? "";
   const balance = balances?.bot ?? null;
@@ -106,7 +94,6 @@ export default function WalletPage() {
 
   useEffect(() => {
     if (!workspace.ready) return;
-    setMovements(loadMovements(workspace.accountKey));
     if (!address) { setBalances(null); setBalanceNote(workspace.live ? "Connect MetaMask to load your on-chain balance." : "Sign in to load your balance."); return; }
     void refreshBalances();
   }, [workspace.ready, workspace.accountKey, workspace.live, address, refreshBalances]);
@@ -155,24 +142,16 @@ export default function WalletPage() {
     const buying = funded("BUYER");
     const supplying = funded("SUPPLIER");
     const held = ledgerOrders.filter((order) => order.inspection && order.inspection.heldValue > 0 && !["settled", "cancelled"].includes(order.status));
-    const pendingIn = movements.filter((item) => item.state === "pending" && item.type === "in").reduce((sum, item) => sum + item.amount, 0);
-    const pendingOut = movements.filter((item) => item.state === "pending" && item.type === "out").reduce((sum, item) => sum + item.amount, 0);
     return {
       buying: { value: sumOrders(buying), count: buying.length },
       supplying: { value: sumOrders(supplying), count: supplying.length },
       held: { value: sumOrders(held, (order) => order.inspection?.heldValue ?? 0), count: held.length },
-      pendingIn, pendingOut,
+      pendingIn: 0, pendingOut: 0,
     };
-  }, [ledgerOrders, movements]);
+  }, [ledgerOrders]);
 
-  const activity = useMemo(() => [...escrowMovements(ledgerOrders), ...movements]
-    .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")), [ledgerOrders, movements]);
-
-  const record = (movement: Movement) => {
-    const next = [movement, ...movements];
-    setMovements(next);
-    saveMovements(workspace.accountKey, next);
-  };
+  const activity = useMemo(() => escrowMovements(ledgerOrders)
+    .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")), [ledgerOrders]);
 
   return (
     <AppShell active="wallet" company={workspace.company}>

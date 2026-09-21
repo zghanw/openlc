@@ -35,40 +35,6 @@ export type ClaimInput = {
   inspection?: { lines: InspectionLine[]; note?: string };
 };
 
-/** A payment request as encoded in a merchant's QR code. Direct wallet-to-wallet payments outside
- *  an escrow have no BOT Chain equivalent (payproof::pay was not ported, see spec.md), so nothing
- *  in this file signs one any more - this only keeps the QR scan/preview screen's shape intact. */
-export type PaymentRequest = {
-  v: 1;
-  network: "sui:testnet";
-  to: string;
-  merchant: string;
-  amount: string;
-  currency: string;
-  coinType: string;
-  reference: string;
-  session: string;
-};
-
-const WALLET_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-
-/** Parses the text behind a payment QR and rejects anything that is not a well-formed request. */
-export function parsePaymentRequest(text: string): PaymentRequest {
-  let raw: Partial<PaymentRequest>;
-  try { raw = JSON.parse(text.trim()) as Partial<PaymentRequest>; } catch { throw new Error("That is not a PayProof payment request."); }
-  if (raw.v !== 1 || raw.network !== "sui:testnet") throw new Error("This payment request is for a different network or version.");
-  if (typeof raw.to !== "string" || !WALLET_ADDRESS.test(raw.to)) throw new Error("The payment request has no valid recipient address.");
-  const amount = Number(raw.amount);
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error("The payment request has no valid amount.");
-  if (typeof raw.coinType !== "string" || !raw.coinType.includes("::")) throw new Error("The payment request has no valid coin type.");
-  const reference = String(raw.reference ?? "").trim();
-  if (!reference || new TextEncoder().encode(reference).length > 128) throw new Error("The payment reference must be between 1 and 128 bytes.");
-  return {
-    v: 1, network: "sui:testnet", to: raw.to, merchant: String(raw.merchant ?? "").slice(0, 120), amount: String(raw.amount), currency: String(raw.currency ?? ""),
-    coinType: raw.coinType, reference, session: String(raw.session ?? "").slice(0, 64),
-  };
-}
-
 function asBytes32(hex: string, what = "The value"): string {
   const clean = hex.replace(/^0x/, "").toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(clean)) throw new Error(`${what} must be a 32-byte hex value.`);
@@ -304,8 +270,8 @@ function disputePostPayload(txHash: string, disputedUnits: string, requestedUnit
 }
 
 /**
- * Every escrow action that sends a transaction, on ethers against BOT Chain. Same hook name and
- * function signatures as the Sui version so every caller keeps compiling.
+ * Every escrow action that sends a transaction, on ethers against BOT Chain. Keeps the same
+ * function signatures so every caller keeps compiling.
  */
 export function useEscrowActions() {
   const wallet = useWallet();

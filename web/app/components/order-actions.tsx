@@ -8,7 +8,7 @@ import { AgreementBlock, ConsentDialog, FileField, HelpHint, Notice } from "@/ap
 import { ClaimSection } from "@/app/components/claim-section";
 import { type Anchor, ExtractionComparison, attachFile, buildDocument, extractPurchaseOrder, prepareEvidence } from "@/app/components/order-documents";
 import { type DemoOrder, type DocumentKind, type InspectionLine, type OrderDocument, type OrderShipment, claimOwner, formatDate, formatDateTime, formatOrderMoney as money, sha256Hex } from "@/lib/demo-orders";
-import { loadClaim, openDemoClaim } from "@/lib/dispute-actions";
+import { loadClaim } from "@/lib/dispute-actions";
 import { useEscrowActions } from "@/lib/escrow-actions";
 import { acceptLiveInvitation, acceptLiveInvite, anchorLiveDocument, ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, cancelLiveInvite, markLiveDelivered, sendLiveInvite, tradeOrderToView, viewLiveOrder } from "@/lib/live-orders";
 import { withExtras } from "@/lib/local-order-extras";
@@ -448,14 +448,8 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
     else {
       if (!base.raw) throw new Error("Order data is missing.");
       const input = { disputedValue: totals.held, requestedValue: totals.held, claim: note.trim(), evidence: `${note.trim()}${file ? ` Evidence file ${file.name} attached.` : ""}`, files, inspection: { lines, note: note.trim() } };
-      if (demo) {
-        const result = await openDemoClaim(base.id, input);
-        const { getLiveOrder } = await import("@/lib/live-orders");
-        next = { ...withExtras(await getLiveOrder(result.orderId)), claim: result.claim };
-      } else {
-        const result = await escrow.openClaim(base.raw, input);
-        next = { ...withExtras(result.order), claim: result.claim };
-      }
+      const result = await escrow.openClaim(base.raw, input);
+      next = { ...withExtras(result.order), claim: result.claim };
     }
     return next;
   }, "Claim opened. The accepted value is released and the disputed amount stays in escrow until the claim is settled.");

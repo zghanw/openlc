@@ -142,26 +142,3 @@ export async function enforceClaimDeadline(disputeId: string): Promise<ClaimView
 export async function confirmClaimExecution(disputeId: string, proof: { transactionDigest: string; packageId: string; escrowObjectId: string; receiptObjectId?: string }): Promise<ClaimView> {
   return disputeToClaim(await apiRequest<DisputeRecord>(`/v1/disputes/${encodeURIComponent(disputeId)}/settlement-execution`, { method: "POST", body: JSON.stringify(proof) }));
 }
-
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-/** A placeholder that passes the backend's digest format check while clearly not being a real Sui digest. */
-export function demoDigest(): string {
-  let value = "Demo";
-  for (let index = 0; index < 28; index += 1) value += BASE58[Math.floor(Math.random() * BASE58.length)];
-  return value;
-}
-
-/** Demo control only: opens a claim without the Sui dispute transaction. */
-export async function openDemoClaim(orderId: string, input: { disputedValue: number; requestedValue: number; claim: string; evidence: string; files?: EvidenceFileInput[]; inspection?: { lines: Array<{ lineId: string; accepted: number; missing: number; damaged: number }>; note?: string } }): Promise<{ claim: ClaimView; orderId: string }> {
-  const result = await apiRequest<{ order: { id: string }; dispute: DisputeRecord }>(`/v1/orders/${encodeURIComponent(orderId)}/dispute`, {
-    method: "POST",
-    body: JSON.stringify({
-      disputeTransactionDigest: demoDigest(), disputedUnits: toUnits(input.disputedValue), requestedBuyerUnits: toUnits(input.requestedValue),
-      claim: input.claim, evidenceStatement: input.evidence, evidenceFiles: input.files,
-      negotiationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), maxHumanRounds: 3,
-      inspection: input.inspection ? { lines: input.inspection.lines.map((line) => ({ lineId: line.lineId, accepted: String(line.accepted), missing: String(line.missing), damaged: String(line.damaged) })), note: input.inspection.note } : undefined,
-    }),
-  });
-  return { claim: disputeToClaim(result.dispute), orderId: result.order.id };
-}

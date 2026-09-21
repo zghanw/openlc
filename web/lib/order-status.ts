@@ -145,7 +145,7 @@ export function nextAction(status: OrderStatus, role: OrderRole, options: { invi
     case "settlement_pending":
       return { owner: "you", title: "Sign the settlement", detail: "Both parties sign the agreed split on BOT Chain, then it is executed." };
     case "settled":
-      return { owner: "none", title: "Settlement complete", detail: "View the settlement record and the Sui transaction." };
+      return { owner: "none", title: "Settlement complete", detail: "View the settlement record and the BOT Chain transaction." };
     case "cancelled":
       return { owner: "none", title: "No action", detail: "This order is closed." };
   }

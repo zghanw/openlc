@@ -185,7 +185,7 @@ export async function createLiveOrder(input: CreateLiveOrderInput): Promise<{ or
   return { order: tradeOrderToView(invited), inviteUrl: invited.inviteUrl, inviteDelivery: invited.inviteDelivery };
 }
 
-/** The order's party ids are PayProof account ids, not the session user id, so the role can
+/** The order's party ids are OpenLC account ids, not the session user id, so the role can
  *  only be resolved against the workspace profile. Any view built without it reads as SUPPLIER. */
 export async function viewLiveOrder(order: TradeOrder): Promise<DemoOrder> {
   return tradeOrderToView(order, await apiRequest<WorkspaceProfile>("/v1/workspace"));
