@@ -203,7 +203,7 @@ export function DocumentsPanel({ order, role, company, onOrderChange, busy }: { 
       <ConsentDialog open={adding} onOpenChange={setAdding} company={company}
         title="Add a document"
         description="Attach a file to this order. Purchase order files are read once so their quantities can be checked against the order."
-        clauses={["The document is genuine, unaltered and relates to this order.", "You are authorised by your company to share it with the other party.", "Only the file fingerprint is kept with the order record. The file itself is not published to Sui."]}
+        clauses={["The document is genuine, unaltered and relates to this order.", "You are authorised by your company to share it with the other party.", "Only the file fingerprint is anchored to the escrow on BOT Chain. The file itself stays private."]}
         confirmLabel={kind === "purchase_order" ? "Attach and read quantities" : "Attach document"} busy={working} onConfirm={confirm}>
         <label className="field"><span>Document type</span>
           <select className="select" value={kind} onChange={(event) => setKind(event.target.value as DocumentKind)}>

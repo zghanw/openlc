@@ -117,7 +117,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
       }
       if (!profile) throw new Error("Your workspace is still loading. Try again in a moment.");
       const session = loadSession();
-      const result = await createLiveOrder({ reference: reference.trim(), initiatorRole: role, counterpartyName: counterpartyName.trim(), counterpartyEmail: counterpartyEmail.trim(), deliveryDate: delivery, deliveryLocation: location.trim(), organizationId: profile.primary.organizationId, items: lines(), supplierWalletAddress: buying ? undefined : session?.suiAddress, releasePercentages: { deposit: depositPercent, dispatch: dispatchPercent } });
+      const result = await createLiveOrder({ reference: reference.trim(), initiatorRole: role, counterpartyName: counterpartyName.trim(), counterpartyEmail: counterpartyEmail.trim(), deliveryDate: delivery, deliveryLocation: location.trim(), organizationId: profile.primary.organizationId, items: lines(), supplierWalletAddress: buying ? undefined : session?.walletAddress, releasePercentages: { deposit: depositPercent, dispatch: dispatchPercent } });
       let order = result.order;
       const documents = await attachments();
       if (documents.length) {
@@ -250,7 +250,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
             <div className="po-page" hidden={page !== 2}>
               <fieldset className="form-section release-plan-fieldset">
                 <legend>Payment allocation</legend>
-                <p className="release-intro">Both companies confirm this allocation before the buyer funds the order. Money released at an earlier stage cannot be reclaimed through PayProof.</p>
+                <p className="release-intro">Both companies confirm this allocation before the buyer funds the order. Money released at an earlier stage cannot be reclaimed through OpenLC.</p>
                 <div className="release-allocation">
                   <ReleasePlanBar total={total || 1} currency="BOT"
                     values={{ deposit: releaseValue(depositPercent), dispatch: releaseValue(dispatchPercent), delivery: Math.max(0, total - releaseValue(depositPercent) - releaseValue(dispatchPercent)) }}
@@ -276,8 +276,8 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
                     <output>{money(Math.max(0, total - releaseValue(depositPercent) - releaseValue(dispatchPercent)))} BOT</output>
                   </div>
                 </div>
-                {deliveryPercent < 20 && <Notice tone="warning">Only {deliveryPercent}% remains protected for delivery issues. Earlier releases are final and reduce the maximum refund available through PayProof.</Notice>}
-                {depositPercent === 0 && dispatchPercent === 0 && <Notice tone="info">This matches PayProof’s original single-release flow: the full order value stays secured until delivery.</Notice>}
+                {deliveryPercent < 20 && <Notice tone="warning">Only {deliveryPercent}% remains protected for delivery issues. Earlier releases are final and reduce the maximum refund available through OpenLC.</Notice>}
+                {depositPercent === 0 && dispatchPercent === 0 && <Notice tone="info">This is a single-release order: the full order value stays secured until delivery is accepted.</Notice>}
               </fieldset>
 
             <AgreementBlock company={company} accepted={accepted} onChange={setAccepted}

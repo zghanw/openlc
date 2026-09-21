@@ -312,7 +312,7 @@ export function useEscrowActions() {
 
   // True once a connected wallet stops matching the address that signed the API session in - the
   // UI uses this to disable chain-action buttons up front, on top of the fail-closed throw below.
-  const sessionAddress = loadSession()?.suiAddress;
+  const sessionAddress = loadSession()?.walletAddress;
   const sessionMismatch = Boolean(wallet.account && sessionAddress) && !isSameAddress(wallet.account, sessionAddress);
 
   /** Fails closed if the connected wallet no longer matches the wallet that signed the API

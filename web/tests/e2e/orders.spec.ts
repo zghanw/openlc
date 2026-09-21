@@ -13,7 +13,7 @@ test("explains when an invitation is opened with the wrong account", async ({ pa
   await page.addInitScript(() => localStorage.setItem("proofpay_demo_session", JSON.stringify({
     accessToken: "buyer-token",
     mode: "supabase",
-    suiAddress: "0x1",
+    walletAddress: "0x1",
     user: { id: "buyer-id", email: "buyer@example.com", name: "Buyer" },
   })));
   await page.route("http://localhost:8787/v1/invites/**", (route) => route.fulfill({

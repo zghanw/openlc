@@ -183,7 +183,7 @@ export function AppShell({ active, company, children, actionCount = 0 }: { activ
   useEffect(() => {
     const session = loadSession();
     setEmail(session?.user.email);
-    setSessionAddress(session?.suiAddress);
+    setSessionAddress(session?.walletAddress);
   }, []);
   const wallet = useWallet();
   const wrongNetwork = Boolean(wallet.account) && !wallet.isCorrectNetwork;

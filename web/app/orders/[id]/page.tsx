@@ -110,7 +110,7 @@ export default function OrderPage() {
   const showClaim = Boolean(order.claim) && (isDisputed(order.status) || order.status === "settled");
   const roleKey = order.role.toLowerCase();
   const escrowState = order.funding
-    ? order.funding.verificationStatus === "verified_on_chain" ? "Verified on BOT Chain" : "Recorded from a Sui reference"
+    ? order.funding.verificationStatus === "verified_on_chain" ? "Verified on BOT Chain" : "Recorded on-chain"
     : order.source === "sample" && meta.step >= 2 ? "Secured (sample)" : "Not funded yet";
   const copyEscrowObject = async () => {
     if (!order.funding) return;
@@ -136,10 +136,10 @@ export default function OrderPage() {
           <div><dt>Supplier</dt><dd><strong>{order.supplier}</strong>{order.raw?.supplierEmail && <small>{order.raw.supplierEmail}</small>}</dd></div>
           <div><dt>Expected delivery</dt><dd><strong>{formatDate(order.delivery)}</strong>{order.shipment?.carrier && <small>{order.shipment.carrier}</small>}</dd></div>
           <div><dt>Delivery location</dt><dd><strong>{order.deliveryLocation}</strong></dd></div>
-          <div><dt>Escrow<HelpHint text="Funds are held by the Sui escrow contract, not by ProofPay, and are released according to the inspection result and the Dispute Resolution Policy." /></dt><dd><strong>{escrowState}</strong>{order.funding && <><small className="escrow-object-id" title={order.funding.escrowObjectId}>#{order.funding.escrowObjectId}</small><span className="escrow-object-actions"><button type="button" className="escrow-copy-button" onClick={() => void copyEscrowObject()} aria-label="Copy escrow ID">{escrowCopied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}{escrowCopied ? "Copied" : "Copy"}</button>{order.source === "backend" && order.funding.verificationStatus === "verified_on_chain" && <a className="link" href={explorerTxUrl(order.funding.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={11} aria-hidden="true" /></a>}</span></>}</dd></div>
+          <div><dt>Escrow<HelpHint text="Funds are held in escrow on BOT Chain, not by OpenLC, and are released according to the inspection result and the Dispute Resolution Policy." /></dt><dd><strong>{escrowState}</strong>{order.funding && <><small className="escrow-object-id" title={order.funding.escrowObjectId}>#{order.funding.escrowObjectId}</small><span className="escrow-object-actions"><button type="button" className="escrow-copy-button" onClick={() => void copyEscrowObject()} aria-label="Copy escrow ID">{escrowCopied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}{escrowCopied ? "Copied" : "Copy"}</button>{order.source === "backend" && order.funding.verificationStatus === "verified_on_chain" && <a className="link" href={explorerTxUrl(order.funding.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={11} aria-hidden="true" /></a>}</span></>}</dd></div>
         </dl>
       </LiftCard>
-      {order.source === "sample" && <Notice tone="info">This is a sample order for demonstration. Every action changes only this sample. Nothing is sent to the backend or to Sui.</Notice>}
+      {order.source === "sample" && <Notice tone="info">This is a sample order for demonstration. Every action changes only this sample. Nothing is sent to the backend or to BOT Chain.</Notice>}
       {claimError && <Notice tone="error">{claimError}</Notice>}
       {order.guidedDemo && (
         <section className="guided-demo-bar" aria-label="Guided demo controls">
@@ -218,7 +218,7 @@ export default function OrderPage() {
                 {order.shipment && <div><dt>Shipment</dt><dd>{order.shipment.carrier}<small>Tracking {order.shipment.trackingNumber}, dispatched {formatDate(order.shipment.dispatchedAt)}</small></dd></div>}
                 {order.deliveryRecord && <div><dt>Delivered</dt><dd>{formatDateTime(order.deliveryRecord.recordedAt)}{order.deliveryRecord.reference && <small>Delivery order {order.deliveryRecord.reference}</small>}</dd></div>}
                 <div><dt>Settlement asset</dt><dd>{order.settlementAsset}</dd></div>
-                <div><dt><ShieldCheck size={12} aria-hidden="true" />Protection</dt><dd>Funds are held by the Sui escrow contract. OpenLC escrow keeps them.</dd></div>
+                <div><dt><ShieldCheck size={12} aria-hidden="true" />Protection</dt><dd>Funds are held on BOT Chain escrow. OpenLC cannot access them.</dd></div>
               </dl>
             </section>
             <section className="rail-group reveal reveal-4" aria-labelledby="history-title">
@@ -264,7 +264,7 @@ function InviteGate({ error }: { error: string }) {
           <p>{needsAccountSwitch
             ? <>You are signed in as <strong>{currentSession?.user.email || "a different account"}</strong>. Connect the wallet that received this invitation.</>
             : "Connect the wallet that received the invitation. Your invitation stays attached and opens automatically after sign-in."}</p>
-          <div className="gate-assurance"><LockKeyhole size={15} aria-hidden="true" /><span><strong>The order remains private</strong><small>ProofPay checks the signed-in wallet before showing commercial terms.</small></span></div>
+          <div className="gate-assurance"><LockKeyhole size={15} aria-hidden="true" /><span><strong>The order remains private</strong><small>OpenLC checks the signed-in wallet before showing commercial terms.</small></span></div>
           {(actionError || wallet.error || (error && !needsAccountSwitch)) && <p className="form-error" role="alert">{actionError || wallet.error || error}</p>}
           {!wallet.account ? (
             <Button className="btn-primary" disabled={wallet.connecting} onClick={() => void wallet.connect()}>
@@ -277,7 +277,7 @@ function InviteGate({ error }: { error: string }) {
           )}
           <Button variant="outline" asChild><a href="/orders/sample-demo-1001"><FastForward size={14} aria-hidden="true" />Open guided demo</a></Button>
           <small className="legal-copy">By continuing you agree to the <a href="/legal/terms">Terms of Service</a> and the <a href="/legal/dispute-policy">Dispute Resolution Policy</a>.</small>
-          <a className="gate-back" href="/">Return to ProofPay</a>
+          <a className="gate-back" href="/">Return to OpenLC</a>
         </section>
       </main>
     </div>

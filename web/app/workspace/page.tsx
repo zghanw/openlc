@@ -18,12 +18,12 @@ export default function OverviewPage() {
   const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
-    const address = workspace.session?.suiAddress;
+    const address = workspace.session?.walletAddress;
     if (!address) { setBalance(null); return; }
     new JsonRpcProvider(BOTCHAIN.rpcUrl).getBalance(address)
       .then((wei) => setBalance(Number(formatBot(wei))))
       .catch(() => setBalance(null));
-  }, [workspace.session?.suiAddress]);
+  }, [workspace.session?.walletAddress]);
 
   const { queue, waiting, ledger } = useMemo(() => {
     const queue: QueueItem[] = workspace.invitations.map((invitation) => ({

@@ -124,7 +124,7 @@ function InvitationControls({ order, live, busy, run }: StepProps) {
           <Button variant="outline" size="sm" onClick={() => void copy()}><ClipboardCopy size={14} aria-hidden="true" />{copied ? "Copied" : "Copy link"}</Button>
         </div>
       ) : (
-        <p className="action-note">{order.counterparty} can confirm from their own ProofPay workspace after signing in with the invited email. Earlier links are not shown again. Send a new invitation to replace them.</p>
+        <p className="action-note">{order.counterparty} can confirm from their own OpenLC workspace after signing in with their wallet. Earlier links are not shown again. Send a new invitation to replace them.</p>
       )}
       {delivery && <Notice tone={delivery.status === "sent" ? "success" : "info"}>{delivery.status === "sent" ? "The invitation email was sent. Any earlier link no longer works." : delivery.status === "failed" ? "The email could not be delivered. Copy the link and send it yourself." : "Automatic email is not configured. Copy the link and send it yourself."}</Notice>}
       <div className="action-buttons">
@@ -196,7 +196,7 @@ function ConfirmControls({ order, company, live, inviteToken, busy, run, onInvit
       </label>
       <AgreementBlock company={company} accepted={accepted} onChange={setAccepted}
         clauses={[
-          `${company} confirms order ${order.reference} version ${order.version} as ${iAmBuyer ? "buyer" : "supplier"}. The confirmed terms are hashed into the Sui escrow when it is funded.`,
+          `${company} confirms order ${order.reference} version ${order.version} as ${iAmBuyer ? "buyer" : "supplier"}. The confirmed terms are hashed into the BOT Chain escrow when it is funded.`,
           order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} releases at funding, ${money(order.releasePlan.dispatchValue)} ${order.currency} releases with shipment evidence, and ${money(order.releasePlan.deliveryValue)} ${order.currency} remains for delivery.` : `The full ${money(order.value)} ${order.currency} remains in escrow until delivery.`,
           "Released amounts are final. Any delivery exception or refund is limited to the balance still held in escrow.",
         ]} />
@@ -243,11 +243,11 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
         <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured) || needsArbitrator || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={`Fund ${money(order.value)} ${order.currency} into escrow`}
-        description={order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} is paid to ${order.supplier} now. The remaining ${money(order.releasePlan.dispatchValue + order.releasePlan.deliveryValue)} ${order.currency} stays in the escrow contract.` : "The amount moves from your Sui address into the escrow contract for this order. OpenLC escrow keeps it."}
+        description={order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} is paid to ${order.supplier} now. The remaining ${money(order.releasePlan.dispatchValue + order.releasePlan.deliveryValue)} ${order.currency} stays in the escrow contract.` : "The amount moves from your wallet into the escrow contract for this order. OpenLC escrow keeps it."}
         clauses={[
           order.releasePlan ? `Funding follows the confirmed ${money(order.releasePlan.depositValue)} / ${money(order.releasePlan.dispatchValue)} / ${money(order.releasePlan.deliveryValue)} ${order.currency} release plan.` : `${money(order.value)} ${order.currency} is locked for order ${order.reference}.`,
           "The confirmed order terms are hashed into the escrow so neither party can later dispute what was agreed.",
-          "Any amount released before delivery is final and cannot be refunded through PayProof.",
+          "Any amount released before delivery is final and cannot be refunded through OpenLC.",
         ]}
         confirmLabel={live ? "Sign and fund escrow" : "Fund escrow"} busy={busy === "fund"}
         onConfirm={async () => {
@@ -290,8 +290,8 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={buyer ? "Reclaim the escrow" : "Claim the escrow"}
         description={buyer
-          ? `${amount} returns to your Sui address. The contract allows this only because the supplier never marked shipment before the deadline.`
-          : `${amount} is paid to your Sui address. The contract allows this only because the buyer recorded no decision inside the inspection window.`}
+          ? `${amount} returns to your wallet. The contract allows this only because the supplier never marked shipment before the deadline.`
+          : `${amount} is paid to your wallet. The contract allows this only because the buyer recorded no decision inside the inspection window.`}
         clauses={["The deadline written into the escrow at funding has passed.", "This closes the order and cannot be reversed."]}
         confirmLabel={buyer ? "Sign and reclaim" : "Sign and claim"} busy={busy === "deadline"}
         onConfirm={async () => {
@@ -326,7 +326,7 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
         <Button className="btn-primary" disabled={!valid || Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title="Mark as shipped"
-        description={`${order.buyer} will see the carrier, tracking number and expected arrival.${order.releasePlan ? ` ${money(order.releasePlan.dispatchValue)} ${order.currency} is released now.` : ""}${live ? " One Sui transaction records shipment, anchors the evidence and releases the agreed amount." : ""}`}
+        description={`${order.buyer} will see the carrier, tracking number and expected arrival.${order.releasePlan ? ` ${money(order.releasePlan.dispatchValue)} ${order.currency} is released now.` : ""}${live ? " One BOT Chain transaction records shipment, anchors the evidence and releases the agreed amount." : ""}`}
         clauses={["The dispatch details and attached evidence are genuine and unaltered.", order.releasePlan ? `The ${money(order.releasePlan.dispatchValue)} ${order.currency} dispatch payment is final and reduces the balance available for a later claim.` : "Shipment is recorded on the escrow contract, and the document fingerprint is anchored in the same transaction."]}
         confirmLabel={live ? "Sign and mark as shipped" : "Mark as shipped"} busy={busy === "ship"}
         onConfirm={async () => {
@@ -404,7 +404,6 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [demoClaimOpen, setDemoClaimOpen] = useState(false);
   const escrow = useEscrowActions();
 
   const update = (lineId: string, field: "missing" | "damaged", value: number) => setLines((current) => current.map((entry) => {
@@ -524,7 +523,6 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
               <FileField label="Attach evidence" hint="Signed delivery order or photos. The file is read into text for the mediator. Its fingerprint is anchored to the escrow on BOT Chain and kept with the order." accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" onFile={setFile} file={file} />
               {note.trim().length < 10 && <p className="action-note">Describe what was wrong in at least 10 characters before you can open the claim. You have written {note.trim().length}.</p>}
               <div className="action-buttons">
-                {DEMO_CONTROLS && live && <Button variant="outline" disabled={!claimReady || Boolean(busy)} onClick={() => setDemoClaimOpen(true)}><FastForward size={14} aria-hidden="true" />Open claim without signing (demo)</Button>}
                 <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
               </div>
             </>
@@ -535,17 +533,13 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
       <ConsentDialog open={confirmOpen} onOpenChange={setConfirmOpen} company={company}
         title={choice === "intact" ? "Accept the delivery in full" : "Open a claim"}
         description={choice === "intact"
-          ? `${money(order.value)} ${order.currency} is released to ${order.supplier} from the escrow contract.${live ? " You sign one Sui transaction." : ""} This cannot be reversed.`
-          : `${money(totals.accepted)} ${order.currency} is released to ${order.supplier} now. ${money(totals.held)} ${order.currency} stays in escrow until the claim is settled.${live ? " You sign one Sui transaction." : ""}`}
+          ? `${money(order.value)} ${order.currency} is released to ${order.supplier} from the escrow contract.${live ? " You sign one BOT Chain transaction." : ""} This cannot be reversed.`
+          : `${money(totals.accepted)} ${order.currency} is released to ${order.supplier} now. ${money(totals.held)} ${order.currency} stays in escrow until the claim is settled.${live ? " You sign one BOT Chain transaction." : ""}`}
         clauses={choice === "intact"
           ? ["The quantities received match the order in full.", "The release is final and settles this order."]
           : ["The quantities entered are what your company actually received, and any evidence attached is genuine and unaltered.", "The accepted value is released to the supplier now. Only the held amount is disputed.", "The claim follows the Dispute Resolution Policy: supplier response, negotiation with optional AI mediation, then arbitration if no agreement is reached."]}
         confirmLabel={choice === "intact" ? "Release payment" : "Open claim"} busy={busy === "accept" || busy === "claim"}
         onConfirm={async () => { const ok = choice === "intact" ? await acceptAll() : await openClaim(false); if (ok) setConfirmOpen(false); }} />
-      <ConsentDialog open={demoClaimOpen} onOpenChange={setDemoClaimOpen} company={company} title="Open claim without the Sui signature"
-        description="Demo control. The claim is recorded on the backend with a placeholder dispute reference instead of a signed Sui transaction."
-        clauses={["This shortcut is for demonstrations only.", "The claim record itself is real and the mediation runs on the live model."]}
-        confirmLabel="Open claim (demo)" busy={busy === "claim"} onConfirm={async () => { if (await openClaim(true)) setDemoClaimOpen(false); }} />
     </div>
   );
 }
@@ -561,7 +555,7 @@ function SettlementRecord({ order }: { order: DemoOrder }) {
           : settlement?.source === "refund_unshipped" ? "The delivery deadline passed without shipment, so the buyer reclaimed the escrow."
           : settlement?.source === "claim_uninspected" ? "The inspection window closed without a decision, so the supplier claimed the escrow."
           : "Delivery accepted in full. The whole escrow was released to the supplier."}</dd></div>
-        <div><dt>Sui transaction</dt><dd>{settlement?.transactionDigest && settlement.verifiedOnChain
+        <div><dt>BOT Chain transaction</dt><dd>{settlement?.transactionDigest && settlement.verifiedOnChain
           ? <a className="link" href={explorerTxUrl(settlement.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={12} aria-hidden="true" /></a>
           : order.source === "sample" ? "Sample order, no on-chain record" : "Recorded without on-chain verification"}</dd></div>
       </dl>
@@ -576,7 +570,7 @@ function DemoControl({ order, live, busy, run }: StepProps) {
   const step = async () => run("demo", async () => {
     return advanceSample(live ? { ...order, source: "sample" } : order);
   }, `Moved to ${STATUS[next].label}.`);
-  const hint = `Demo control: show "${STATUS[next].label}" immediately without changing the backend or Sui.`;
+  const hint = `Demo control: show "${STATUS[next].label}" immediately without changing the backend or the chain.`;
   return (
     <button type="button" className="demo-skip" aria-label="Skip to next step" title={hint} disabled={Boolean(busy)} onClick={() => void step()}>
       <FastForward size={13} aria-hidden="true" />{busy === "demo" ? "Moving" : `Skip to ${STATUS[next].label}`}

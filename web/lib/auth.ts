@@ -36,12 +36,10 @@ export async function authenticateConnectedWallet(input: {
     accessToken: string;
     account: { id: string; walletAddress: string };
   };
-  // `suiAddress` is the field name payproof-api.ts's DemoSession still uses for the verified
-  // signing address (a later rename sweep renames it); it now holds the EVM wallet address.
   const session: DemoSession = {
     accessToken: verified.accessToken,
     mode: "wallet",
-    suiAddress: verified.account.walletAddress,
+    walletAddress: verified.account.walletAddress,
     user: { id: verified.account.id, email: "", name: "Connected wallet" },
   };
   saveSession(session);

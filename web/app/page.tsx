@@ -222,7 +222,7 @@ function AccessPanel() {
     <motion.aside
       id="access"
       className="access-panel"
-      aria-label="Open the ProofPay Business Workspace"
+      aria-label="Open the OpenLC Business Workspace"
       initial={{ opacity: 0, y: 22 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.58, delay: 0.42, ease: [0.25, 1, 0.5, 1] }}
@@ -247,7 +247,7 @@ function AccessPanel() {
       <Dialog>
         <DialogTrigger asChild>
           <button className="staff-entry" type="button">
-            ProofPay staff access <ChevronRight size={14} />
+            OpenLC staff access <ChevronRight size={14} />
           </button>
         </DialogTrigger>
         <DialogContent className="proof-dialog">
@@ -477,7 +477,7 @@ export default function Home() {
         >
           <p>
             <LockKeyhole size={16} />
-            Funds are held by the Sui smart contract — not by ProofPay.
+            Funds are held on BOT Chain escrow — not by OpenLC.
           </p>
           <div>
             <span>PROGRAMMABLE ESCROW</span>
@@ -630,7 +630,7 @@ export default function Home() {
           <div className="security-statement">
             <span>03 / SECURITY BY CONSTRAINT</span>
             <h2>
-              ProofPay can coordinate the trade.
+              OpenLC can coordinate the trade.
               <br />
               <em>It cannot take the money.</em>
             </h2>

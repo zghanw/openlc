@@ -4,7 +4,7 @@ export type DemoSession = {
   accessToken: string;
   user: { id: string; email: string; name: string };
   mode: "demo-google" | "supabase" | "wallet";
-  suiAddress?: string;
+  walletAddress?: string;
 };
 
 export type TradeLineItem = {

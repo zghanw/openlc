@@ -104,7 +104,7 @@ export default function OrdersPage() {
           </label>
           <div className="toolbar-samples">
             <label className="toggle"><input type="checkbox" checked={!workspace.hideSamples} onChange={(event) => workspace.setHideSamples(!event.target.checked)} /><span>Show sample orders</span></label>
-            <HelpHint text="Sample orders show every stage of a trade so you can explore the workflow. They belong to your account only and never reach the backend or Sui." />
+            <HelpHint text="Sample orders show every stage of a trade so you can explore the workflow. They belong to your account only and never reach the backend or BOT Chain." />
             {!workspace.hideSamples && <button type="button" className="text-button" onClick={workspace.resetSamples}>Reset samples</button>}
           </div>
         </div>

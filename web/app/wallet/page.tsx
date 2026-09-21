@@ -91,7 +91,7 @@ export default function WalletPage() {
   const [balanceNote, setBalanceNote] = useState("");
   const [movements, setMovements] = useState<Movement[]>([]);
   const [notice, setNotice] = useState("");
-  const address = workspace.session?.suiAddress ?? "";
+  const address = workspace.session?.walletAddress ?? "";
   const balance = balances?.bot ?? null;
 
   const readBalances = useCallback(async (): Promise<Balances | null> => {

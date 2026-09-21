@@ -238,14 +238,14 @@ export async function cancelLiveInvite(id: string): Promise<DemoOrder> {
 export async function acceptLiveInvitation(id: string): Promise<DemoOrder> {
   const session = loadSession();
   return withProfile(apiRequest<TradeOrder>(`/v1/orders/${encodeURIComponent(id)}/accept`, {
-    method: "POST", body: JSON.stringify({ name: session?.user.name, supplierWalletAddress: session?.suiAddress }),
+    method: "POST", body: JSON.stringify({ name: session?.user.name, supplierWalletAddress: session?.walletAddress }),
   }));
 }
 
 export async function acceptLiveInvite(token: string): Promise<DemoOrder> {
   const session = loadSession();
   return withProfile(apiRequest<TradeOrder>(`/v1/invites/${encodeURIComponent(token)}/accept`, {
-    method: "POST", body: JSON.stringify({ email: session?.user.email, name: session?.user.name, supplierWalletAddress: session?.suiAddress }),
+    method: "POST", body: JSON.stringify({ email: session?.user.email, name: session?.user.name, supplierWalletAddress: session?.walletAddress }),
   }));
 }
 
