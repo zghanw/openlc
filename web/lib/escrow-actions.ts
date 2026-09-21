@@ -1,13 +1,17 @@
 "use client";
 
-import { Contract, Interface, sha256, toUtf8Bytes, type ContractTransactionReceipt, type LogDescription } from "ethers";
+import { Contract, Interface, JsonRpcProvider, sha256, toUtf8Bytes, type ContractTransactionReceipt, type LogDescription } from "ethers";
 import ESCROW_ABI from "@/lib/openlc-escrow.abi.json";
-import { ESCROW_ADDRESS, requireEscrowConfigured } from "@/lib/chain";
-import { describeTxError, useWallet } from "@/lib/wallet";
+import { BOTCHAIN, ESCROW_ADDRESS, ESCROW_DEPLOY_BLOCK, explorerTxUrl, requireEscrowConfigured } from "@/lib/chain";
+import { describeTxError, isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
 import type { DocumentKind, InspectionLine } from "@/lib/demo-orders";
 import { confirmClaimExecution, disputeToClaim, type DisputeRecord, type EvidenceFileInput } from "@/lib/dispute-actions";
-import { acceptLiveDelivery, DEFAULT_ARBITRATOR_ADDRESS, settleLiveDeadline, toUnits, viewLiveOrder } from "@/lib/live-orders";
-import { apiRequest, type TradeOrder } from "@/lib/payproof-api";
+import {
+  acceptLiveDelivery, type AcceptanceInput,
+  ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, DEFAULT_ARBITRATOR_ADDRESS,
+  type DeadlineSettlementInput, markLiveShipment, settleLiveDeadline, toUnits, viewLiveOrder,
+} from "@/lib/live-orders";
+import { apiRequest, loadSession, type TradeOrder } from "@/lib/payproof-api";
 
 /** Inspection window written into every escrow, matching DP-2.1 of the Dispute Resolution Policy. */
 export const INSPECTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -119,10 +123,18 @@ function decodedErrorName(err: unknown): string | undefined {
   return undefined;
 }
 
-function describeEscrowError(err: unknown): string {
+export function describeEscrowError(err: unknown): string {
   const name = decodedErrorName(err);
   if (name && CUSTOM_ERROR_MESSAGES[name]) return CUSTOM_ERROR_MESSAGES[name];
   return describeTxError(err);
+}
+
+/** Thrown by sendTx: carries both the human message (for display) and the raw decoded error name
+ *  (so callers like withRecording can tell "already moved on-chain" apart from other failures). */
+class EscrowTxError extends Error {
+  constructor(message: string, public readonly errorName?: string) {
+    super(message);
+  }
 }
 
 function findEvent(receipt: ContractTransactionReceipt, name: string): LogDescription | undefined {
@@ -137,6 +149,160 @@ function findEvent(receipt: ContractTransactionReceipt, name: string): LogDescri
   return undefined;
 }
 
+// ---------------------------------------------------------------------------
+// Chain-succeeded-but-recording-failed recovery.
+//
+// Several actions call the contract and then POST the result to the API to "record" it. If that
+// POST fails after the chain call already confirmed, retrying the button would normally re-sign
+// the same contract call - which reverts once the chain has already moved past that step
+// (AlreadyShipped, InvalidState, ...), so the order could never be recorded from the UI at all.
+//
+// The fix: immediately after the chain call confirms and before the POST, save a pending record
+// to localStorage keyed by order + action. The next attempt checks for that record FIRST and, if
+// present, skips the contract call entirely and only retries the POST - no re-signing.
+// ---------------------------------------------------------------------------
+
+type PendingAction = "markShipped" | "acceptDelivery" | "refundUnshipped" | "claimUninspected" | "openClaim";
+type PendingRecord = { orderId: string; action: PendingAction; txHash: string; payload: unknown };
+
+const PENDING_PREFIX = "openlc_pending_action:";
+const pendingKey = (orderId: string, action: PendingAction) => `${PENDING_PREFIX}${orderId}:${action}`;
+
+function loadPending(orderId: string, action: PendingAction): PendingRecord | null {
+  try {
+    const raw = localStorage.getItem(pendingKey(orderId, action));
+    return raw ? (JSON.parse(raw) as PendingRecord) : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePending(record: PendingRecord): void {
+  try {
+    localStorage.setItem(pendingKey(record.orderId, record.action), JSON.stringify(record));
+  } catch {
+    /* localStorage unavailable (private browsing, quota) - the recovery net just won't persist */
+  }
+}
+
+function clearPending(orderId: string, action: PendingAction): void {
+  try {
+    localStorage.removeItem(pendingKey(orderId, action));
+  } catch {
+    /* ignore */
+  }
+}
+
+function recordingFailedError(txHash: string, cause: unknown): Error {
+  const reason = cause instanceof Error ? cause.message : String(cause);
+  return new Error(
+    `This step completed on BOT Chain in transaction ${txHash} (${explorerTxUrl(txHash)}), but recording it here failed: ${reason}. Nothing is lost — press this action again to finish recording it, without signing again.`,
+  );
+}
+
+function stuckNoRecordError(escrowId: string): Error {
+  return new Error(
+    `Escrow #${escrowId} may have already moved on BOT Chain, but this device has no local record of it to finish recording automatically (perhaps this step was done on a different browser or device). Do not sign this step again. Contact support with the escrow id above so it can be recorded from the chain directly.`,
+  );
+}
+
+/** Runs one "chain call, then record it with the API" action with the recovery net described
+ *  above. The pending-record check runs FIRST, before `preflight` (so a retry recovers even if,
+ *  say, the wallet is no longer connected - finishing the recording never needs a signature).
+ *  `preflight` only runs on a fresh attempt and should throw for any precondition a real contract
+ *  call needs (a connected wallet, required inputs, ...). `alreadyMovedErrorNames` names the
+ *  custom error(s) that mean "this step already happened on-chain" for this action, so a revert
+ *  with no local record produces a clear explanation instead of the generic (and, here,
+ *  misleading - "refresh and try again" does not help) decoded message. */
+async function withRecording<T, P>(
+  orderId: string,
+  action: PendingAction,
+  escrowId: string,
+  preflight: () => void,
+  runChain: () => Promise<string>,
+  buildPayload: (txHash: string) => P,
+  post: (payload: P) => Promise<T>,
+  alreadyMovedErrorNames: string[],
+): Promise<T> {
+  const pending = loadPending(orderId, action);
+  if (pending) {
+    try {
+      const result = await post(pending.payload as P);
+      clearPending(orderId, action);
+      return result;
+    } catch (cause) {
+      throw recordingFailedError(pending.txHash, cause);
+    }
+  }
+
+  preflight();
+  let txHash: string;
+  try {
+    txHash = await runChain();
+  } catch (chainError) {
+    const name = chainError instanceof EscrowTxError ? chainError.errorName : undefined;
+    if (name && alreadyMovedErrorNames.includes(name)) throw stuckNoRecordError(escrowId);
+    throw chainError;
+  }
+
+  const payload = buildPayload(txHash);
+  savePending({ orderId, action, txHash, payload });
+  try {
+    const result = await post(payload);
+    clearPending(orderId, action);
+    return result;
+  } catch (cause) {
+    throw recordingFailedError(txHash, cause);
+  }
+}
+
+/** A read-only escrow contract against the public RPC - works with no wallet connected, for the
+ *  on-chain recovery lookups below (they must succeed even if MetaMask is briefly unavailable). */
+function readOnlyEscrow(): Contract {
+  return new Contract(ESCROW_ADDRESS, ESCROW_ABI, new JsonRpcProvider(BOTCHAIN.rpcUrl));
+}
+
+/** openClaim's fallback when there is no local pending record but openDispute reverted
+ *  InvalidState: read the escrow straight from the chain, and if it is genuinely Disputed,
+ *  search backwards for the DisputeOpened transaction (RPC log ranges are capped, so this scans
+ *  bounded 5,000-block windows and gives up after 40 of them - about 200,000 blocks). Returns the
+ *  ON-CHAIN disputed/requested amounts, never the user's freshly typed numbers, since the backend
+ *  verifier checks the POST against the chain and a mismatch there would reject the recording. */
+async function recoverDisputeOpened(escrowId: bigint): Promise<{ txHash: string; disputedUnits: string; requestedUnits: string } | null> {
+  try {
+    const contract = readOnlyEscrow();
+    const escrow = await contract.getEscrow(escrowId);
+    if (Number(escrow.status) !== 1) return null; // Status: Open=0, Disputed=1, Settled=2 - not actually disputed
+    const provider = contract.runner as JsonRpcProvider;
+    const latest = await provider.getBlockNumber();
+    const filter = contract.filters.DisputeOpened(escrowId);
+    const WINDOW = 5000;
+    const MAX_WINDOWS = 40;
+    let to = latest;
+    for (let i = 0; i < MAX_WINDOWS && to >= ESCROW_DEPLOY_BLOCK; i++) {
+      const from = Math.max(ESCROW_DEPLOY_BLOCK, to - WINDOW + 1);
+      const logs = await contract.queryFilter(filter, from, to);
+      if (logs.length > 0) {
+        const log = logs[logs.length - 1];
+        return { txHash: log.transactionHash, disputedUnits: escrow.disputedAmount.toString(), requestedUnits: escrow.requestedBuyerRefund.toString() };
+      }
+      to = from - 1;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function disputePostPayload(txHash: string, disputedUnits: string, requestedUnits: string, input: ClaimInput) {
+  return {
+    disputeTransactionDigest: txHash, disputedUnits, requestedBuyerUnits: requestedUnits,
+    claim: input.claim, evidenceStatement: input.evidence, evidenceFiles: input.files,
+    negotiationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), maxHumanRounds: 3,
+    inspection: input.inspection ? { lines: input.inspection.lines.map((line) => ({ lineId: line.lineId, accepted: String(line.accepted), missing: String(line.missing), damaged: String(line.damaged) })), note: input.inspection.note } : undefined,
+  };
+}
+
 /**
  * Every escrow action that sends a transaction, on ethers against BOT Chain. Same hook name and
  * function signatures as the Sui version so every caller keeps compiling.
@@ -144,9 +310,24 @@ function findEvent(receipt: ContractTransactionReceipt, name: string): LogDescri
 export function useEscrowActions() {
   const wallet = useWallet();
 
+  // True once a connected wallet stops matching the address that signed the API session in - the
+  // UI uses this to disable chain-action buttons up front, on top of the fail-closed throw below.
+  const sessionAddress = loadSession()?.suiAddress;
+  const sessionMismatch = Boolean(wallet.account && sessionAddress) && !isSameAddress(wallet.account, sessionAddress);
+
+  /** Fails closed if the connected wallet no longer matches the wallet that signed the API
+   *  session in (switching MetaMask accounts after sign-in must not let a transaction go out
+   *  signed by the wrong party while the backend still thinks the old address is acting). */
+  function requireWalletMatchesSession(account: string): void {
+    if (sessionAddress && !isSameAddress(account, sessionAddress)) {
+      throw new Error(`You switched wallets. Sign in again as ${shortAddress(account)} to continue.`);
+    }
+  }
+
   async function contract(): Promise<Contract> {
     requireEscrowConfigured();
     const signer = await wallet.getSigner();
+    requireWalletMatchesSession(wallet.account!);
     return new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
   }
 
@@ -159,7 +340,7 @@ export function useEscrowActions() {
       if (!receipt) throw new Error("The transaction did not confirm. Check your wallet and try again.");
       return receipt as ContractTransactionReceipt;
     } catch (cause) {
-      throw new Error(describeEscrowError(cause));
+      throw new EscrowTxError(describeEscrowError(cause), decodedErrorName(cause));
     }
   }
 
@@ -168,6 +349,7 @@ export function useEscrowActions() {
     if (!order.supplierId || !order.buyerId) throw new Error("Both parties must confirm the order before it can be funded.");
     if (!order.supplierWalletAddress) throw new Error("The supplier has not attached a payout address yet.");
     // Orders created before the arbitrator wallet was recorded fall back to the configured arbitrator.
+    if (!order.arbitratorWalletAddress && !arbitratorConfigured) throw new Error(ARBITRATOR_NOT_CONFIGURED_REASON);
     const arbitrator = order.arbitratorWalletAddress || DEFAULT_ARBITRATOR_ADDRESS;
     const deadlineMs = deliveryDeadlineMs(order.deliveryDate);
     // Seconds on-chain, milliseconds everywhere else - converted exactly once, here.
@@ -189,6 +371,9 @@ export function useEscrowActions() {
     if (escrowId === undefined)
       throw new Error("Escrow funded, but the EscrowCreated event was not found in the transaction receipt. Refresh and try again.");
 
+    // fundEscrow keeps its own bespoke "do not fund again" message rather than the generic
+    // recovery net above: retrying createEscrow would create a SECOND escrow and pay again,
+    // not revert, so the fix here is "never retry the chain call", not "skip it and retry the POST".
     try {
       return await apiRequest<TradeOrder>(`/v1/orders/${order.id}/funding`, {
         method: "POST",
@@ -207,13 +392,27 @@ export function useEscrowActions() {
     }
   }
 
-  /** Supplier marks shipment on the escrow. A dispatch document's hash rides in the same transaction. */
-  async function markShipped(order: TradeOrder, evidenceSha256?: string): Promise<string> {
-    if (!wallet.account) throw new Error("Connect MetaMask before marking shipment.");
+  /** Supplier marks shipment on the escrow, then records the shipment (carrier/tracking) against
+   *  the order. A retry after the chain call succeeds but the recording fails does NOT re-sign -
+   *  see withRecording above. */
+  async function markShipped(
+    order: TradeOrder,
+    evidenceSha256: string,
+    shipment: { carrier: string; trackingNumber: string; dispatchedAt: string; expectedAt?: string },
+  ) {
     if (!order.funding) throw new Error("Only a funded order can be shipped.");
-    if (!evidenceSha256) throw new Error("Attach a carrier receipt or dispatch note before releasing the dispatch payment.");
-    const receipt = await sendTx("markShipped", [BigInt(order.funding.escrowObjectId), asBytes32(evidenceSha256, "The evidence hash")]);
-    return receipt.hash;
+    const escrowId = order.funding.escrowObjectId;
+    return withRecording(
+      order.id, "markShipped", escrowId,
+      () => {
+        if (!wallet.account) throw new Error("Connect MetaMask before marking shipment.");
+        if (!evidenceSha256) throw new Error("Attach a carrier receipt or dispatch note before releasing the dispatch payment.");
+      },
+      async () => (await sendTx("markShipped", [BigInt(escrowId), asBytes32(evidenceSha256, "The evidence hash")])).hash,
+      (txHash): typeof shipment & { transactionDigest: string; evidenceSha256: string } => ({ ...shipment, transactionDigest: txHash, evidenceSha256 }),
+      (payload) => markLiveShipment(order.id, payload),
+      ["AlreadyShipped"],
+    );
   }
 
   /** Either party binds a file's SHA-256 to the escrow. Returns the transaction to record with the upload. */
@@ -226,45 +425,103 @@ export function useEscrowActions() {
 
   /** Buyer releases the whole escrow to the supplier after accepting the delivery in full. */
   async function acceptDelivery(order: TradeOrder, inspection?: { lines: InspectionLine[]; note?: string }) {
-    if (!wallet.account) throw new Error("Connect MetaMask before releasing payment.");
     if (!order.funding) throw new Error("Only a funded order can be accepted.");
-    const receipt = await sendTx("releaseFull", [BigInt(order.funding.escrowObjectId)]);
-    return acceptLiveDelivery(order.id, { transactionDigest: receipt.hash, inspection });
+    const escrowId = order.funding.escrowObjectId;
+    return withRecording(
+      order.id, "acceptDelivery", escrowId,
+      () => { if (!wallet.account) throw new Error("Connect MetaMask before releasing payment."); },
+      async () => (await sendTx("releaseFull", [BigInt(escrowId)])).hash,
+      (txHash): AcceptanceInput => ({ transactionDigest: txHash, inspection }),
+      (payload) => acceptLiveDelivery(order.id, payload),
+      ["InvalidState"],
+    );
   }
 
-  /** The claim transaction locks only the disputed value; the contract pays the rest to the supplier in the same call. */
+  /** The claim transaction locks only the disputed value; the contract pays the rest to the
+   *  supplier in the same call. If a retry finds openDispute already reverted InvalidState with no
+   *  local record, it reads the real disputed/requested amounts and transaction back off the
+   *  chain (searching bounded log windows) rather than trusting the user's re-typed numbers, since
+   *  the backend verifier checks the POST against what actually happened on-chain. */
   async function openClaim(order: TradeOrder, input: ClaimInput) {
-    if (!wallet.account) throw new Error("Connect MetaMask before opening a claim.");
     if (!order.funding) throw new Error("Only a funded order can be disputed.");
+    const escrowId = order.funding.escrowObjectId;
+
+    const postDispute = async (payload: ReturnType<typeof disputePostPayload>) => {
+      const response = await apiRequest<{ order: TradeOrder; dispute: DisputeRecord }>(`/v1/orders/${order.id}/dispute`, {
+        method: "POST", body: JSON.stringify(payload),
+      });
+      return { order: await viewLiveOrder(response.order), claim: disputeToClaim(response.dispute) };
+    };
+
+    // Checked before anything else, including the wallet-connected guard below: finishing a
+    // recording that already succeeded on-chain never needs a signature, so it should not need a
+    // connected wallet either.
+    const pending = loadPending(order.id, "openClaim");
+    if (pending) {
+      try {
+        const result = await postDispute(pending.payload as ReturnType<typeof disputePostPayload>);
+        clearPending(order.id, "openClaim");
+        return result;
+      } catch (cause) {
+        throw recordingFailedError(pending.txHash, cause);
+      }
+    }
+
+    if (!wallet.account) throw new Error("Connect MetaMask before opening a claim.");
     const disputedUnits = toUnits(input.disputedValue);
     const requestedUnits = toUnits(input.requestedValue);
-    const receipt = await sendTx("openDispute", [BigInt(order.funding.escrowObjectId), BigInt(disputedUnits), BigInt(requestedUnits)]);
-    const response = await apiRequest<{ order: TradeOrder; dispute: DisputeRecord }>(`/v1/orders/${order.id}/dispute`, {
-      method: "POST",
-      body: JSON.stringify({
-        disputeTransactionDigest: receipt.hash, disputedUnits, requestedBuyerUnits: requestedUnits,
-        claim: input.claim, evidenceStatement: input.evidence, evidenceFiles: input.files,
-        negotiationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), maxHumanRounds: 3,
-        inspection: input.inspection ? { lines: input.inspection.lines.map((line) => ({ lineId: line.lineId, accepted: String(line.accepted), missing: String(line.missing), damaged: String(line.damaged) })), note: input.inspection.note } : undefined,
-      }),
-    });
-    return { order: await viewLiveOrder(response.order), claim: disputeToClaim(response.dispute) };
+    let txHash: string;
+    try {
+      txHash = (await sendTx("openDispute", [BigInt(escrowId), BigInt(disputedUnits), BigInt(requestedUnits)])).hash;
+    } catch (chainError) {
+      const name = chainError instanceof EscrowTxError ? chainError.errorName : undefined;
+      if (name !== "InvalidState") throw chainError;
+      const recovered = await recoverDisputeOpened(BigInt(escrowId));
+      if (!recovered) throw stuckNoRecordError(escrowId);
+      try {
+        return await postDispute(disputePostPayload(recovered.txHash, recovered.disputedUnits, recovered.requestedUnits, input));
+      } catch (cause) {
+        throw recordingFailedError(recovered.txHash, cause);
+      }
+    }
+
+    const payload = disputePostPayload(txHash, disputedUnits, requestedUnits, input);
+    savePending({ orderId: order.id, action: "openClaim", txHash, payload });
+    try {
+      const result = await postDispute(payload);
+      clearPending(order.id, "openClaim");
+      return result;
+    } catch (cause) {
+      throw recordingFailedError(txHash, cause);
+    }
   }
 
   /** Buyer takes the whole escrow back: the supplier never marked shipment and the delivery deadline passed. */
   async function refundUnshipped(order: TradeOrder) {
-    if (!wallet.account) throw new Error("Connect MetaMask before reclaiming the escrow.");
     if (!order.funding) throw new Error("The order has no escrow funding.");
-    const receipt = await sendTx("refundUnshipped", [BigInt(order.funding.escrowObjectId)]);
-    return settleLiveDeadline(order.id, { kind: "refund_unshipped", transactionDigest: receipt.hash });
+    const escrowId = order.funding.escrowObjectId;
+    return withRecording(
+      order.id, "refundUnshipped", escrowId,
+      () => { if (!wallet.account) throw new Error("Connect MetaMask before reclaiming the escrow."); },
+      async () => (await sendTx("refundUnshipped", [BigInt(escrowId)])).hash,
+      (txHash): DeadlineSettlementInput => ({ kind: "refund_unshipped", transactionDigest: txHash }),
+      (payload) => settleLiveDeadline(order.id, payload),
+      ["InvalidState"],
+    );
   }
 
   /** Supplier claims the whole escrow: shipment was marked and the buyer let the inspection window close. */
   async function claimUninspected(order: TradeOrder) {
-    if (!wallet.account) throw new Error("Connect MetaMask before claiming the escrow.");
     if (!order.funding) throw new Error("The order has no escrow funding.");
-    const receipt = await sendTx("claimUninspected", [BigInt(order.funding.escrowObjectId)]);
-    return settleLiveDeadline(order.id, { kind: "claim_uninspected", transactionDigest: receipt.hash });
+    const escrowId = order.funding.escrowObjectId;
+    return withRecording(
+      order.id, "claimUninspected", escrowId,
+      () => { if (!wallet.account) throw new Error("Connect MetaMask before claiming the escrow."); },
+      async () => (await sendTx("claimUninspected", [BigInt(escrowId)])).hash,
+      (txHash): DeadlineSettlementInput => ({ kind: "claim_uninspected", transactionDigest: txHash }),
+      (payload) => settleLiveDeadline(order.id, payload),
+      ["InvalidState"],
+    );
   }
 
   /** One party signs the agreed allocation on BOT Chain. The contract reads the role from
@@ -294,5 +551,5 @@ export function useEscrowActions() {
     }
   }
 
-  return { signingAddress: wallet.account, fundEscrow, markShipped, anchorEvidence, acceptDelivery, openClaim, refundUnshipped, claimUninspected, approveSettlement, executeSettlement };
+  return { signingAddress: wallet.account, sessionMismatch, fundEscrow, markShipped, anchorEvidence, acceptDelivery, openClaim, refundUnshipped, claimUninspected, approveSettlement, executeSettlement };
 }

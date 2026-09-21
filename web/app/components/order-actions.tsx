@@ -10,7 +10,7 @@ import { type Anchor, ExtractionComparison, attachFile, buildDocument, extractPu
 import { type DemoOrder, type DocumentKind, type InspectionLine, type OrderDocument, type OrderShipment, claimOwner, formatDate, formatDateTime, formatOrderMoney as money, sha256Hex } from "@/lib/demo-orders";
 import { loadClaim, openDemoClaim } from "@/lib/dispute-actions";
 import { useEscrowActions } from "@/lib/escrow-actions";
-import { acceptLiveInvitation, acceptLiveInvite, anchorLiveDocument, cancelLiveInvite, markLiveDelivered, markLiveShipment, sendLiveInvite, tradeOrderToView, viewLiveOrder } from "@/lib/live-orders";
+import { acceptLiveInvitation, acceptLiveInvite, anchorLiveDocument, ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, cancelLiveInvite, markLiveDelivered, sendLiveInvite, tradeOrderToView, viewLiveOrder } from "@/lib/live-orders";
 import { withExtras } from "@/lib/local-order-extras";
 import { STATUS, demoNextStatus, isDisputed, nextAction } from "@/lib/order-status";
 import type { InvitationDelivery } from "@/lib/payproof-api";
@@ -229,6 +229,7 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
   const escrow = useEscrowActions();
   const payout = order.raw?.supplierWalletAddress;
   const short = (value?: string) => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : "Not attached yet";
+  const needsArbitrator = live && !order.raw?.arbitratorWalletAddress && !arbitratorConfigured;
   return (
     <div className="action-body">
       {order.confirmation && <div className="agreement agreement-done"><Check size={15} aria-hidden="true" /><span>Confirmed by <strong>{order.confirmation.organizationName || order.counterparty}</strong> on {formatDateTime(order.confirmation.confirmedAt)} under Terms of Service and Dispute Resolution Policy version {order.confirmation.termsVersion}.</span></div>}
@@ -237,8 +238,9 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
         <div><dt>Released to</dt><dd>{order.supplier}<small>{live ? short(payout) : "Verified payout address"}</small></dd></div>
         <div><dt>Signed by</dt><dd>{live ? (escrow.signingAddress ? short(escrow.signingAddress) : "No wallet connected in this session") : "Your business wallet"}<small>{live ? "Connected wallet" : ""}</small></dd></div>
       </dl>
+      {needsArbitrator && <Notice tone="warning">{ARBITRATOR_NOT_CONFIGURED_REASON}</Notice>}
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured)} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
+        <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured) || needsArbitrator || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={`Fund ${money(order.value)} ${order.currency} into escrow`}
         description={order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} is paid to ${order.supplier} now. The remaining ${money(order.releasePlan.dispatchValue + order.releasePlan.deliveryValue)} ${order.currency} stays in the escrow contract.` : "The amount moves from your Sui address into the escrow contract for this order. ProofPay cannot withdraw it."}
@@ -284,7 +286,7 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
         ? `The delivery deadline passed on ${when} without shipment. The escrow contract lets you reclaim ${amount}.`
         : `The inspection window closed on ${when} without a decision. The escrow contract lets you claim ${amount}.`}</p>
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={Boolean(busy) || !escrowConfigured} onClick={() => setOpen(true)}>{buyer ? "Reclaim the escrow" : "Claim the escrow"}<ArrowRight size={14} aria-hidden="true" /></Button>
+        <Button className="btn-primary" disabled={Boolean(busy) || !escrowConfigured || escrow.sessionMismatch} onClick={() => setOpen(true)}>{buyer ? "Reclaim the escrow" : "Claim the escrow"}<ArrowRight size={14} aria-hidden="true" /></Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={buyer ? "Reclaim the escrow" : "Claim the escrow"}
         description={buyer
@@ -321,7 +323,7 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
       </div>
       <FileField label="Attach dispatch note or carrier receipt" hint="Required. Its fingerprint is anchored to the shipment release on Sui." accept=".pdf,.png,.jpg,.jpeg,.webp" onFile={setFile} file={file} />
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={!valid || Boolean(busy) || (live && !escrowConfigured)} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
+        <Button className="btn-primary" disabled={!valid || Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title="Mark as shipped"
         description={`${order.buyer} will see the carrier, tracking number and expected arrival.${order.releasePlan ? ` ${money(order.releasePlan.dispatchValue)} ${order.currency} is released now.` : ""}${live ? " One Sui transaction records shipment, anchors the evidence and releases the agreed amount." : ""}`}
@@ -341,10 +343,12 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
             const staged = await attachFile(order, file, "dispatch_evidence", "SUPPLIER");
             const stagedDocument = staged.documents.find((document) => document.kind === "dispatch_evidence" && document.sha256 === fileHash && !document.anchor);
             if (!stagedDocument) throw new Error("The dispatch evidence was uploaded but could not be found on this order.");
-            const transactionDigest = staged.raw?.funding ? await escrow.markShipped(staged.raw, fileHash) : undefined;
-            if (!transactionDigest) throw new Error("The shipment transaction was not submitted.");
-            next = withExtras(await markLiveShipment(order.id, { ...shipment, transactionDigest, evidenceSha256: fileHash }));
-            next = withExtras(await anchorLiveDocument(order.id, stagedDocument.id, transactionDigest));
+            if (!staged.raw?.funding) throw new Error("Only a funded order can be shipped.");
+            // markShipped signs the transaction, then records the shipment itself (with a
+            // recovery net if the recording POST fails after the chain call already confirmed).
+            next = withExtras(await escrow.markShipped(staged.raw, fileHash, shipment));
+            const transactionDigest = next.shipment?.transactionDigest;
+            if (transactionDigest) next = withExtras(await anchorLiveDocument(order.id, stagedDocument.id, transactionDigest));
             return next;
           }, live ? "Shipment is signed on Sui. The order is in transit." : "The order is marked in transit.")) setOpen(false);
         }} />
@@ -482,7 +486,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
 
       {choice === "intact" && (
         <div className="action-buttons">
-          <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured)} onClick={() => setConfirmOpen(true)}>Accept delivery and release {money(order.value)} {order.currency}</Button>
+          <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setConfirmOpen(true)}>Accept delivery and release {money(order.value)} {order.currency}</Button>
         </div>
       )}
 
@@ -521,7 +525,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
               {note.trim().length < 10 && <p className="action-note">Describe what was wrong in at least 10 characters before you can open the claim. You have written {note.trim().length}.</p>}
               <div className="action-buttons">
                 {DEMO_CONTROLS && live && <Button variant="outline" disabled={!claimReady || Boolean(busy)} onClick={() => setDemoClaimOpen(true)}><FastForward size={14} aria-hidden="true" />Open claim without signing (demo)</Button>}
-                <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || (live && !escrowConfigured)} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
+                <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
               </div>
             </>
           )}

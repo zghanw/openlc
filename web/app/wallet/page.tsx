@@ -8,11 +8,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { AppShell, HelpHint, Notice, PageTitle } from "@/app/components/app-shell";
 import { type DemoOrder, formatOrderMoney as money } from "@/lib/demo-orders";
-import { type PaymentRequest, parsePaymentRequest, useEscrowActions } from "@/lib/escrow-actions";
+import { describeEscrowError, type PaymentRequest, parsePaymentRequest, useEscrowActions } from "@/lib/escrow-actions";
 import { type ReleaseStageKey, releaseProgress } from "@/app/components/release-plan";
-import { BOTCHAIN, explorerTxUrl, formatBot } from "@/lib/chain";
+import { BOTCHAIN, ESCROW_ADDRESS, escrowConfigured, explorerTxUrl, formatBot } from "@/lib/chain";
+import { useWallet } from "@/lib/wallet";
 import { useWorkspace } from "@/lib/use-workspace";
-import { JsonRpcProvider } from "ethers";
+import ESCROW_ABI from "@/lib/openlc-escrow.abi.json";
+import { Contract, JsonRpcProvider } from "ethers";
 
 /** The QR pay/receive feature has no BOT Chain equivalent yet (the contract does not port a
  *  direct-payment path) - this legacy identifier only satisfies the payload shape below. */
@@ -23,7 +25,7 @@ import { AnimatedAmount, LiftCard } from "@/app/components/motion";
  *  is shown without a sign: the buyer already paid it in when the order was funded. */
 type Movement = { id: string; type: "in" | "out" | "escrow"; title: string; detail: string; amount: number; currency?: string; at: string; state: "pending" | "complete"; transactionDigest?: string; stage?: ReleaseStageKey | "escrow"; orderId?: string };
 type Method = "card" | "bank";
-type Balances = { usdc: number };
+type Balances = { bot: number };
 
 function sumOrders(orders: DemoOrder[], pick: (order: DemoOrder) => number = (order) => order.value): string {
   return `${money(orders.reduce((total, order) => total + pick(order), 0))} USDC`;
@@ -88,6 +90,7 @@ function saveMovements(accountKey: string, movements: Movement[]) {
 
 export default function WalletPage() {
   const workspace = useWorkspace();
+  const wallet = useWallet();
   const [balances, setBalances] = useState<Balances | null>(null);
   const [balanceNote, setBalanceNote] = useState("");
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -96,12 +99,12 @@ export default function WalletPage() {
   const [qrOpen, setQrOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const address = workspace.session?.suiAddress ?? "";
-  const balance = balances?.usdc ?? null;
+  const balance = balances?.bot ?? null;
 
   const readBalances = useCallback(async (): Promise<Balances | null> => {
     if (!address) return null;
     const wei = await new JsonRpcProvider(BOTCHAIN.rpcUrl).getBalance(address);
-    return { usdc: Number(formatBot(wei)) };
+    return { bot: Number(formatBot(wei)) };
   }, [address]);
 
   const refreshBalances = useCallback(() => readBalances()
@@ -114,6 +117,43 @@ export default function WalletPage() {
     if (!address) { setBalances(null); setBalanceNote(workspace.live ? "Connect MetaMask to load your on-chain balance." : "Sign in to load your balance."); return; }
     void refreshBalances();
   }, [workspace.ready, workspace.accountKey, workspace.live, address, refreshBalances]);
+
+  // owed(address): a payout the contract's 50k-gas push once failed to deliver (PaymentDeferred),
+  // sitting in the contract until withdraw() is called. There is otherwise no way to reclaim it.
+  const [owed, setOwed] = useState<bigint>(0n);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawError, setWithdrawError] = useState("");
+  const [withdrawnTx, setWithdrawnTx] = useState("");
+
+  const refreshOwed = useCallback(async () => {
+    if (!address || !escrowConfigured) { setOwed(0n); return; }
+    try {
+      const contract = new Contract(ESCROW_ADDRESS, ESCROW_ABI, new JsonRpcProvider(BOTCHAIN.rpcUrl));
+      setOwed(await contract.owed(address));
+    } catch {
+      /* transient RPC hiccup - keep the previous value rather than flashing to zero */
+    }
+  }, [address]);
+
+  useEffect(() => { void refreshOwed(); }, [refreshOwed]);
+
+  const withdraw = async () => {
+    setWithdrawing(true);
+    setWithdrawError("");
+    setWithdrawnTx("");
+    try {
+      const signer = await wallet.getSigner();
+      const contract = new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
+      const tx = await contract.withdraw();
+      const receipt = await tx.wait();
+      setWithdrawnTx(receipt.hash);
+      await Promise.all([refreshOwed(), refreshBalances()]);
+    } catch (cause) {
+      setWithdrawError(describeEscrowError(cause));
+    } finally {
+      setWithdrawing(false);
+    }
+  };
 
   // A signed-in wallet only reflects real orders. Sample orders stay on the orders page.
   const ledgerOrders = workspace.live ? workspace.liveOrders : workspace.orders;
@@ -145,6 +185,18 @@ export default function WalletPage() {
     <AppShell active="wallet" company={workspace.company}>
       <PageTitle title="Wallet" description="Money you can spend or withdraw, kept separate from funds secured inside purchase orders." />
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
+      {owed > 0n && (
+        <Notice tone="warning">
+          <span>A payout of <strong>{formatBot(owed)} BOT</strong> could not be delivered automatically and is held by the escrow contract for your wallet.<HelpHint text="The contract pushes each payout with a capped amount of gas. If that push ever fails (for example, a contract address that rejects BOT), the amount is credited here instead of being lost, and only withdraw() can release it." /></span>
+          <Button size="sm" variant="outline" disabled={withdrawing} onClick={() => void withdraw()}>{withdrawing ? "Withdrawing…" : "Withdraw"}</Button>
+        </Notice>
+      )}
+      {withdrawnTx && (
+        <Notice tone="success" onDismiss={() => setWithdrawnTx("")}>
+          <span>Withdrawn. <a className="link" href={explorerTxUrl(withdrawnTx)} target="_blank" rel="noreferrer">View transaction<ExternalLink size={12} aria-hidden="true" /></a></span>
+        </Notice>
+      )}
+      {withdrawError && <Notice tone="error" onDismiss={() => setWithdrawError("")}>{withdrawError}</Notice>}
 
       <section className="wallet-grid">
         <LiftCard as="article" className="wallet-card" tilt={2} lift={2}>
@@ -155,9 +207,9 @@ export default function WalletPage() {
           {balances === null ? (
             <strong className="wallet-amount"><span className="wallet-amount-text">Not connected</span></strong>
           ) : (
-            <strong className="wallet-amount"><AnimatedAmount value={balances.usdc} decimals={2} /> <small>USDC</small></strong>
+            <strong className="wallet-amount"><AnimatedAmount value={balances.bot} decimals={2} /> <small>USDC</small></strong>
           )}
-          {balances !== null && balances.usdc === 0 && <p className="wallet-note">New orders are priced in USDC. Get testnet USDC from <a className="link-light" href={`https://faucet.circle.com/?address=${address}`} target="_blank" rel="noreferrer">Circle&apos;s faucet</a>, then it appears here.</p>}
+          {balances !== null && balances.bot === 0 && <p className="wallet-note">New orders are priced in USDC. Get testnet USDC from <a className="link-light" href={`https://faucet.circle.com/?address=${address}`} target="_blank" rel="noreferrer">Circle&apos;s faucet</a>, then it appears here.</p>}
           <p className="wallet-address">{address ? <><code>{address.slice(0, 10)}...{address.slice(-8)}</code><button type="button" className="text-button text-button-light" onClick={() => void navigator.clipboard.writeText(address)}><ClipboardCopy size={12} aria-hidden="true" />Copy address</button></> : balanceNote}</p>
           {address && balanceNote && <p className="wallet-note">{balanceNote}</p>}
           <div className="wallet-actions">
@@ -170,7 +222,7 @@ export default function WalletPage() {
         <article className="panel money-ledger" aria-labelledby="position-title">
           <div className="panel-head"><h2 id="position-title">Where your money is</h2></div>
           <dl className="money-rows">
-            <div><dt>Available to spend</dt>{balances === null ? <dd className="text">Not connected</dd> : <dd>{money(balances.usdc)} USDC</dd>}</div>
+            <div><dt>Available to spend</dt>{balances === null ? <dd className="text">Not connected</dd> : <dd>{money(balances.bot)} USDC</dd>}</div>
             {position.pendingIn > 0 && <div className="money-row-pending"><dt><Clock3 size={13} aria-hidden="true" />Top-ups in progress</dt><dd>{money(position.pendingIn)} USDC</dd></div>}
             {position.pendingOut > 0 && <div className="money-row-pending"><dt><Clock3 size={13} aria-hidden="true" />Withdrawals in progress</dt><dd>{money(position.pendingOut)} USDC</dd></div>}
             <div><dt><LockKeyhole size={13} aria-hidden="true" />Secured for your purchases<small>{position.buying.count} {position.buying.count === 1 ? "order" : "orders"}</small></dt><dd>{position.buying.value}</dd></div>

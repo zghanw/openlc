@@ -1,18 +1,14 @@
-// Unit check for the money helpers in web/lib/chain.ts (parseBot/formatBot), runnable without a
-// browser: `node --test lib/units.test.mjs` from web/, or `node --test web/lib/units.test.mjs`
-// from the repo root.
+// Unit check for the money helpers, runnable without a browser: `node --test lib/units.test.mjs`
+// from web/, or `node --test web/lib/units.test.mjs` from the repo root.
 //
-// This re-implements the two one-line wrappers here instead of importing chain.ts directly,
-// because chain.ts is TypeScript and this must run under plain `node --test` with no loader.
-// Both wrappers do nothing but call ethers' parseUnits/formatUnits fixed at 18 decimals, so
-// exercising ethers directly at 18 decimals is exactly what parseBot/formatBot do.
+// Imports the real implementation (units.mjs, plain JS so this needs no TypeScript loader).
+// web/lib/chain.ts re-exports formatBot/parseBot from this same module unchanged, so this
+// exercises exactly what the app calls - a regression here would be caught, not masked.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatUnits, parseUnits } from "ethers";
+import { formatBot, parseBot } from "./units.mjs";
 
 const DECIMALS = 18;
-const parseBot = (decimal) => parseUnits(decimal, DECIMALS);
-const formatBot = (wei) => formatUnits(wei, DECIMALS);
 
 test("parseBot converts a decimal BOT amount to wei exactly", () => {
   assert.equal(parseBot("1.2"), 1200000000000000000n);

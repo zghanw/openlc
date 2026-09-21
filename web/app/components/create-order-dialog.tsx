@@ -9,7 +9,7 @@ import { AgreementBlock, ConsentDialog, FileField, HelpHint, Notice } from "@/ap
 import { buildDocument, extractPurchaseOrder } from "@/app/components/order-documents";
 import { ReleasePlanBar } from "@/app/components/release-plan";
 import { type DemoOrder, type ExtractedPurchaseOrder, type OrderDocument, formatOrderMoney as money, itemSummary } from "@/lib/demo-orders";
-import { createLiveOrder } from "@/lib/live-orders";
+import { ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, createLiveOrder } from "@/lib/live-orders";
 import { loadExtras, saveExtras } from "@/lib/local-order-extras";
 import { loadSession, type InvitationDelivery, type WorkspaceProfile } from "@/lib/payproof-api";
 
@@ -288,13 +288,14 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
               ]} />
             </div>
             {error && <Notice tone="error">{error}</Notice>}
+            {page === 2 && Boolean(loadSession()) && !arbitratorConfigured && <Notice tone="warning">{ARBITRATOR_NOT_CONFIGURED_REASON}</Notice>}
             <DialogFooter>
               {page === 1 ? <>
                 <Button variant="outline" disabled={saving} onClick={() => changeOpen(false)}>Cancel</Button>
                 <Button className="btn-primary" disabled={!detailsValid} onClick={() => setPage(2)}>Set release plan<ArrowRight size={14} aria-hidden="true" /></Button>
               </> : <>
                 <Button variant="outline" disabled={saving} onClick={() => setPage(1)}>Back to order details</Button>
-                <Button className="btn-primary" disabled={!canSend || saving} onClick={() => void send()}>{saving ? "Sending" : `Send for ${otherRole} confirmation`}{!saving && <ArrowRight size={14} aria-hidden="true" />}</Button>
+                <Button className="btn-primary" disabled={!canSend || saving || (Boolean(loadSession()) && !arbitratorConfigured)} onClick={() => void send()}>{saving ? "Sending" : `Send for ${otherRole} confirmation`}{!saving && <ArrowRight size={14} aria-hidden="true" />}</Button>
               </>}
             </DialogFooter>
 

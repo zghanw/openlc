@@ -9,7 +9,8 @@ import { STATUS, TERMS, statusLabel, statusTone } from "@/lib/order-status";
 import { MotionShell } from "@/app/components/motion";
 import { clearSession, loadSession, signOutSession, updateWorkspaceName } from "@/lib/payproof-api";
 import { BOTCHAIN } from "@/lib/chain";
-import { useWallet } from "@/lib/wallet";
+import { authenticateConnectedWallet } from "@/lib/auth";
+import { isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
 
 export function Logo() {
   return (
@@ -177,9 +178,29 @@ function UserMenu({ company, email }: { company: string; email?: string }) {
 
 export function AppShell({ active, company, children, actionCount = 0 }: { active: "overview" | "orders" | "wallet" | "none"; company: string; children: ReactNode; actionCount?: number }) {
   const [email, setEmail] = useState<string>();
-  useEffect(() => { setEmail(loadSession()?.user.email); }, []);
+  const [sessionAddress, setSessionAddress] = useState<string>();
+  useEffect(() => {
+    const session = loadSession();
+    setEmail(session?.user.email);
+    setSessionAddress(session?.suiAddress);
+  }, []);
   const wallet = useWallet();
   const wrongNetwork = Boolean(wallet.account) && !wallet.isCorrectNetwork;
+  const walletMismatch = Boolean(wallet.account && sessionAddress) && !isSameAddress(wallet.account, sessionAddress);
+  const [resigning, setResigning] = useState(false);
+  const [resignError, setResignError] = useState("");
+  const resignIn = async () => {
+    if (!wallet.account) return;
+    setResigning(true);
+    setResignError("");
+    try {
+      await authenticateConnectedWallet({ address: wallet.account, sign: wallet.signMessage });
+      window.location.reload();
+    } catch (cause) {
+      setResignError(cause instanceof Error ? cause.message : "Wallet sign-in could not be completed.");
+      setResigning(false);
+    }
+  };
   return (
     <MotionShell>
     <div className="shell">
@@ -194,7 +215,15 @@ export function AppShell({ active, company, children, actionCount = 0 }: { activ
         </nav>
         <UserMenu company={company} email={email} />
       </header>
-      {wrongNetwork && (
+      {walletMismatch && (
+        <Notice tone="warning">
+          <span>You switched wallets. Sign in again as <strong>{shortAddress(wallet.account!)}</strong> to continue. Chain actions are disabled until it matches your session.{resignError && <> {resignError}</>}</span>
+          <Button size="sm" variant="outline" disabled={resigning} onClick={() => void resignIn()}>
+            {resigning ? "Signing in…" : "Sign in again"}
+          </Button>
+        </Notice>
+      )}
+      {!walletMismatch && wrongNetwork && (
         <Notice tone="warning">
           <span>Your wallet is connected to the wrong network. This app needs <strong>{BOTCHAIN.chainName}</strong>.</span>
           <Button size="sm" variant="outline" disabled={wallet.switchingNetwork} onClick={() => void wallet.ensureBotChain()}>

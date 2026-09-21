@@ -305,8 +305,8 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
               </dl>
               <p>Both parties sign the exact split on Sui, then either party executes it.</p>
-              <Button className="btn-primary" disabled={Boolean(busy) || signed[mySide] || (live && !escrowConfigured)} onClick={() => void approve()}>{signed[mySide] ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
-              <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
+              <Button className="btn-primary" disabled={Boolean(busy) || signed[mySide] || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void approve()}>{signed[mySide] ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
+              <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
               {live && <small className="muted">Execution succeeds only after both signatures are on chain.</small>}
             </div>
           )}

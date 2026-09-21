@@ -5,7 +5,7 @@
  * Modeled on Vol.1's proven useEscrow.ts (D:\Codes\BuildWeekHackathon\frontend\src\hooks\useEscrow.ts)
  * connect/switch/listener pattern, trimmed to what this app needs (no bounty-specific state).
  */
-import { BrowserProvider, type Eip1193Provider, type JsonRpcSigner } from "ethers";
+import { BrowserProvider, getAddress, type Eip1193Provider, type JsonRpcSigner } from "ethers";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BOTCHAIN, BOTCHAIN_ADD_CHAIN_PARAMS } from "@/lib/chain";
 
@@ -219,4 +219,14 @@ export function useWallet(): WalletContextValue {
 
 export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}\u2026${address.slice(-4)}`;
+}
+
+/** Checksum-safe address equality (MetaMask and the backend don't always agree on casing). */
+export function isSameAddress(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  try {
+    return getAddress(a) === getAddress(b);
+  } catch {
+    return false;
+  }
 }

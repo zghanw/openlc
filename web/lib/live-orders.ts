@@ -5,10 +5,19 @@ import { type DemoOrder, type DocumentKind, type ExtractedPurchaseOrder, type In
 import { STATUS, type OrderStatus } from "@/lib/order-status";
 import { formatBot, parseBot } from "@/lib/chain";
 
-/** Arbitrator wallet written into every escrow. Set NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS to the
- *  real arbitrator address; this placeholder is syntactically valid but not a real signer. */
-export const DEFAULT_ARBITRATOR_ADDRESS =
-  process.env.NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS?.trim() || `0x${"c".repeat(40)}`;
+const configuredArbitrator = (process.env.NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS ?? "").trim();
+
+/** Fails closed exactly like chain.ts's escrowConfigured: an escrow funded with a fake arbitrator
+ *  could never be settled by arbitration, so creating or funding an order is disabled without a
+ *  real one configured, rather than silently writing in a placeholder that can never sign. */
+export const arbitratorConfigured = /^0x[0-9a-fA-F]{40}$/.test(configuredArbitrator);
+
+export const ARBITRATOR_NOT_CONFIGURED_REASON =
+  "The default arbitrator wallet is not configured for this deployment (NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS). Creating or funding an order is disabled until it is - an escrow funded with a placeholder arbitrator could never be settled by arbitration.";
+
+/** Arbitrator wallet written into every escrow. Only a real, valid address when arbitratorConfigured
+ *  is true - the placeholder fallback exists so reads never crash, not so it gets used on-chain. */
+export const DEFAULT_ARBITRATOR_ADDRESS = arbitratorConfigured ? configuredArbitrator : `0x${"c".repeat(40)}`;
 
 const DEFAULT_ARBITRATOR_ID = process.env.NEXT_PUBLIC_DEFAULT_ARBITRATOR_ID?.trim()
   || "00000000-0000-4000-8000-000000000001";
@@ -147,6 +156,7 @@ export type CreateLiveOrderInput = {
 };
 
 export async function createLiveOrder(input: CreateLiveOrderInput): Promise<{ order: DemoOrder; inviteUrl: string; inviteDelivery: InvitationDelivery }> {
+  if (!arbitratorConfigured) throw new Error(ARBITRATOR_NOT_CONFIGURED_REASON);
   const amount = input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const counterparty = input.initiatorRole === "buyer"
     ? { supplierEmail: input.counterpartyEmail.trim().toLowerCase(), supplierName: input.counterpartyName.trim(), buyerOrganizationId: input.organizationId }

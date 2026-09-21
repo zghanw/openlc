@@ -6,7 +6,7 @@
  * about 15 significant digits. `parseBot`/`formatBot` below go through ethers' string-based
  * decimal math instead, which is exact at any magnitude.
  */
-import { formatUnits, parseUnits } from "ethers";
+export { formatBot, parseBot } from "./units.mjs";
 
 export type BotChainNetwork = {
   chainIdDec: number;
@@ -76,14 +76,4 @@ export function explorerTxUrl(hash: string): string {
 
 export function explorerAddressUrl(address: string): string {
   return `${BOTCHAIN.explorerBase}/address/${address}`;
-}
-
-/** Wei (or any BigNumberish) -> an exact decimal string, e.g. 1200000000000000000n -> "1.2". */
-export function formatBot(wei: bigint | string | number): string {
-  return formatUnits(wei, 18);
-}
-
-/** An exact decimal string -> wei, e.g. "1.2" -> 1200000000000000000n. Never float math. */
-export function parseBot(decimal: string): bigint {
-  return parseUnits(decimal, 18);
 }
