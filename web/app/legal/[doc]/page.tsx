@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { notFound } from "next/navigation";
 import { renderMarkdown } from "@/lib/markdown";
+import { BuiltOnBotChain } from "@/app/components/built-on-botchain";
 
 const DOCUMENTS = {
   terms: { file: "terms-of-service.md", title: "Platform Terms of Service" },
@@ -17,7 +18,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ doc: string }> }) {
   const { doc } = await params;
   const entry = DOCUMENTS[doc as Slug];
-  return { title: entry ? `ProofPay · ${entry.title}` : "ProofPay" };
+  return { title: entry ? `OpenLC · ${entry.title}` : "OpenLC" };
 }
 
 export default async function LegalDocumentPage({ params }: { params: Promise<{ doc: string }> }) {
@@ -32,9 +33,9 @@ export default async function LegalDocumentPage({ params }: { params: Promise<{ 
       <header className="legal-header">
         <a className="logo" href="/">
           <span className="logo-mark brand-logo-mark">
-            <img src="/assets/proofpay-logo.jpg" alt="" width="40" height="40" />
+            <img src="/favicon.svg" alt="" width="40" height="40" />
           </span>
-          <span>ProofPay</span>
+          <span>OpenLC</span>
         </a>
         <nav className="legal-nav">
           <a className={doc === "terms" ? "legal-nav-active" : ""} href="/legal/terms">Terms of Service</a>
@@ -44,6 +45,9 @@ export default async function LegalDocumentPage({ params }: { params: Promise<{ 
       <main className="legal-main">
         <article className="legal-document" dangerouslySetInnerHTML={{ __html: renderMarkdown(source) }} />
       </main>
+      <footer className="legal-footer">
+        <BuiltOnBotChain />
+      </footer>
     </div>
   );
 }

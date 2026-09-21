@@ -49,7 +49,7 @@ export type Anchor = (sha256: string, kind: DocumentKind) => Promise<string>;
 /**
  * Attach a file to an order. Live orders upload to the backend so both parties
  * can open the file; sample orders keep it in the browser. With an `anchor`, a
- * funded live order first binds the file's hash to the escrow on Sui.
+ * funded live order first binds the file's hash to the escrow on BOT Chain.
  */
 export async function attachFile(order: DemoOrder, file: File, kind: DocumentKind, role: "BUYER" | "SUPPLIER", extras: { transcript?: string; extracted?: ExtractedPurchaseOrder; anchorTransactionDigest?: string } = {}, anchor?: Anchor): Promise<DemoOrder> {
   if (order.source === "backend") {

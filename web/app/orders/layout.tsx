@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Orders | ProofPay",
+  title: "OpenLC · Orders",
   description: "Every purchase order where you are the buyer or the supplier.",
 };
 

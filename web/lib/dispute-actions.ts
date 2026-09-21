@@ -1,6 +1,6 @@
 "use client";
 
-import { apiRequest } from "@/lib/payproof-api";
+import { apiRequest } from "@/lib/openlc-api";
 import type { ClaimMediation, ClaimProposal, ClaimView, MediationReport } from "@/lib/demo-orders";
 import { fromUnits, toUnits } from "@/lib/live-orders";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { backendUrl, saveSession, type DemoSession } from "@/lib/payproof-api";
+import { backendUrl, saveSession, type DemoSession } from "@/lib/openlc-api";
 
 /**
  * Wallet sign-in only. POSTs for a challenge, signs the returned message with the connected

@@ -10,7 +10,7 @@ export type Extras = {
   events: OrderEvent[];
 };
 
-const key = (orderId: string) => `payproof_order_extras:${orderId}`;
+const key = (orderId: string) => `openlc_order_extras:${orderId}`;
 
 /**
  * Details the backend does not store yet (documents, carrier and tracking,

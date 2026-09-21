@@ -1,6 +1,6 @@
 "use client";
 
-import { apiRequest, backendUrl, loadSession, type InvitationDelivery, type TradeInvitation, type TradeOrder, type WorkspaceProfile } from "@/lib/payproof-api";
+import { apiRequest, backendUrl, loadSession, type InvitationDelivery, type TradeInvitation, type TradeOrder, type WorkspaceProfile } from "@/lib/openlc-api";
 import { type DemoOrder, type DocumentKind, type ExtractedPurchaseOrder, type InspectionLine, type OrderDocument, type OrderEvent, type OrderInspection, formatOrderMoney as money, itemSummary } from "@/lib/demo-orders";
 import { STATUS, type OrderStatus } from "@/lib/order-status";
 import { formatBot, parseBot } from "@/lib/chain";

@@ -39,13 +39,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authenticateConnectedWallet } from "@/lib/auth";
 import { shortAddress, useWallet } from "@/lib/wallet";
+import { BuiltOnBotChain } from "@/app/components/built-on-botchain";
 
 const flow = [
   {
     number: "01",
     icon: WalletCards,
     title: "Fund",
-    copy: "Buyer secures USDC against the agreed purchase order.",
+    copy: "Buyer secures BOT against the agreed purchase order.",
   },
   {
     number: "02",
@@ -69,11 +70,11 @@ const flow = [
 
 function Logo() {
   return (
-    <a className="logo" href="#top" aria-label="ProofPay home">
+    <a className="logo" href="#top" aria-label="OpenLC home">
       <span className="logo-mark brand-logo-mark" aria-hidden="true">
-        <img src="/assets/proofpay-logo.jpg" alt="" width="40" height="40" />
+        <img src="/favicon.svg" alt="" width="40" height="40" />
       </span>
-      <span>ProofPay</span>
+      <span>OpenLC</span>
     </a>
   );
 }
@@ -331,7 +332,7 @@ function OpsPreview() {
           Inspection closes in 43h 12m
         </span>
         <strong>
-          <AnimatedNumber value={30000} /> USDC secured
+          <AnimatedNumber value={30} /> BOT secured
         </strong>
       </div>
     </motion.div>
@@ -472,7 +473,7 @@ export default function Home() {
 
         <section
           className="contract-strip"
-          aria-label="ProofPay trust statement"
+          aria-label="OpenLC trust statement"
         >
           <p>
             <LockKeyhole size={16} />
@@ -683,12 +684,12 @@ export default function Home() {
         </motion.section>
         <footer className="marketing-footer">
           <Logo />
-          <p>Delivery-linked B2B settlement on Sui.</p>
+          <p>Delivery-linked B2B settlement on BOT Chain.</p>
           <nav className="marketing-footer-legal">
             <a href="/legal/terms">Terms of Service</a>
             <a href="/legal/dispute-policy">Dispute Policy</a>
           </nav>
-          <span>Powered by Sui</span>
+          <BuiltOnBotChain />
         </footer>
       </main>
     </MotionConfig>

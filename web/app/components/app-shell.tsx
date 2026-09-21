@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { STATUS, TERMS, statusLabel, statusTone } from "@/lib/order-status";
 import { MotionShell } from "@/app/components/motion";
-import { clearSession, loadSession, signOutSession, updateWorkspaceName } from "@/lib/payproof-api";
+import { BuiltOnBotChain } from "@/app/components/built-on-botchain";
+import { clearSession, loadSession, signOutSession, updateWorkspaceName } from "@/lib/openlc-api";
 import { BOTCHAIN } from "@/lib/chain";
 import { authenticateConnectedWallet } from "@/lib/auth";
 import { isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
@@ -15,8 +16,8 @@ import { isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
 export function Logo() {
   return (
     <a className="logo" href="/">
-      <span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/assets/proofpay-logo.jpg" alt="" width="40" height="40" /></span>
-      <span>ProofPay</span>
+      <span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/favicon.svg" alt="" width="40" height="40" /></span>
+      <span>OpenLC</span>
     </a>
   );
 }
@@ -47,7 +48,7 @@ export function RoleTag({ role, compact = false, label }: { role: "BUYER" | "SUP
 }
 
 export function SampleTag({ label = "Sample" }: { label?: string }) {
-  return <span className="sample-tag" title="Sample order. Actions only change this sample, nothing is sent to the backend or Sui.">{label}</span>;
+  return <span className="sample-tag" title="Sample order. Actions only change this sample, nothing is sent to the backend or blockchain.">{label}</span>;
 }
 
 export function Notice({ tone = "info", children, onDismiss }: { tone?: "info" | "success" | "warning" | "error"; children: ReactNode; onDismiss?: () => void }) {
@@ -233,7 +234,7 @@ export function AppShell({ active, company, children, actionCount = 0 }: { activ
       )}
       <main className="shell-main">{children}</main>
       <footer className="shell-footer">
-        <span>ProofPay on Sui Testnet</span>
+        <BuiltOnBotChain />
         <span><a href="/legal/terms">Terms of Service</a><a href="/legal/dispute-policy">Dispute Resolution Policy</a></span>
       </footer>
     </div>

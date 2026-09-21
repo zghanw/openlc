@@ -142,7 +142,7 @@ export type TrustRoleSummary = {
 
 export type OrganizationTrustProfile = {
   organizationId: string; name: string; slug: string; organizationCreatedAt?: string; publishedAt?: string;
-  published: boolean; newOnPayProof: boolean; supplier: TrustRoleSummary; buyer: TrustRoleSummary;
+  published: boolean; newOnOpenLC: boolean; supplier: TrustRoleSummary; buyer: TrustRoleSummary;
 };
 
 export type WorkspaceProfile = {
@@ -235,9 +235,9 @@ export type Dispute = {
   };
 };
 
-const STORAGE_KEY = "proofpay_demo_session";
+const STORAGE_KEY = "openlc_demo_session";
 const BACKEND_URL = (
-  process.env.NEXT_PUBLIC_PAYPROOF_BACKEND_URL || "http://localhost:8787"
+  process.env.NEXT_PUBLIC_OPENLC_BACKEND_URL || "http://localhost:8787"
 ).replace(/\/$/, "");
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
@@ -304,8 +304,6 @@ export function saveSession(session: DemoSession): void {
 
 export function clearSession(): void {
   window.localStorage.removeItem(STORAGE_KEY);
-  window.sessionStorage.removeItem("payproof_zklogin_pending");
-  window.sessionStorage.removeItem("payproof_zklogin_session");
 }
 
 export async function signOutSession(): Promise<void> {

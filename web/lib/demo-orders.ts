@@ -1,4 +1,4 @@
-import type { TradeOrder } from "@/lib/payproof-api";
+import type { TradeOrder } from "@/lib/openlc-api";
 import type { OrderRole, OrderStatus } from "@/lib/order-status";
 
 export type DemoOrderRole = OrderRole;
@@ -111,7 +111,7 @@ export type OrderShipment = {
   trackingNumber: string;
   dispatchedAt: string;
   expectedAt?: string;
-  /** The mark_shipped transaction on Sui, for live orders where the supplier signed shipment. */
+  /** The mark_shipped transaction on BOT Chain, for live orders where the supplier signed shipment. */
   transactionDigest?: string;
   verifiedOnChain?: boolean;
 };
@@ -207,7 +207,7 @@ export type DemoOrder = {
   releasePlan?: { depositValue: number; dispatchValue: number; deliveryValue: number };
   delivery: string;
   deliveryLocation: string;
-  settlementAsset: "Testnet SUI" | "Testnet USDC" | "Native BOT";
+  settlementAsset: "Native BOT";
   /** Symbol shown next to every amount on this order. */
   currency: string;
   deadlines?: OrderDeadlines;

@@ -11,7 +11,7 @@ import { ReleasePlanBar } from "@/app/components/release-plan";
 import { type DemoOrder, type ExtractedPurchaseOrder, type OrderDocument, formatOrderMoney as money, itemSummary } from "@/lib/demo-orders";
 import { ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, createLiveOrder } from "@/lib/live-orders";
 import { loadExtras, saveExtras } from "@/lib/local-order-extras";
-import { loadSession, type InvitationDelivery, type WorkspaceProfile } from "@/lib/payproof-api";
+import { loadSession, type InvitationDelivery, type WorkspaceProfile } from "@/lib/openlc-api";
 
 type DraftLine = { id: number; description: string; quantity: number; unit: string; unitPrice: number };
 const blankLine = (id: number): DraftLine => ({ id, description: "", quantity: 1, unit: "units", unitPrice: 0 });
@@ -98,7 +98,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
       id: `sample-${ref.toLowerCase()}-${Date.now().toString(36)}`, reference: ref, role: buying ? "BUYER" : "SUPPLIER", initiatorRole: role, counterparty: counterpartyName.trim(),
       buyer: buying ? company : counterpartyName.trim(), supplier: buying ? counterpartyName.trim() : company, item: itemSummary(lines()), items: lines(),
       status: buying ? "awaiting_supplier" : "awaiting_buyer", value: total,
-      delivery, deliveryLocation: location.trim(), settlementAsset: "Testnet USDC", currency: "USDC", inviteToken: crypto.randomUUID(), version: 1,
+      delivery, deliveryLocation: location.trim(), settlementAsset: "Native BOT", currency: "BOT", inviteToken: crypto.randomUUID(), version: 1,
       releasePlan: { depositValue: releaseValue(depositPercent), dispatchValue: releaseValue(dispatchPercent), deliveryValue: Math.max(0, total - releaseValue(depositPercent) - releaseValue(dispatchPercent)) },
       source: "sample", documents, events: [{ at: new Date().toISOString(), label: "Order created", detail: `${company} issued the purchase order${buying ? "" : " as supplier"}.` }, ...documents.map((document) => ({ at: document.uploadedAt, label: "Document attached", detail: document.name }))],
     };
@@ -221,7 +221,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
             <fieldset className="form-section">
               <legend>Line items</legend>
               <div className="line-editor">
-                <div className="line-editor-head" aria-hidden="true"><span>Product</span><span>Quantity</span><span>Unit</span><span>Unit price (USDC)</span><span>Line total</span><span /></div>
+                <div className="line-editor-head" aria-hidden="true"><span>Product</span><span>Quantity</span><span>Unit</span><span>Unit price (BOT)</span><span>Line total</span><span /></div>
                 {items.map((item, index) => (
                   <div className="line-editor-row" key={item.id}>
                     <Input aria-label={`Product ${index + 1}`} placeholder="Product or description" value={item.description} onChange={(event) => updateLine(item.id, "description", event.target.value)} />
@@ -242,8 +242,8 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
             </fieldset>
 
             <div className="order-total-strip">
-              <span>Order value, settled in Testnet USDC</span>
-              <strong>{money(total)} <small>USDC</small></strong>
+              <span>Order value, settled in BOT</span>
+              <strong>{money(total)} <small>BOT</small></strong>
             </div>
             </div>
 
@@ -252,7 +252,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
                 <legend>Payment allocation</legend>
                 <p className="release-intro">Both companies confirm this allocation before the buyer funds the order. Money released at an earlier stage cannot be reclaimed through PayProof.</p>
                 <div className="release-allocation">
-                  <ReleasePlanBar total={total || 1} currency="USDC"
+                  <ReleasePlanBar total={total || 1} currency="BOT"
                     values={{ deposit: releaseValue(depositPercent), dispatch: releaseValue(dispatchPercent), delivery: Math.max(0, total - releaseValue(depositPercent) - releaseValue(dispatchPercent)) }}
                     slider={<>
                       <input className="release-range release-range-deposit" aria-label="Adjust end of order deposit" type="range" min={0} max={100 - dispatchPercent} value={depositPercent} onChange={(event) => setDepositPercent(Number(event.target.value))} />
@@ -263,17 +263,17 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
                   <label>
                     <span><strong>Order deposit</strong><small>Released when escrow is funded</small></span>
                     <span className="percent-input"><Input aria-label="Order deposit percentage" type="number" min={0} max={100 - dispatchPercent} step={1} value={depositPercent} onChange={(event) => setDepositPercent(Math.max(0, Math.min(100 - dispatchPercent, Number(event.target.value) || 0)))} /><b>%</b></span>
-                    <output>{money(releaseValue(depositPercent))} USDC</output>
+                    <output>{money(releaseValue(depositPercent))} BOT</output>
                   </label>
                   <label>
                     <span><strong>Dispatch payment</strong><small>Released with anchored shipping evidence</small></span>
                     <span className="percent-input"><Input aria-label="Dispatch payment percentage" type="number" min={0} max={100 - depositPercent} step={1} value={dispatchPercent} onChange={(event) => setDispatchPercent(Math.max(0, Math.min(100 - depositPercent, Number(event.target.value) || 0)))} /><b>%</b></span>
-                    <output>{money(releaseValue(dispatchPercent))} USDC</output>
+                    <output>{money(releaseValue(dispatchPercent))} BOT</output>
                   </label>
                   <div className="release-final">
                     <span><strong>Delivery balance</strong><small>Released after acceptance, timeout, or dispute settlement</small></span>
                     <b>{deliveryPercent}%</b>
-                    <output>{money(Math.max(0, total - releaseValue(depositPercent) - releaseValue(dispatchPercent)))} USDC</output>
+                    <output>{money(Math.max(0, total - releaseValue(depositPercent) - releaseValue(dispatchPercent)))} BOT</output>
                   </div>
                 </div>
                 {deliveryPercent < 20 && <Notice tone="warning">Only {deliveryPercent}% remains protected for delivery issues. Earlier releases are final and reduce the maximum refund available through PayProof.</Notice>}

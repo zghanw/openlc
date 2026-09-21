@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
-import type { OrganizationTrustProfile, TrustRoleSummary } from "@/lib/payproof-api";
+import type { OrganizationTrustProfile, TrustRoleSummary } from "@/lib/openlc-api";
 
 function RoleFacts({ title, facts }: { title: string; facts: TrustRoleSummary }) {
   return (
@@ -12,7 +12,7 @@ function RoleFacts({ title, facts }: { title: string; facts: TrustRoleSummary })
       </div>
       <dl className="trust-facts">
         <div><dt>Funded orders</dt><dd>{facts.fundedOrders}</dd></div>
-        <div><dt>Settled on Sui</dt><dd>{facts.settledOrders}</dd></div>
+        <div><dt>Settled on BOT Chain</dt><dd>{facts.settledOrders}</dd></div>
         <div><dt>Orders with disputes</dt><dd>{facts.disputes}</dd></div>
         <div><dt>Deadline closures</dt><dd>{facts.deadlineClosures}</dd></div>
         <div><dt>Dispute-free completion</dt><dd>{facts.disputeFreeRate === undefined ? "Shown after 5 settlements" : `${facts.disputeFreeRate}%`}</dd></div>
@@ -26,9 +26,9 @@ export function TrustProfileView({ profile }: { profile: OrganizationTrustProfil
   return (
     <div className="trust-profile">
       <header className="trust-identity">
-        <span className="trust-verified"><CheckCircle2 size={16} aria-hidden="true" />Verified PayProof organization</span>
+        <span className="trust-verified"><CheckCircle2 size={16} aria-hidden="true" />Verified OpenLC organization</span>
         <h1>{profile.name}</h1>
-        <p>{profile.newOnPayProof ? "New on PayProof. Counts are shown now; rates appear when enough verified history exists." : "Activity below is calculated from confirmed, on-chain-verified orders."}</p>
+        <p>{profile.newOnOpenLC ? "New on OpenLC. Counts are shown now; rates appear when enough verified history exists." : "Activity below is calculated from confirmed, on-chain-verified orders."}</p>
         <dl>
           {profile.organizationCreatedAt && <div><dt>Organization since</dt><dd>{new Date(profile.organizationCreatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</dd></div>}
           {profile.publishedAt && <div><dt>Profile published</dt><dd>{new Date(profile.publishedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</dd></div>}

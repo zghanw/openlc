@@ -11,7 +11,7 @@ import {
   ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, DEFAULT_ARBITRATOR_ADDRESS,
   type DeadlineSettlementInput, markLiveShipment, settleLiveDeadline, toUnits, viewLiveOrder,
 } from "@/lib/live-orders";
-import { apiRequest, loadSession, type TradeOrder } from "@/lib/payproof-api";
+import { apiRequest, loadSession, type TradeOrder } from "@/lib/openlc-api";
 
 /** Inspection window written into every escrow, matching DP-2.1 of the Dispute Resolution Policy. */
 export const INSPECTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;

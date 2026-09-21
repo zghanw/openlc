@@ -14,7 +14,7 @@ import { acceptClaimProposal, enforceClaimDeadline, loadClaim, proposeClaimSplit
 import { useEscrowActions } from "@/lib/escrow-actions";
 import { getLiveOrder } from "@/lib/live-orders";
 import { agreeSample, escalateSample, executeSampleSettlement, mediateSample, proposeSample, rejectSample, respondSample } from "@/lib/sample-orders";
-import { escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
+import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
 
 type Props = { order: DemoOrder; claim: ClaimView; company: string; onOrderChange: (order: DemoOrder) => void; onClaimChange: (claim: ClaimView) => void; railId?: string };
 
@@ -144,7 +144,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
     if (!allocation) return;
     if (live && order.raw) await escrow.approveSettlement(order.raw, mySide, allocation);
     setSigned((value) => ({ ...value, [mySide]: true }));
-  }, "Your approval is signed on Sui.");
+  }, "Your approval is signed on BOT Chain.");
   const execute = () => run("execute", async () => {
     if (!live) { const next = executeSampleSettlement(order); onOrderChange(next); return; }
     if (!order.raw) throw new Error("Order data is missing.");
@@ -156,7 +156,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
   return (
     <section className={`panel claim claim-role-${order.role.toLowerCase()} ${rail ? "claim-single" : ""}`} aria-labelledby="claim-title">
       <div className="panel-head">
-        <h2 id="claim-title"><Scale size={17} aria-hidden="true" />Claim<HelpHint text="Only the disputed amount stays in escrow. The accepted value is released to the supplier. The parties negotiate a split, can ask the AI mediator for a non-binding proposal, and the agreed split is signed by both and executed on Sui." /></h2>
+        <h2 id="claim-title"><Scale size={17} aria-hidden="true" />Claim<HelpHint text="Only the disputed amount stays in escrow. The accepted value is released to the supplier. The parties negotiate a split, can ask the AI mediator for a non-binding proposal, and the agreed split is signed by both and executed on BOT Chain." /></h2>
         <span className={`claim-deadline ${countdown.expired ? "claim-deadline-expired" : ""}`}>{claim.status === "negotiation_open" || claim.status === "supplier_review" ? `Round ${Math.max(claim.round, 1)} of ${claim.maxRounds}, ${countdown.text}` : ""}</span>
       </div>
 
@@ -304,7 +304,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                 <div><dt>Back to buyer</dt><dd><strong>{money(claim.settlement.buyerValue)} {order.currency}</strong></dd></div>
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
               </dl>
-              <p>Both parties sign the exact split on Sui, then either party executes it.</p>
+              <p>Both parties sign the exact split on BOT Chain, then either party executes it.</p>
               <Button className="btn-primary" disabled={Boolean(busy) || signed[mySide] || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void approve()}>{signed[mySide] ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
               <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
               {live && <small className="muted">Execution succeeds only after both signatures are on chain.</small>}
@@ -317,7 +317,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
               <dl className="fact-list">
                 <div><dt>Back to buyer</dt><dd><strong>{money(claim.settlement.buyerValue)} {order.currency}</strong></dd></div>
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
-                <div><dt>Sui transaction</dt><dd>{claim.settlement.transactionDigest && claim.settlement.executionStatus === "verified_on_chain" && live ? <a className="link" href={explorerTxUrl(claim.settlement.transactionDigest)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={12} aria-hidden="true" /></a> : "Sample record"}</dd></div>
+                <div><dt>Transaction</dt><dd>{claim.settlement.transactionDigest && claim.settlement.executionStatus === "verified_on_chain" && live ? <a className="link" href={explorerTxUrl(claim.settlement.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={12} aria-hidden="true" /></a> : "Sample record"}</dd></div>
               </dl>
             </div>
           )}
@@ -337,7 +337,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
           ? `${money(claim.requestedValue)} ${order.currency} goes back to ${order.buyer} and the rest of the disputed amount is released to you once both parties sign.`
           : "Your statement and evidence are recorded on the claim and quoted by the AI mediator. Attach the dispatch note, carrier receipt or photos."}
         clauses={respondOpen === "accept"
-          ? ["Accepting settles the claim at the buyer's requested amount.", "The settlement is executed on Sui once both parties sign it."]
+          ? ["Accepting settles the claim at the buyer's requested amount.", "The settlement is executed on BOT Chain once both parties sign it."]
           : ["Your statement and any attached evidence are genuine and unaltered.", "Evidence is shared with the buyer and, if the claim escalates, with the arbitrator.", "Negotiation follows the Dispute Resolution Policy rounds and deadline."]}
         confirmLabel={respondOpen === "accept" ? "Accept the claim" : "Submit response"} busy={busy === "respond"}
         onConfirm={() => respond(respondOpen === "accept")}>

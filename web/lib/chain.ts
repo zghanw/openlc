@@ -14,6 +14,8 @@ export type BotChainNetwork = {
   chainName: string;
   rpcUrl: string;
   explorerBase: string;
+  getBotLabel: string;
+  getBotUrl: string;
 };
 
 const NETWORKS: Record<number, BotChainNetwork> = {
@@ -23,6 +25,8 @@ const NETWORKS: Record<number, BotChainNetwork> = {
     chainName: "BOT Chain Testnet",
     rpcUrl: "https://rpc.bohr.life",
     explorerBase: "https://scan.bohr.life",
+    getBotLabel: "Get testnet BOT",
+    getBotUrl: "https://faucet.botchain.ai/basic",
   },
   677: {
     chainIdDec: 677,
@@ -30,6 +34,8 @@ const NETWORKS: Record<number, BotChainNetwork> = {
     chainName: "BOT Chain",
     rpcUrl: "https://rpc.botchain.ai",
     explorerBase: "https://scan.botchain.ai",
+    getBotLabel: "Get BOT on BOT Chain DEX",
+    getBotUrl: "https://dex.botchain.ai",
   },
 };
 

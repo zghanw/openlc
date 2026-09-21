@@ -8,13 +8,13 @@ import "./app-shell-5.css";
 import { ClientShell } from "./client-shell";
 
 export const metadata: Metadata = {
-  title: "ProofPay Ledger Light",
+  title: "OpenLC",
   description:
-    "Delivery-linked B2B settlement that releases accepted value and protects genuine disputes.",
+    "Escrow for B2B orders on BOT Chain: payment is locked before the goods ship and released in milestones as dispatch and delivery are proven.",
   icons: {
-    icon: "/assets/proofpay-logo.jpg",
-    shortcut: "/assets/proofpay-logo.jpg",
-    apple: "/assets/proofpay-logo.jpg",
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 

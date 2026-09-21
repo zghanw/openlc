@@ -13,9 +13,9 @@ import { useEscrowActions } from "@/lib/escrow-actions";
 import { acceptLiveInvitation, acceptLiveInvite, anchorLiveDocument, ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, cancelLiveInvite, markLiveDelivered, sendLiveInvite, tradeOrderToView, viewLiveOrder } from "@/lib/live-orders";
 import { withExtras } from "@/lib/local-order-extras";
 import { STATUS, demoNextStatus, isDisputed, nextAction } from "@/lib/order-status";
-import type { InvitationDelivery } from "@/lib/payproof-api";
+import type { InvitationDelivery } from "@/lib/openlc-api";
 import { advanceSample, confirmSample, deliverSample, recordSampleInspection, shipSample, withStatus } from "@/lib/sample-orders";
-import { escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
+import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
 import { clearPendingInvite } from "@/lib/pending-invite";
 
 export const DEMO_CONTROLS = true;
@@ -243,7 +243,7 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
         <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured) || needsArbitrator || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={`Fund ${money(order.value)} ${order.currency} into escrow`}
-        description={order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} is paid to ${order.supplier} now. The remaining ${money(order.releasePlan.dispatchValue + order.releasePlan.deliveryValue)} ${order.currency} stays in the escrow contract.` : "The amount moves from your Sui address into the escrow contract for this order. ProofPay cannot withdraw it."}
+        description={order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} is paid to ${order.supplier} now. The remaining ${money(order.releasePlan.dispatchValue + order.releasePlan.deliveryValue)} ${order.currency} stays in the escrow contract.` : "The amount moves from your Sui address into the escrow contract for this order. OpenLC escrow keeps it."}
         clauses={[
           order.releasePlan ? `Funding follows the confirmed ${money(order.releasePlan.depositValue)} / ${money(order.releasePlan.dispatchValue)} / ${money(order.releasePlan.deliveryValue)} ${order.currency} release plan.` : `${money(order.value)} ${order.currency} is locked for order ${order.reference}.`,
           "The confirmed order terms are hashed into the escrow so neither party can later dispute what was agreed.",
@@ -277,7 +277,7 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
   const amount = `${money(order.value)} ${order.currency}`;
   if (now <= at) {
     return <p className="action-note">{buyer
-      ? `If ${order.supplier} has not marked shipment on Sui by ${when}, you can take the escrow back without anyone else's signature.`
+      ? `If ${order.supplier} has not marked shipment on BOT Chain by ${when}, you can take the escrow back without anyone else's signature.`
       : `If ${order.buyer} has neither accepted the delivery nor opened a claim by ${when}, you can claim the escrow without anyone else's signature.`}</p>;
   }
   return (
@@ -321,7 +321,7 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
         <label className="field"><span>Dispatch date</span><Input type="date" value={dispatchedAt} onChange={(event) => setDispatchedAt(event.target.value)} /></label>
         <label className="field"><span>Expected arrival</span><Input type="date" value={expectedAt} onChange={(event) => setExpectedAt(event.target.value)} /></label>
       </div>
-      <FileField label="Attach dispatch note or carrier receipt" hint="Required. Its fingerprint is anchored to the shipment release on Sui." accept=".pdf,.png,.jpg,.jpeg,.webp" onFile={setFile} file={file} />
+      <FileField label="Attach dispatch note or carrier receipt" hint="Required. Its fingerprint is anchored to the shipment release on BOT Chain." accept=".pdf,.png,.jpg,.jpeg,.webp" onFile={setFile} file={file} />
       <div className="action-buttons">
         <Button className="btn-primary" disabled={!valid || Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
       </div>
@@ -350,7 +350,7 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
             const transactionDigest = next.shipment?.transactionDigest;
             if (transactionDigest) next = withExtras(await anchorLiveDocument(order.id, stagedDocument.id, transactionDigest));
             return next;
-          }, live ? "Shipment is signed on Sui. The order is in transit." : "The order is marked in transit.")) setOpen(false);
+          }, live ? "Shipment is signed on BOT Chain. The order is in transit." : "The order is marked in transit.")) setOpen(false);
         }} />
     </div>
   );
@@ -521,7 +521,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
               <label className="field"><span>What was wrong<HelpHint text="This statement is sent to the supplier with the claim and quoted by the AI mediator. Say what arrived, in what condition, and how you know." /></span>
                 <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="13 cartons arrived crushed and leaking. The driver noted the damage on the signed delivery order." />
               </label>
-              <FileField label="Attach evidence" hint="Signed delivery order or photos. The file is read into text for the mediator. Its fingerprint is anchored to the escrow on Sui and kept with the order." accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" onFile={setFile} file={file} />
+              <FileField label="Attach evidence" hint="Signed delivery order or photos. The file is read into text for the mediator. Its fingerprint is anchored to the escrow on BOT Chain and kept with the order." accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" onFile={setFile} file={file} />
               {note.trim().length < 10 && <p className="action-note">Describe what was wrong in at least 10 characters before you can open the claim. You have written {note.trim().length}.</p>}
               <div className="action-buttons">
                 {DEMO_CONTROLS && live && <Button variant="outline" disabled={!claimReady || Boolean(busy)} onClick={() => setDemoClaimOpen(true)}><FastForward size={14} aria-hidden="true" />Open claim without signing (demo)</Button>}
@@ -557,12 +557,12 @@ function SettlementRecord({ order }: { order: DemoOrder }) {
       <dl className="fact-list">
         <div><dt>Paid to supplier</dt><dd><strong>{money(settlement?.supplierValue ?? order.value)} {order.currency}</strong></dd></div>
         <div><dt>Returned to buyer</dt><dd><strong>{money(settlement?.buyerValue ?? 0)} {order.currency}</strong></dd></div>
-        <div><dt>How</dt><dd>{settlement?.source === "dispute" ? "Agreed under the claim and executed on Sui."
+        <div><dt>How</dt><dd>{settlement?.source === "dispute" ? "Agreed under the claim and executed on BOT Chain."
           : settlement?.source === "refund_unshipped" ? "The delivery deadline passed without shipment, so the buyer reclaimed the escrow."
           : settlement?.source === "claim_uninspected" ? "The inspection window closed without a decision, so the supplier claimed the escrow."
           : "Delivery accepted in full. The whole escrow was released to the supplier."}</dd></div>
         <div><dt>Sui transaction</dt><dd>{settlement?.transactionDigest && settlement.verifiedOnChain
-          ? <a className="link" href={explorerTxUrl(settlement.transactionDigest)} target="_blank" rel="noreferrer">View on Suiscan<ExternalLink size={12} aria-hidden="true" /></a>
+          ? <a className="link" href={explorerTxUrl(settlement.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={12} aria-hidden="true" /></a>
           : order.source === "sample" ? "Sample order, no on-chain record" : "Recorded without on-chain verification"}</dd></div>
       </dl>
     </div>

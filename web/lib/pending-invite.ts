@@ -1,6 +1,6 @@
 "use client";
 
-const KEY = "payproof_pending_invite";
+const KEY = "openlc_pending_invite";
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type PendingInvite = { orderId: string; token: string; savedAt: number };

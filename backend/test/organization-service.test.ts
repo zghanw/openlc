@@ -53,7 +53,7 @@ describe("OrganizationService", () => {
     });
     await expect(service.publicTrustProfile(membership.organizationSlug)).rejects.toMatchObject({ code: "NOT_FOUND" });
     const published = await service.setTrustPublished(actor, membership.organizationId, true);
-    expect(published).toMatchObject({ published: true, newOnPayProof: true, supplier: { fundedOrders: 1, settledOrders: 1, disputes: 0 } });
+    expect(published).toMatchObject({ published: true, newOnOpenLC: true, supplier: { fundedOrders: 1, settledOrders: 1, disputes: 0 } });
     expect((await service.publicTrustProfile(membership.organizationSlug)).supplier.disputeFreeRate).toBeUndefined();
   });
 });

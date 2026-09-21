@@ -18,7 +18,7 @@ export interface OrganizationTrustProfile {
   organizationCreatedAt?: string;
   publishedAt?: string;
   published: boolean;
-  newOnPayProof: boolean;
+  newOnOpenLC: boolean;
   supplier: TrustRoleSummary;
   buyer: TrustRoleSummary;
 }
@@ -104,7 +104,7 @@ export class OrganizationService {
     return {
       organizationId: organization.organizationId, name: organization.organizationName, slug: organization.organizationSlug,
       organizationCreatedAt: organization.organizationCreatedAt, publishedAt: organization.trustProfilePublishedAt,
-      published: Boolean(organization.trustProfilePublishedAt), newOnPayProof: supplier.fundedOrders + buyer.fundedOrders < 5,
+      published: Boolean(organization.trustProfilePublishedAt), newOnOpenLC: supplier.fundedOrders + buyer.fundedOrders < 5,
       supplier, buyer,
     };
   }

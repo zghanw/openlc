@@ -64,23 +64,23 @@ export default function OverviewPage() {
         <LiftCard as="a" className="ledger-cell ledger-wallet" href="/wallet" tilt={2} lift={2}>
           <span className="ledger-icon"><WalletCards size={18} aria-hidden="true" /></span>
           <span className="ledger-label">Available in wallet</span>
-          {balance === null ? <strong className="text">Not connected</strong> : <strong><AnimatedAmount value={balance} decimals={2} /> <small>USDC</small></strong>}
+          {balance === null ? <strong className="text">Not connected</strong> : <strong><AnimatedAmount value={balance} decimals={2} /> <small>BOT</small></strong>}
           <small>{balance === null ? (workspace.live ? "Connect MetaMask to load your balance." : "Sign in to load your balance.") : "Spendable now. Separate from escrow."}</small>
           <span className="ledger-link">Open wallet<ArrowRight size={13} aria-hidden="true" /></span>
         </LiftCard>
         <div className="ledger-cell">
           <span className="ledger-label">Secured for your purchases<HelpHint text="Total value you have locked in escrow on orders you are buying. Released to suppliers only when you accept delivery or when a claim is settled." /></span>
-          <strong><AnimatedAmount value={ledger.buying.value} /> <small>USDC</small></strong>
+          <strong><AnimatedAmount value={ledger.buying.value} /> <small>BOT</small></strong>
           <small>{ledger.buying.count} {ledger.buying.count === 1 ? "funded order" : "funded orders"}</small>
         </div>
         <div className="ledger-cell">
           <span className="ledger-label">Secured for your sales<HelpHint text="Total value buyers have locked in escrow on orders you are supplying. It becomes yours when the buyer accepts delivery." /></span>
-          <strong><AnimatedAmount value={ledger.supplying.value} /> <small>USDC</small></strong>
+          <strong><AnimatedAmount value={ledger.supplying.value} /> <small>BOT</small></strong>
           <small>{ledger.supplying.count} {ledger.supplying.count === 1 ? "funded order" : "funded orders"}</small>
         </div>
         <div className="ledger-cell">
           <span className="ledger-label">Ready to release to you</span>
-          <strong><AnimatedAmount value={ledger.release.value} /> <small>USDC</small></strong>
+          <strong><AnimatedAmount value={ledger.release.value} /> <small>BOT</small></strong>
           <small>{ledger.release.count} {ledger.release.count === 1 ? "settlement" : "settlements"} waiting to be executed</small>
         </div>
       </section>

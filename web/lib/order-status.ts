@@ -48,7 +48,7 @@ export const STATUS: Record<OrderStatus, StatusMeta> = {
   dispute_open: { label: "Claim opened", tone: "danger", step: 4, summary: "The buyer opened a claim for exceptions. The supplier responds next." },
   negotiation_open: { label: "In negotiation", tone: "danger", step: 4, summary: "Both parties are reviewing settlement proposals for the disputed amount." },
   arbitration_pending: { label: "With arbitrator", tone: "danger", step: 4, summary: "The disputed amount is with the arbitrator for a decision." },
-  settlement_pending: { label: "Settlement ready", tone: "progress", step: 5, summary: "The agreed split is ready to be signed and executed on Sui." },
+  settlement_pending: { label: "Settlement ready", tone: "progress", step: 5, summary: "The agreed split is ready to be signed and executed on BOT Chain." },
   settled: { label: "Settled", tone: "success", step: 6, summary: "Payment was released and the settlement record is final." },
   cancelled: { label: "Cancelled", tone: "neutral", step: 0, summary: "This order was cancelled before funding." },
 };
@@ -115,7 +115,7 @@ export function nextAction(status: OrderStatus, role: OrderRole, options: { invi
         : { owner: "counterparty", title: "Waiting for the buyer to revise", detail: "You asked for changes. The buyer updates the order next." };
     case "supplier_confirmed":
       return buyer
-        ? { owner: "you", title: "Fund escrow", detail: "Move the order value into escrow on Sui. The supplier ships once funds are secured." }
+        ? { owner: "you", title: "Fund escrow", detail: "Move the order value into escrow on BOT Chain. The supplier ships once funds are secured." }
         : { owner: "counterparty", title: "Waiting for buyer funding", detail: "Prepare stock. Dispatch only after funds are secured." };
     case "funded":
       return buyer
@@ -143,7 +143,7 @@ export function nextAction(status: OrderStatus, role: OrderRole, options: { invi
     case "arbitration_pending":
       return { owner: "none", title: "Awaiting arbitrator decision", detail: "No action is needed until the arbitrator decides." };
     case "settlement_pending":
-      return { owner: "you", title: "Sign the settlement", detail: "Both parties sign the agreed split on Sui, then it is executed." };
+      return { owner: "you", title: "Sign the settlement", detail: "Both parties sign the agreed split on BOT Chain, then it is executed." };
     case "settled":
       return { owner: "none", title: "Settlement complete", detail: "View the settlement record and the Sui transaction." };
     case "cancelled":

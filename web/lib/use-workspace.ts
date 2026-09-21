@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DemoOrder } from "@/lib/demo-orders";
 import { loadInvitations, loadLiveOrders, type LiveInvitation } from "@/lib/live-orders";
-import { loadSession, type DemoSession, type WorkspaceProfile } from "@/lib/payproof-api";
+import { loadSession, type DemoSession, type WorkspaceProfile } from "@/lib/openlc-api";
 import { loadSampleOrders, resetSampleOrders, samplesHidden, setSamplesHidden, updateSampleOrder } from "@/lib/sample-orders";
 
 export const GUEST_COMPANY = "Your company";

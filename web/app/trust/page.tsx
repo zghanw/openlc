@@ -5,7 +5,7 @@ import { Copy, ExternalLink } from "lucide-react";
 import { AppShell, Notice, PageTitle, Skeleton } from "@/app/components/app-shell";
 import { TrustProfileView } from "@/app/components/trust-profile";
 import { Button } from "@/components/ui/button";
-import { loadTrustProfile, setTrustProfilePublished, type OrganizationTrustProfile } from "@/lib/payproof-api";
+import { loadTrustProfile, setTrustProfilePublished, type OrganizationTrustProfile } from "@/lib/openlc-api";
 import { useWorkspace } from "@/lib/use-workspace";
 
 export default function TrustSettingsPage() {
