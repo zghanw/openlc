@@ -74,7 +74,9 @@ const deadlineSettlementSchema = z.object({
   kind: z.enum(["refund_unshipped", "claim_uninspected"]), transactionDigest: txHash, receiptObjectId: z.string().min(1).max(256).optional(),
 });
 const acceptInviteSchema = z.object({
-  email: z.string().email().optional(), name: z.string().max(256).optional(),
+  // Wallet sessions carry an empty email; treat "" as absent instead of rejecting the accept.
+  email: z.preprocess((value) => (value === "" ? undefined : value), z.string().email().optional()),
+  name: z.string().max(256).optional(),
 });
 const openTradeDisputeSchema = z.object({
   disputeTransactionDigest: txHash, disputedUnits: amount, requestedBuyerUnits: amount,

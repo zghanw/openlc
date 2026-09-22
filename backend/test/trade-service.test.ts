@@ -123,6 +123,25 @@ describe("trade lifecycle API", () => {
     expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(other.accessToken), body: "{}" })).status).toBe(409);
   });
 
+  it("accepts the exact body a wallet session sends, whose email is an empty string", async () => {
+    const control = controlledContext();
+    const fallback: TokenVerifier = { verify: async (token) => JSON.parse(token) };
+    const verifier = new DemoAwareTokenVerifier(fallback, true);
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades, true);
+    const buyer = issueDemoGoogleSession("buyer2@example.com", "Buyer Two");
+    const created = await app.request("/v1/orders", { method: "POST", headers: auth(buyer.accessToken), body: JSON.stringify({ reference: "PO-102", supplierEmail: "supplier3@example.com", supplierName: "Supplier Two", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "1", description: "A sample item", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "1", description: "Sample", quantity: "1", unit: "unit", unitPriceUnits: "1" }] }) });
+    const order = await created.json() as any;
+    const invite = await (await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth(buyer.accessToken) })).json() as any;
+    // web/lib/auth.ts always builds wallet sessions with email: "", and web/lib/live-orders.ts
+    // sends that straight through to accept - "" must count as absent, not an invalid email.
+    const wallet = `0x${"3".repeat(40)}`;
+    const walletToken = JSON.stringify({ id: SUPPLIER, walletAddress: wallet });
+    const accepted = await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(walletToken), body: JSON.stringify({ email: "", name: "Connected wallet", supplierWalletAddress: wallet }) });
+    expect(accepted.status).toBe(200);
+  });
+
   it("a wallet session previews and accepts a bearer invite even when the order names a supplier contact email", async () => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
