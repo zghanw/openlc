@@ -131,7 +131,8 @@ export class IdentityService {
         name: account.name,
         walletAddress: account.walletAddress,
       };
-    } catch {
+    } catch (error) {
+      console.warn(`Session rejected: ${error instanceof Error ? error.message : String(error)}`);
       throw new DomainError("UNAUTHORIZED", "Invalid or expired user token", 401);
     }
   }
