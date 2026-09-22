@@ -1205,3 +1205,7 @@ body{background:#edf2f7}
   line-height:1.08;
   letter-spacing:.008em;
 }
+
+/* BOT Chain footer mark: one line of inline links wherever it sits. */
+.built-on-botchain svg{display:inline-block;vertical-align:-2px;margin-left:3px}
+.marketing-footer>.built-on-botchain{grid-column:1/-1;justify-self:center;padding-bottom:24px;font-size:11px;text-transform:none;letter-spacing:normal}
