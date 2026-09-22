@@ -34,11 +34,11 @@ alter table public.wallet_auth_challenges enable row level security;
 revoke all on public.openlc_accounts, public.openlc_wallet_identities, public.wallet_auth_challenges from public, anon, authenticated;
 grant select on public.openlc_accounts, public.openlc_wallet_identities to authenticated;
 
-drop policy if exists "users can read their PayProof account" on public.openlc_accounts;
-create policy "users can read their PayProof account" on public.openlc_accounts
+drop policy if exists "users can read their OpenLC account" on public.openlc_accounts;
+create policy "users can read their OpenLC account" on public.openlc_accounts
 for select to authenticated using (supabase_user_id = auth.uid());
 
-drop policy if exists "users can read their Sui identities" on public.openlc_wallet_identities;
+drop policy if exists "users can read their wallet identities" on public.openlc_wallet_identities;
 create policy "users can read their wallet identities" on public.openlc_wallet_identities
 for select to authenticated using (
   exists (
