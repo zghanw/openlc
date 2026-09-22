@@ -429,8 +429,7 @@ export class TradeService {
   async acceptInvitation(orderId: string, actor: Actor, input: AcceptInvitationInput = {}): Promise<TradeOrder> {
     const invite = await this.store.getInviteByOrderId(orderId);
     if (!invite) throw new DomainError("INVALID_INVITE", "This order has no invitation to accept", 404);
-    const tokenPresented = !!actor.email;
-    return this.acceptWithInvite(invite, actor, input, tokenPresented);
+    return this.acceptWithInvite(invite, actor, input, false);
   }
 
   async cancelInvite(orderId: string, actor: Actor): Promise<TradeOrder> {
@@ -477,10 +476,13 @@ export class TradeService {
       }
       boundWalletAddress = namedWallet;
     } else {
-      // Nothing names a wallet for this side, so only possession of the invitation link
-      // proves the actor was the one invited. Sign-in is wallet-only: a contact email on
-      // file is not an identity and is never checked here.
-      if (!tokenPresented) throw new DomainError("INVITE_TOKEN_REQUIRED", "Open this invitation using its link to accept it", 403);
+      // Nothing names a wallet for this side. Holding the invitation link proves the actor was
+      // invited; without it, only a verified session email matching the order's contact email
+      // does. A self-declared email never counts, and wallet sessions carry no email, so for
+      // them the link is the only way in.
+      const namedEmail = side === "buyer" ? order.buyerEmail?.trim().toLowerCase() : order.supplierEmail?.trim().toLowerCase();
+      const verifiedMatch = Boolean(namedEmail && verifiedEmail && verifiedEmail === namedEmail);
+      if (!tokenPresented && !verifiedMatch) throw new DomainError("INVITE_TOKEN_REQUIRED", "Open this invitation using its link to accept it", 403);
       // Every supplier acceptance binds a payout wallet, however identity was just proved
       // (email or token) - recordFunding's guards only work when this is always set, and a
       // wallet captured only "when convenient" is what let a walletless account accept and
@@ -534,10 +536,6 @@ export class TradeService {
     const side = pendingSide(order) ?? (order.initiatorRole === "supplier" ? "buyer" : "supplier");
     const acceptedId = side === "buyer" ? order.buyerId : order.supplierId;
     if (acceptedId && acceptedId !== actor.id) throw new DomainError("INVITE_ALREADY_ACCEPTED", "This order has already been accepted by another company", 409);
-    // Holding the raw token is proof enough for a bearer-link order that names nobody for
-    // this side. Otherwise the previewing session must match what the order actually names -
-    // the named wallet or the named email - the same reasoning pendingInviteFor applies to
-    // the token-free workspace read, so a stolen/guessed token cannot browse a named order.
     // Holding the raw token is proof enough unless the order names this side's wallet:
     // sign-in is wallet-only, so a contact email on file is never an identity check.
     const namedWallet = side === "supplier" ? (order.supplierWalletAddress ?? invite.invitedWalletAddress) : undefined;
