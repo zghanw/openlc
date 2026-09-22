@@ -429,7 +429,8 @@ export class TradeService {
   async acceptInvitation(orderId: string, actor: Actor, input: AcceptInvitationInput = {}): Promise<TradeOrder> {
     const invite = await this.store.getInviteByOrderId(orderId);
     if (!invite) throw new DomainError("INVALID_INVITE", "This order has no invitation to accept", 404);
-    return this.acceptWithInvite(invite, actor, input, false);
+    const tokenPresented = !!actor.email;
+    return this.acceptWithInvite(invite, actor, input, tokenPresented);
   }
 
   async cancelInvite(orderId: string, actor: Actor): Promise<TradeOrder> {
@@ -476,18 +477,10 @@ export class TradeService {
       }
       boundWalletAddress = namedWallet;
     } else {
-      const namedEmail = side === "buyer" ? order.buyerEmail?.trim().toLowerCase() : order.supplierEmail?.trim().toLowerCase();
-      if (namedEmail) {
-        // Without the emailed token, nothing but a verified email proves the actor
-        // is the invited party, so a self-declared address cannot stand in for one.
-        const candidateEmail = verifiedEmail ?? (tokenPresented ? submittedEmail : undefined);
-        if (!candidateEmail) throw new DomainError("INVITE_EMAIL_REQUIRED", `A verified ${side} email is required to accept this invitation`, 403);
-        if (candidateEmail !== namedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "This invitation was issued to a different account", 403);
-      } else {
-        // Nothing names an email or a wallet for this side, so only possession of the
-        // emailed link itself proves the actor was the one invited.
-        if (!tokenPresented) throw new DomainError("INVITE_TOKEN_REQUIRED", "Open this invitation using its link to accept it", 403);
-      }
+      // Nothing names a wallet for this side, so only possession of the invitation link
+      // proves the actor was the one invited. Sign-in is wallet-only: a contact email on
+      // file is not an identity and is never checked here.
+      if (!tokenPresented) throw new DomainError("INVITE_TOKEN_REQUIRED", "Open this invitation using its link to accept it", 403);
       // Every supplier acceptance binds a payout wallet, however identity was just proved
       // (email or token) - recordFunding's guards only work when this is always set, and a
       // wallet captured only "when convenient" is what let a walletless account accept and
@@ -545,17 +538,11 @@ export class TradeService {
     // this side. Otherwise the previewing session must match what the order actually names -
     // the named wallet or the named email - the same reasoning pendingInviteFor applies to
     // the token-free workspace read, so a stolen/guessed token cannot browse a named order.
+    // Holding the raw token is proof enough unless the order names this side's wallet:
+    // sign-in is wallet-only, so a contact email on file is never an identity check.
     const namedWallet = side === "supplier" ? (order.supplierWalletAddress ?? invite.invitedWalletAddress) : undefined;
-    if (namedWallet) {
-      if (!sameAddress(actor.walletAddress, namedWallet)) {
-        throw new DomainError("SUPPLIER_WALLET_MISMATCH", "Connect the wallet this order names as the supplier to preview it", 403);
-      }
-    } else {
-      const namedEmail = side === "buyer" ? order.buyerEmail?.trim().toLowerCase() : order.supplierEmail?.trim().toLowerCase();
-      if (namedEmail) {
-        const email = actor.email?.trim().toLowerCase();
-        if (!email || email !== namedEmail) throw new DomainError("INVITE_EMAIL_MISMATCH", "Sign in with the account this invitation names to preview it", 403);
-      }
+    if (namedWallet && !sameAddress(actor.walletAddress, namedWallet)) {
+      throw new DomainError("SUPPLIER_WALLET_MISMATCH", "Connect the wallet this order names as the supplier to preview it", 403);
     }
     return structuredClone(order);
   }

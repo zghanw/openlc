@@ -205,7 +205,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
               <legend>{buying ? "Supplier" : "Buyer"}</legend>
               <div className="form-grid">
                 <label className="field"><span>{buying ? "Supplier company" : "Buyer company"}</span><Input aria-label={buying ? "Supplier company name" : "Buyer company name"} value={counterpartyName} onChange={(event) => setCounterpartyName(event.target.value)} placeholder={buying ? "FreshSource Foods" : "GreenBite Trading"} /></label>
-                <label className="field"><span>{buying ? "Supplier contact email" : "Buyer contact email"}<HelpHint text="The confirmation invitation is sent to this address. Only an account signed in with this email can confirm the order." /></span><Input aria-label={buying ? "Supplier contact email" : "Buyer contact email"} type="email" autoComplete="email" value={counterpartyEmail} onChange={(event) => setCounterpartyEmail(event.target.value)} placeholder={buying ? "orders@supplier.com" : "purchasing@buyer.com"} aria-invalid={counterpartyEmail.length > 0 && !emailValid} /></label>
+                <label className="field"><span>{buying ? "Supplier contact email" : "Buyer contact email"}<HelpHint text="Contact details for your records. The other company confirms from its own wallet using the link you copy after creating the order." /></span><Input aria-label={buying ? "Supplier contact email" : "Buyer contact email"} type="email" autoComplete="email" value={counterpartyEmail} onChange={(event) => setCounterpartyEmail(event.target.value)} placeholder={buying ? "orders@supplier.com" : "purchasing@buyer.com"} aria-invalid={counterpartyEmail.length > 0 && !emailValid} /></label>
               </div>
             </fieldset>
 

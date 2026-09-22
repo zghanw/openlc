@@ -123,6 +123,25 @@ describe("trade lifecycle API", () => {
     expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(other.accessToken), body: "{}" })).status).toBe(409);
   });
 
+  it("a wallet session previews and accepts a bearer invite even when the order names a supplier contact email", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const buyer = { id: BUYER, email: "buyer-wallet@example.com", name: "Buyer" };
+    const created = await trades.createOrder({
+      reference: "PO-WALLET", supplierEmail: "supplier-contact@example.com", arbitratorId: ARBITRATOR,
+      assetType: "USDC", amountUnits: "100", description: "Wallet-gated item", deliveryDate: "2026-09-04", deliveryLocation: "PJ",
+      lineItems: [{ id: "1", description: "Item", quantity: "1", unit: "unit", unitPriceUnits: "100" }],
+    }, buyer);
+    const invite = await trades.createInvite(created.id, buyer);
+    const supplierWallet = "0x00000000000000000000000000000000000000B0";
+    const walletOnlyActor = { id: SUPPLIER, walletAddress: supplierWallet };
+    expect(await trades.previewInvite(invite.inviteToken!, walletOnlyActor)).toBeTruthy();
+    const accepted = await trades.acceptInvite(invite.inviteToken!, walletOnlyActor);
+    expect(accepted.supplierId).toBe(SUPPLIER);
+    expect(accepted.supplierWalletAddress?.toLowerCase()).toBe(supplierWallet.toLowerCase());
+  });
+
   it("requires a verified email before accepting an email-bound invite", async () => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
@@ -134,7 +153,7 @@ describe("trade lifecycle API", () => {
       lineItems: [{ id: "1", description: "Item", quantity: "1", unit: "unit", unitPriceUnits: "1" }],
     }, buyer);
     const invite = await trades.createInvite(created.id, buyer);
-    await expect(trades.acceptInvite(invite.inviteToken!, { id: SUPPLIER })).rejects.toMatchObject({ code: "INVITE_EMAIL_REQUIRED" });
+    await expect(trades.acceptInvite(invite.inviteToken!, { id: SUPPLIER })).rejects.toMatchObject({ code: "WALLET_REQUIRED" });
   });
 
   it("syncs a direct supplier agreement into a settlement-pending order", async () => {
@@ -195,7 +214,7 @@ describe("trade lifecycle API", () => {
     }, buyer);
     await trades.createInvite(order.id, buyer);
     await expect(trades.acceptInvitation(order.id, { id: SUPPLIER }, { email: "supplier-unverified@example.com" }))
-      .rejects.toMatchObject({ code: "INVITE_EMAIL_REQUIRED" });
+      .rejects.toMatchObject({ code: "INVITE_TOKEN_REQUIRED" });
     await expect(trades.getOrder(order.id, { id: SUPPLIER })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
