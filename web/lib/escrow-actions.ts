@@ -329,7 +329,7 @@ export function useEscrowActions() {
 
     const receipt = await sendTx(
       "createEscrow",
-      [order.supplierWalletAddress, arbitrator, order.orderHash, order.reference, deposit, dispatch, delivery, deadlineSec, inspectionSec],
+      [order.supplierWalletAddress, arbitrator, asBytes32(order.orderHash, "The order hash"), order.reference, deposit, dispatch, delivery, deadlineSec, inspectionSec],
       total,
     );
     const created = findEvent(receipt, "EscrowCreated");
