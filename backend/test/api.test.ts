@@ -23,7 +23,7 @@ describe("HTTP API", () => {
     expect((await response.json() as any).status).toBe("supplier_review");
   });
 
-  it("returns the mapped PayProof identity for an authenticated request", async () => {
+  it("returns the mapped OpenLC identity for an authenticated request", async () => {
     const control = controlledContext();
     const verifier: TokenVerifier = {
       verify: async () => ({ id: BUYER, email: "buyer@example.com", name: "Buyer" }),

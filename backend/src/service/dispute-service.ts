@@ -12,7 +12,7 @@ export class DisputeService {
 
   async open(input: OpenDisputeInput, actor: Actor): Promise<DisputeAggregate> {
     if (input.onchainEscrow && await this.store.findByEscrowObjectId(input.onchainEscrow.escrowObjectId)) {
-      throw new DomainError("ESCROW_ALREADY_BOUND", "This Sui escrow is already bound to another dispute", 409);
+      throw new DomainError("ESCROW_ALREADY_BOUND", "This escrow is already bound to another dispute", 409);
     }
     const dispute = openDispute(input, actor, this.ctx);
     await this.store.create(dispute);

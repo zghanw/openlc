@@ -35,7 +35,7 @@ const identity = sessionSecret
       chainId: config.botchainChainId,
     })
   : undefined;
-// No PAYPROOF_SESSION_SECRET means wallet sign-in cannot be configured; there is no other
+// No OPENLC_SESSION_SECRET means wallet sign-in cannot be configured; there is no other
 // production authentication path left to fall back to, so every bearer token is rejected.
 const noWalletAuth: TokenVerifier = {
   verify: async () => { throw new DomainError("UNAUTHORIZED", "Invalid or expired user token", 401); },
@@ -98,4 +98,4 @@ const documentStore = config.store === "supabase"
   : new MemoryDocumentStore();
 const trades = new TradeService(tradeStore, service, systemContext, process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders", fundingVerifier, organizations, invitationEmail, documentStore);
 const app = createApp(service, verifier, mediator, demo, settlementVerifier, trades, config.demoMode, identity, organizations);
-serve({ fetch: app.fetch, port: config.port }, ({ port }) => console.log(`PayProof dispute backend listening on http://localhost:${port}`));
+serve({ fetch: app.fetch, port: config.port }, ({ port }) => console.log(`OpenLC API listening on port ${port}`));

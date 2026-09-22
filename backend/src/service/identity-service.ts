@@ -23,7 +23,7 @@ export class IdentityService {
     private readonly options: IdentityServiceOptions,
   ) {
     if (options.sessionSecret.length < 32)
-      throw new Error("PAYPROOF_SESSION_SECRET must contain at least 32 characters");
+      throw new Error("OPENLC_SESSION_SECRET must contain at least 32 characters");
     this.now = options.now ?? (() => new Date());
     this.sessionKey = encoder.encode(options.sessionSecret);
   }

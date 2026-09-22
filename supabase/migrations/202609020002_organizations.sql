@@ -68,11 +68,11 @@ begin
   limit 1;
   if found then return result; end if;
 
-  base_slug := trim(both '-' from regexp_replace(lower(coalesce(nullif(p_name, ''), 'payproof-workspace')), '[^a-z0-9]+', '-', 'g'));
-  if char_length(base_slug) < 3 then base_slug := 'payproof-workspace'; end if;
+  base_slug := trim(both '-' from regexp_replace(lower(coalesce(nullif(p_name, ''), 'openlc-workspace')), '[^a-z0-9]+', '-', 'g'));
+  if char_length(base_slug) < 3 then base_slug := 'openlc-workspace'; end if;
   base_slug := left(base_slug, 68) || '-' || left(replace(p_account_id::text, '-', ''), 8);
   insert into public.payproof_organizations (name, slug, created_by_account_id)
-  values (coalesce(nullif(trim(p_name), ''), 'My PayProof workspace'), base_slug, p_account_id)
+  values (coalesce(nullif(trim(p_name), ''), 'My OpenLC workspace'), base_slug, p_account_id)
   returning id into result;
   insert into public.payproof_organization_memberships
     (organization_id, account_id, authority, can_buy, can_supply)

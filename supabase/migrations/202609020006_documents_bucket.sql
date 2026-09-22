@@ -3,11 +3,11 @@
 -- that the caller is a party to the order before serving a file.
 
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('payproof-documents', 'payproof-documents', false, 8388608)
+values ('openlc-documents', 'openlc-documents', false, 8388608)
 on conflict (id) do nothing;
 
 drop policy if exists "service role manages order documents" on storage.objects;
 create policy "service role manages order documents" on storage.objects
 for all to service_role
-using (bucket_id = 'payproof-documents')
-with check (bucket_id = 'payproof-documents');
+using (bucket_id = 'openlc-documents')
+with check (bucket_id = 'openlc-documents');

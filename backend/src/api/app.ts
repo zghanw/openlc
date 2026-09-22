@@ -112,14 +112,14 @@ export function createApp(
   app.onError((error, c) => {
     if (error instanceof DomainError) return c.json({ error: error.code, message: error.message }, error.status as any);
     if (error instanceof z.ZodError) return c.json({ error: "INVALID_REQUEST", issues: error.issues }, 400);
-    console.error("Unhandled PayProof backend error", {
+    console.error("Unhandled OpenLC backend error", {
       name: error instanceof Error ? error.name : "UnknownError",
       message: error instanceof Error ? error.message : String(error),
       stack: process.env.NODE_ENV === "development" && error instanceof Error ? error.stack : undefined,
     });
     return c.json({ error: "INTERNAL_ERROR" }, 500);
   });
-  app.get("/health", (c) => c.json({ ok: true, service: "payproof-disputes" }));
+  app.get("/health", (c) => c.json({ ok: true, service: "openlc-api" }));
   app.post("/auth/demo/google", async (c) => {
     if (!demoAuthEnabled) throw new DomainError("DEMO_AUTH_DISABLED", "Demo Google authentication is disabled", 404);
     const body = z.object({ email: z.string().email(), name: z.string().min(1).max(256) }).parse(await c.req.json());

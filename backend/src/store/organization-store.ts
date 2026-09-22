@@ -29,7 +29,7 @@ export class MemoryOrganizationStore implements OrganizationStore {
   async ensureDefault(accountId: string, suggestedName?: string): Promise<OrganizationMembership> {
     const existing = this.memberships.get(accountId)?.[0];
     if (existing) return structuredClone(existing);
-    const name = suggestedName?.trim() || "My PayProof workspace";
+    const name = suggestedName?.trim() || "My OpenLC workspace";
     const membership: OrganizationMembership = {
       organizationId: crypto.randomUUID(), organizationName: name,
       organizationSlug: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace"}-${accountId.slice(0, 8)}`,

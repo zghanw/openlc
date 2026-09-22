@@ -1,0 +1,13 @@
+# Pings the API every 10 minutes so the free Render instance never sleeps before a judge arrives.
+# Set the repository variable API_HEALTH_URL (https://<render-service>/health) to switch it on.
+name: Keep API warm
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    if: ${{ vars.API_HEALTH_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --max-time 60 --retry 3 --retry-delay 10 "${{ vars.API_HEALTH_URL }}"

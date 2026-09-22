@@ -93,7 +93,7 @@ The focused ingestion selects 25 source-balanced, substantive passages from 150 
 
 ## Demo progression API
 
-Set `PAYPROOF_DEMO_MODE=true` only in a demo environment. Authenticated routes expose one mutable hero order and read-only background orders:
+Set `OPENLC_DEMO_MODE=true` only in a demo environment. Authenticated routes expose one mutable hero order and read-only background orders:
 
 - `GET /v1/demo/orders`
 - `POST /v1/demo/orders/reset`

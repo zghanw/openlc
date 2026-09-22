@@ -127,7 +127,7 @@ function pendingWallet(order: TradeOrder): string | undefined {
 }
 
 function initiatorName(order: TradeOrder): string {
-  return (order.initiatorRole === "supplier" ? order.supplierName : order.buyerName) || "A PayProof company";
+  return (order.initiatorRole === "supplier" ? order.supplierName : order.buyerName) || "An OpenLC company";
 }
 
 function invitedName(order: TradeOrder): string {

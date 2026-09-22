@@ -17,7 +17,7 @@ describe("invitation email delivery", () => {
   it("sends only invitation metadata with an idempotency key", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "email-1" }), { status: 200 }));
     vi.stubGlobal("fetch", request);
-    const result = await new ResendInvitationEmailSender("re_test", "PayProof <orders@example.com>").send(input);
+    const result = await new ResendInvitationEmailSender("re_test", "OpenLC <orders@example.com>").send(input);
     expect(result).toMatchObject({ status: "sent", messageId: "email-1" });
     const [url, init] = request.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.resend.com/emails");
@@ -29,7 +29,7 @@ describe("invitation email delivery", () => {
 
   it("reports provider failure without throwing away the order flow", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: "rejected" }), { status: 422 })));
-    await expect(new ResendInvitationEmailSender("re_test", "PayProof <orders@example.com>").send(input))
+    await expect(new ResendInvitationEmailSender("re_test", "OpenLC <orders@example.com>").send(input))
       .resolves.toMatchObject({ status: "failed" });
   });
 
@@ -37,8 +37,8 @@ describe("invitation email delivery", () => {
     const sendMail = vi.fn().mockResolvedValue({ messageId: "smtp-email-1" });
     const sender = new SmtpInvitationEmailSender({
       host: "smtp.gmail.com", port: 465, secure: true,
-      user: "payproof@example.com", password: "app-password",
-      from: "PayProof <payproof@example.com>",
+      user: "openlc@example.com", password: "app-password",
+      from: "OpenLC <openlc@example.com>",
     }, { sendMail } as never);
 
     await expect(sender.send(input)).resolves.toMatchObject({ status: "sent", messageId: "smtp-email-1" });
@@ -53,13 +53,13 @@ describe("invitation email delivery", () => {
   it("sends through Brevo with a structured sender", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ messageId: "brevo-1" }), { status: 201 }));
     vi.stubGlobal("fetch", request);
-    const result = await new BrevoInvitationEmailSender("brevo_test", "PayProof <orders@example.com>").send(input);
+    const result = await new BrevoInvitationEmailSender("brevo_test", "OpenLC <orders@example.com>").send(input);
     expect(result).toMatchObject({ status: "sent", messageId: "brevo-1" });
     const [url, init] = request.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.brevo.com/v3/smtp/email");
     expect(new Headers(init.headers).get("api-key")).toBe("brevo_test");
     const payload = JSON.parse(String(init.body));
-    expect(payload.sender).toEqual({ name: "PayProof", email: "orders@example.com" });
+    expect(payload.sender).toEqual({ name: "OpenLC", email: "orders@example.com" });
     expect(payload.to).toEqual([{ email: "supplier@example.com", name: "FreshSource Foods" }]);
     expect(payload.textContent).toContain("PO-42");
     expect(payload.textContent).not.toContain("Premium cooking oils");
@@ -75,7 +75,7 @@ describe("invitation email delivery", () => {
 
   it("reports a Brevo rejection as a failed delivery", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: "sender not verified" }), { status: 400 })));
-    await expect(new BrevoInvitationEmailSender("brevo_test", "PayProof <orders@example.com>").send(input))
+    await expect(new BrevoInvitationEmailSender("brevo_test", "OpenLC <orders@example.com>").send(input))
       .resolves.toMatchObject({ status: "failed" });
   });
 });

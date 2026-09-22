@@ -24,7 +24,7 @@ export class SupabaseDocumentStore implements DocumentStore {
   private readonly client: SupabaseClient;
   private ensured = false;
 
-  constructor(url: string, secretKey: string, private readonly bucket = "payproof-documents") {
+  constructor(url: string, secretKey: string, private readonly bucket = "openlc-documents") {
     if (!secretKey.startsWith("sb_secret_") && !secretKey.startsWith("eyJ")) {
       throw new Error("A server-side Supabase secret/service-role key is required");
     }
