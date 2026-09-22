@@ -4,6 +4,7 @@ import { apiRequest, backendUrl, loadSession, type InvitationDelivery, type Trad
 import { type DemoOrder, type DocumentKind, type ExtractedPurchaseOrder, type InspectionLine, type OrderDocument, type OrderEvent, type OrderInspection, formatOrderMoney as money, itemSummary } from "@/lib/demo-orders";
 import { STATUS, type OrderStatus } from "@/lib/order-status";
 import { formatBot, parseBot } from "@/lib/chain";
+import { parseBotNumber } from "./units.mjs";
 
 const configuredArbitrator = (process.env.NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS ?? "").trim();
 
@@ -33,9 +34,10 @@ export function fromUnits(units: string): number {
 }
 
 /** A display number -> a wei decimal string, via ethers' parseUnits (never Math.round(value * 10**18),
- *  which silently loses precision at 18 decimals). */
+ *  which silently loses precision at 18 decimals). Rounds float noise to 9 decimals before that
+ *  exact parseUnits, so accumulated line-item maths never drifts off the wei it should land on. */
 export function toUnits(value: number): string {
-  return parseBot(String(value)).toString();
+  return parseBotNumber(value).toString();
 }
 
 function inspectionFromOrder(order: TradeOrder): OrderInspection | undefined {

@@ -6,7 +6,7 @@
 // exercises exactly what the app calls - a regression here would be caught, not masked.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatBot, parseBot } from "./units.mjs";
+import { formatBot, parseBot, parseBotNumber } from "./units.mjs";
 
 const DECIMALS = 18;
 
@@ -44,4 +44,15 @@ test("never loses precision the way Math.round(value * 10 ** 18) would", () => {
   const value = "1.100000000000000001";
   assert.equal(parseBot(value), 1100000000000000001n);
   assert.notEqual(Math.round(Number(value) * 10 ** DECIMALS), Number(1100000000000000001n));
+});
+
+test("parseBotNumber rounds float noise out of a display number before exact parseUnits", () => {
+  // 3 * 0.15 as a JS float is 0.44999999999999996, not 0.45.
+  assert.equal(parseBotNumber(3 * 0.15), 450000000000000000n);
+  // Accumulating several line totals drifts the other way: 0.4500000000000002.
+  assert.equal(parseBotNumber(3 - (7 * 0.15 + 5 * 0.2 + 10 * 0.05)), 450000000000000000n);
+  assert.equal(parseBotNumber(1.2), 1200000000000000000n);
+  // String(5e-7) is "5e-7", which parseUnits rejects outright.
+  assert.equal(parseBotNumber(5e-7), 500000000000n);
+  assert.equal(parseBotNumber(0), 0n);
 });

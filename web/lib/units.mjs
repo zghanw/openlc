@@ -15,3 +15,11 @@ export function formatBot(wei) {
 export function parseBot(decimal) {
   return parseUnits(decimal, 18);
 }
+
+/** A display number (JS float) -> wei. Float maths on prices leaves noise such as
+ *  3 * 0.15 = 0.44999999999999996; rounding to 9 decimals first removes it without changing any
+ *  amount the UI can express (prices have 2 decimals), and avoids "5e-7" exponent strings. */
+export function parseBotNumber(value) {
+  if (!Number.isFinite(value) || value < 0) throw new Error(`Not a BOT amount: ${value}`);
+  return parseBot(value.toFixed(9));
+}
