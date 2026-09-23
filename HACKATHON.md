@@ -105,6 +105,11 @@ X cadence: at least one post per day, Sun through Thu. At least 5 valid posts ar
 - ~~Email invitations~~ → copy-link invites bound to wallets
 - ~~Demo supplier auto-ship (server hot wallet)~~ → the demo supplier only auto-confirms (decided 2026-09-20)
 
+**Cut during the build:**
+
+- ~~Task 15, the EVM rename sweep~~ (cut 2026-09-24): the transitional names (`packageId` = contract address, `escrowObjectId` = escrow id, `transactionDigest` = tx hash) live inside every order and dispute already stored in Supabase, so the rename needs a live data migration, and a judge never sees the difference. The code comments and the README explain the names instead.
+- Qdrant legal-authority retrieval is off in production (item 4 below, in effect since task 13): Gemini mediation runs without it, and the human arbitration package omits statute and case law.
+
 **Cut next, top first, if behind at a checkpoint:**
 
 1. Supplier-initiated orders → buyer-initiated only
