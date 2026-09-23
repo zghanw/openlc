@@ -1,6 +1,6 @@
 "use client";
 
-import { Contract, Interface, JsonRpcProvider, sha256, toUtf8Bytes, type ContractTransactionReceipt, type LogDescription } from "ethers";
+import { Contract, Interface, JsonRpcProvider, sha256, toUtf8Bytes, type ContractTransactionReceipt, type JsonRpcSigner, type LogDescription } from "ethers";
 import ESCROW_ABI from "@/lib/openlc-escrow.abi.json";
 import { BOTCHAIN, ESCROW_ADDRESS, ESCROW_DEPLOY_BLOCK, explorerTxUrl, requireEscrowConfigured } from "@/lib/chain";
 import { describeTxError, isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
@@ -363,6 +363,22 @@ function wrongChainError(): Error {
   return new Error(`Switch MetaMask to ${BOTCHAIN.chainName} to continue. OpenLC only sends transactions on ${BOTCHAIN.chainName}.`);
 }
 
+/** Confirms MetaMask is on BOT Chain and returns a signer bound to it - the one check every signed
+ *  path must go through before it can build a Contract with a signer: contract() below (fund,
+ *  ship, claim, settle, approve, execute, deadline actions) and the wallet page's withdraw().
+ *  ensureBotChain drives wallet_switchEthereumChain (falling back to wallet_addEthereumChain on
+ *  MetaMask's 4902), and only returns true once the wallet actually reports the target chain id
+ *  back - a rejection or a failed add both come back false, never a thrown error, so it reads
+ *  naturally as a guard here. The chain id is re-checked against the signer's own provider
+ *  afterwards - belt and braces against a stale "any"-network provider view surviving the switch. */
+export async function requireBotChainSigner(wallet: Pick<ReturnType<typeof useWallet>, "ensureBotChain" | "getSigner">): Promise<JsonRpcSigner> {
+  if (!(await wallet.ensureBotChain())) throw wrongChainError();
+  const signer = await wallet.getSigner();
+  const network = await signer.provider.getNetwork();
+  if (network.chainId !== BigInt(BOTCHAIN.chainIdDec)) throw wrongChainError();
+  return signer;
+}
+
 /**
  * Every escrow action that sends a transaction, on ethers against BOT Chain. Keeps the same
  * function signatures so every caller keeps compiling.
@@ -384,20 +400,10 @@ export function useEscrowActions() {
     }
   }
 
-  /** Every signed escrow call goes through here (via sendTx below), so this is the one place that
-   *  must confirm MetaMask is on BOT Chain before a transaction can be built. ensureBotChain drives
-   *  wallet_switchEthereumChain (falling back to wallet_addEthereumChain on MetaMask's 4902), and
-   *  only returns true once the wallet actually reports the target chain id back - a rejection or a
-   *  failed add both come back false, never a thrown error, so it reads naturally as a guard here.
-   *  The chain id is re-checked against the signer's own provider afterwards - belt and braces
-   *  against a stale "any"-network provider view surviving the switch. */
   async function contract(): Promise<Contract> {
     requireEscrowConfigured();
-    if (!(await wallet.ensureBotChain())) throw wrongChainError();
-    const signer = await wallet.getSigner();
+    const signer = await requireBotChainSigner(wallet);
     requireWalletMatchesSession(wallet.account!);
-    const network = await signer.provider.getNetwork();
-    if (network.chainId !== BigInt(BOTCHAIN.chainIdDec)) throw wrongChainError();
     return new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
   }
 

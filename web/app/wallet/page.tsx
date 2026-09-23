@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { AppShell, HelpHint, Notice, PageTitle } from "@/app/components/app-shell";
 import { type DemoOrder, formatOrderMoney as money } from "@/lib/demo-orders";
-import { describeEscrowError, useEscrowActions } from "@/lib/escrow-actions";
+import { describeEscrowError, requireBotChainSigner, useEscrowActions } from "@/lib/escrow-actions";
 import { type ReleaseStageKey, releaseProgress } from "@/app/components/release-plan";
 import { BOTCHAIN, ESCROW_ADDRESS, escrowConfigured, explorerAddressUrl, explorerTxUrl, formatBot } from "@/lib/chain";
 import { useWallet } from "@/lib/wallet";
@@ -122,7 +122,7 @@ export default function WalletPage() {
     setWithdrawError("");
     setWithdrawnTx("");
     try {
-      const signer = await wallet.getSigner();
+      const signer = await requireBotChainSigner(wallet);
       const contract = new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
       const tx = await contract.withdraw();
       const receipt = await tx.wait();
