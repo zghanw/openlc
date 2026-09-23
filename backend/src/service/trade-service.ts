@@ -430,7 +430,7 @@ export class TradeService {
     // second session: reuse the exact accept path a real supplier's wallet would take, rather
     // than duplicating the supplier_confirmed transition here.
     if (this.demoSupplier && pendingSide(updated) === "supplier" && sameAddress(updated.supplierWalletAddress, this.demoSupplier.address)) {
-      const accepted = await this.acceptWithInvite(invite, { id: await this.demoSupplier.accountId(), walletAddress: this.demoSupplier.address }, {}, true);
+      const accepted = await this.acceptWithInvite(invite, { id: await this.demoSupplier.accountId(), walletAddress: this.demoSupplier.address }, {}, true, this.demoSupplier.name);
       const withInvite = structuredClone(accepted) as TradeOrderWithInvite;
       withInvite.inviteToken = rawToken;
       withInvite.inviteUrl = result.inviteUrl;
@@ -471,7 +471,7 @@ export class TradeService {
     return structuredClone(updated);
   }
 
-  private async acceptWithInvite(invite: TradeInvite, actor: Actor, input: AcceptInvitationInput, tokenPresented: boolean): Promise<TradeOrder> {
+  private async acceptWithInvite(invite: TradeInvite, actor: Actor, input: AcceptInvitationInput, tokenPresented: boolean, displayName?: string): Promise<TradeOrder> {
     if (new Date(invite.expiresAt).getTime() <= this.ctx.now().getTime()) throw new DomainError("INVITE_EXPIRED", "This invitation has expired", 410);
     const order = await this.store.getOrder(invite.orderId);
     if (!order) throw new DomainError("NOT_FOUND", "The invited order no longer exists", 404);
@@ -522,8 +522,10 @@ export class TradeService {
       : undefined;
     const now = this.ctx.now().toISOString();
     const resolvedEmail = verifiedEmail ?? submittedEmail;
+    // displayName (the demo persona) outranks the actor's own workspace name: the demo wallet is
+    // a real account with its own business name, which must never leak onto a demo order.
     const confirmation = {
-      confirmedBy: actor.id, confirmedRole: side, email: resolvedEmail, organizationName: membership?.organizationName ?? input.name ?? actor.name,
+      confirmedBy: actor.id, confirmedRole: side, email: resolvedEmail, organizationName: displayName ?? membership?.organizationName ?? input.name ?? actor.name,
       orderVersion: order.version, termsVersion: TERMS_VERSION, confirmedAt: now,
     };
     let updated: TradeOrder;
@@ -531,14 +533,14 @@ export class TradeService {
       updated = {
         ...order, buyerId: actor.id, buyerOrganizationId: membership?.organizationId,
         buyerEmail: resolvedEmail ? ensureEmail(resolvedEmail, "buyer") : order.buyerEmail,
-        buyerName: (membership?.organizationName ?? input.name ?? actor.name ?? order.buyerName ?? "Buyer").trim(),
+        buyerName: (displayName ?? membership?.organizationName ?? input.name ?? actor.name ?? order.buyerName ?? "Buyer").trim(),
         status: "supplier_confirmed", confirmation, updatedAt: now, version: order.version + 1,
       };
     } else {
       updated = {
         ...order, supplierId: actor.id, supplierOrganizationId: membership?.organizationId,
         supplierEmail: resolvedEmail ? ensureEmail(resolvedEmail) : order.supplierEmail,
-        supplierName: (membership?.organizationName ?? input.name ?? actor.name ?? order.supplierName).trim(),
+        supplierName: (displayName ?? membership?.organizationName ?? input.name ?? actor.name ?? order.supplierName).trim(),
         supplierWalletAddress: boundWalletAddress ?? order.supplierWalletAddress,
         status: "supplier_confirmed", confirmation, updatedAt: now, version: order.version + 1,
       };

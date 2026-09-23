@@ -665,7 +665,10 @@ describe("trade lifecycle API", () => {
   const tradesWithDemoSupplier = (demoSupplier?: DemoSupplier) => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
-    return new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, undefined, undefined, undefined, demoSupplier);
+    // Wired with a real OrganizationService (not undefined) so these tests exercise the same
+    // membership-lookup path production runs, not a shortcut that skips it.
+    const organizations = new OrganizationService(new MemoryOrganizationStore());
+    return new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, organizations, undefined, undefined, demoSupplier);
   };
 
   it("a demo-supplier order reaches supplier_confirmed as soon as its invite is created, with no second session", async () => {
@@ -685,7 +688,14 @@ describe("trade lifecycle API", () => {
     expect(invited.status).toBe("supplier_confirmed");
     expect(invited.supplierWalletAddress).toBe(DEMO_SUPPLIER_ADDRESS);
     expect(invited.supplierId).toBe(DEMO_SUPPLIER_ACCOUNT_ID);
-    expect((await trades.getOrder(order.id, buyer)).status).toBe("supplier_confirmed");
+    // The demo persona's name must win over the demo wallet's own (real) workspace name, both on
+    // the returned order and on the stored copy.
+    expect(invited.supplierName).toBe("OpenLC Demo Supplier");
+    expect(invited.confirmation?.organizationName).toBe("OpenLC Demo Supplier");
+    const stored = await trades.getOrder(order.id, buyer);
+    expect(stored.status).toBe("supplier_confirmed");
+    expect(stored.supplierName).toBe("OpenLC Demo Supplier");
+    expect(stored.confirmation?.organizationName).toBe("OpenLC Demo Supplier");
   });
 
   it("recordFunding's supplier-wallet guard passes for the demo address and refuses a different one", async () => {
