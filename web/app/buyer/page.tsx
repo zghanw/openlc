@@ -88,7 +88,7 @@ const extractedItems: LineItem[] = [
 const money = (value: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
 
 function Logo() {
-  return <a className="logo" href="/"><span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/favicon.svg" alt="" width="40" height="40" /></span><span>OpenLC</span></a>;
+  return <a className="logo" href="/"><span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/favicon.png" alt="" width="40" height="40" /></span><span>OpenLC</span></a>;
 }
 
 function NewOrder({ onCreated }: { onCreated: (order: NewOrderPayload) => void }) {

@@ -37,7 +37,7 @@ const defaultPendingOrder: PendingOrder = {
 
 const money = (value: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
 
-function Logo() { return <a className="logo" href="/"><span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/favicon.svg" alt="" width="40" height="40" /></span><span>OpenLC</span></a>; }
+function Logo() { return <a className="logo" href="/"><span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/favicon.png" alt="" width="40" height="40" /></span><span>OpenLC</span></a>; }
 
 function ConfirmIncomingOrder({ order, response, onConfirm, onRequestChanges }: { order: PendingOrder; response: OrderResponse; onConfirm: () => void; onRequestChanges: () => void }) {
   const [open, setOpen] = useState(false);

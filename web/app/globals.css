@@ -621,8 +621,8 @@ body{background:#edf2f7}
 .brand-logo-mark{
   padding:0!important;
   overflow:hidden;
-  border-radius:8px!important;
-  background:#061a3b!important;
+  border-radius:0!important;
+  background:transparent!important;
   box-shadow:0 8px 22px rgba(6,26,59,.2)!important;
 }
 .brand-logo-mark img{

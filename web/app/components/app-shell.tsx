@@ -16,7 +16,7 @@ import { isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
 export function Logo() {
   return (
     <a className="logo" href="/">
-      <span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/favicon.svg" alt="" width="40" height="40" /></span>
+      <span className="logo-mark brand-logo-mark" aria-hidden="true"><img src="/favicon.png" alt="" width="40" height="40" /></span>
       <span>OpenLC</span>
     </a>
   );

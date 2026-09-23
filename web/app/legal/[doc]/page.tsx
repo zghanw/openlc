@@ -33,7 +33,7 @@ export default async function LegalDocumentPage({ params }: { params: Promise<{ 
       <header className="legal-header">
         <a className="logo" href="/">
           <span className="logo-mark brand-logo-mark">
-            <img src="/favicon.svg" alt="" width="40" height="40" />
+            <img src="/favicon.png" alt="" width="40" height="40" />
           </span>
           <span>OpenLC</span>
         </a>

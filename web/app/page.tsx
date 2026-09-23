@@ -72,7 +72,7 @@ function Logo() {
   return (
     <a className="logo" href="#top" aria-label="OpenLC home">
       <span className="logo-mark brand-logo-mark" aria-hidden="true">
-        <img src="/favicon.svg" alt="" width="40" height="40" />
+        <img src="/favicon.png" alt="" width="40" height="40" />
       </span>
       <span>OpenLC</span>
     </a>

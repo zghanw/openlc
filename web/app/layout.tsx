@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   description:
     "Escrow for B2B orders on BOT Chain: payment is locked before the goods ship and released in milestones as dispatch and delivery are proven.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 
