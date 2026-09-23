@@ -92,7 +92,7 @@ export function tradeOrderToView(order: TradeOrder, profile?: WorkspaceProfile):
   const isSupplier = Boolean(order.supplierId) && (order.supplierId === session?.user.id || organizationIds.includes(order.supplierOrganizationId ?? ""));
   const email = session?.user.email?.trim().toLowerCase();
   const pendingSide = !order.buyerId ? "buyer" : !order.supplierId ? "supplier" : undefined;
-  const pendingEmail = pendingSide === "buyer" ? order.buyerEmail?.trim().toLowerCase() : pendingSide === "supplier" ? order.supplierEmail.trim().toLowerCase() : undefined;
+  const pendingEmail = pendingSide === "buyer" ? order.buyerEmail?.trim().toLowerCase() : pendingSide === "supplier" ? order.supplierEmail?.trim().toLowerCase() : undefined;
   const invited = Boolean(email && pendingEmail && pendingEmail === email && !isBuyer && !isSupplier);
   const role: DemoOrder["role"] = isBuyer ? "BUYER" : isSupplier ? "SUPPLIER" : invited && pendingSide === "buyer" ? "BUYER" : "SUPPLIER";
   const items = order.lineItems.map((item) => ({
@@ -100,7 +100,7 @@ export function tradeOrderToView(order: TradeOrder, profile?: WorkspaceProfile):
     unitPrice: fromUnits(item.unitPriceUnits),
   }));
   const buyer = order.buyerName || order.buyerEmail || "Buyer organisation";
-  const supplier = order.supplierName || order.supplierEmail;
+  const supplier = order.supplierName || order.supplierEmail || "Supplier organisation";
   const status = (STATUS[order.status as OrderStatus] ? order.status : "awaiting_supplier") as OrderStatus;
   return {
     invited,

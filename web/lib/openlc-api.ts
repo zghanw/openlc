@@ -43,7 +43,7 @@ export type TradeOrder = {
   buyerName?: string;
   supplierId?: string;
   supplierOrganizationId?: string;
-  supplierEmail: string;
+  supplierEmail?: string;
   supplierName: string;
   supplierWalletAddress?: string;
   arbitratorWalletAddress?: string;
