@@ -1,8 +1,9 @@
-# ProofPay demo upload files
+# OpenLC demo upload files
 
-Use the files in this folder for the live 30 USDC demo order `PP-DEMO-0905`.
+Use the files in this folder for a live BOT Chain demo order. The files keep their original
+names (`PP-` / `DO-FS-` prefixes) — only the story below and `COPY-PASTE-TEXT.txt` are OpenLC's.
 
-Buyer company: **Choong Trading Sdn. Bhd.**  
+Buyer company: **Choong Trading Sdn. Bhd.**
 Supplier company: **FreshSource Foods Sdn. Bhd.**
 
 | Demo step | File to upload |
@@ -16,8 +17,10 @@ Supplier company: **FreshSource Foods Sdn. Bhd.**
 
 All files and images contain synthetic demonstration data.
 
-The complete word-for-word presenter script is in `../DEMO_PRESENTATION_SCRIPT.md`.
+Use `COPY-PASTE-TEXT.txt` for the shipping details, inspection statement, and supplier response.
+The TXT version of the purchase order is also included as a fallback if PDF extraction is
+unavailable.
 
-Use `COPY-PASTE-TEXT.txt` for the shipping details, inspection statement, and supplier response. The TXT version of the purchase order is also included as a fallback if PDF extraction is unavailable.
-
-Before creating the order, confirm the invited supplier email is the Google account open in the supplier browser. Review all fields extracted from the purchase order before submitting.
+Before creating the order, either tick **"Use the OpenLC demo supplier"** for a one-wallet run, or
+open the confirmation link in a second MetaMask account and accept it as the supplier. Review all
+fields extracted from the purchase order before submitting.

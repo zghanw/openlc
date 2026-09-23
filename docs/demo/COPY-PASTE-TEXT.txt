@@ -1,11 +1,11 @@
-PROOFPAY LIVE DEMO - COPY AND PASTE
-===================================
+OPENLC LIVE DEMO - COPY AND PASTE
+==================================
 
 ORDER
 -----
 Buyer company: Choong Trading Sdn. Bhd.
 Supplier company: FreshSource Foods Sdn. Bhd.
-Supplier email: payproof94@gmail.com
+Supplier wallet: your second MetaMask account (or tick "Use the OpenLC demo supplier" for a one-wallet run)
 PO reference: PP-DEMO-0905
 Expected delivery: 12 September 2026
 Delivery location: Receiving Bay 2, Shah Alam Distribution Centre
@@ -27,17 +27,17 @@ Blueberries accepted: 6 cartons
 Avocados accepted: 6 crates
 
 Buyer statement:
-Three strawberry cartons arrived with crushed corners and leaking punnets. The exception was recorded before the pallet left Receiving Bay 2. The blueberries and avocados were accepted in full. We request 3.60 USDC back for the three unsaleable strawberry cartons.
+Three strawberry cartons arrived with crushed corners and leaking punnets. The exception was recorded before the pallet left Receiving Bay 2. The blueberries and avocados were accepted in full. We request 0.36 BOT back for the three unsaleable strawberry cartons.
 
 SUPPLIER RESPONSE
 -----------------
-Our dispatch photograph shows the strawberry cartons intact, dry, and stretch-wrapped before carrier collection. We accept that damage was present at delivery, but the condition appears consistent with handling during carriage. We dispute full responsibility and propose sharing the 3.60 USDC loss.
+Our dispatch photograph shows the strawberry cartons intact, dry, and stretch-wrapped before carrier collection. We accept that damage was present at delivery, but the condition appears consistent with handling during carriage. We dispute full responsibility and propose sharing the 0.36 BOT loss.
 
 EXPECTED VALUES
 ---------------
-Order total: 30.00 USDC
-Undisputed value: 26.40 USDC
-Disputed value: 3.60 USDC
-Expected settlement (DP-7.11, cause not attributed): 1.80 USDC to buyer, 1.80 USDC to supplier
-Buyer final wallet: 11.80 USDC
-Supplier total received: 28.20 USDC
+Order total: 3.00 BOT
+Undisputed value: 2.64 BOT
+Disputed value: 0.36 BOT
+Expected settlement (DP-7.11, cause not attributed): 0.18 BOT to buyer, 0.18 BOT to supplier
+Buyer final wallet: 1.18 BOT
+Supplier total received: 2.82 BOT
