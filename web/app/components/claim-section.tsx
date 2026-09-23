@@ -11,7 +11,7 @@ import { MediationReportView } from "@/app/components/mediation-report";
 import { ReleasePlanBar, releaseProgress } from "@/app/components/release-plan";
 import { type ClaimProposal, type ClaimView, type DemoOrder, formatDateTime, formatOrderMoney as money } from "@/lib/demo-orders";
 import { acceptClaimProposal, enforceClaimDeadline, loadClaim, proposeClaimSplit, rejectClaimProposal, requestMediation, respondToClaim, type EvidenceFileInput } from "@/lib/dispute-actions";
-import { useEscrowActions } from "@/lib/escrow-actions";
+import { readSettlementState, useEscrowActions, type SettlementApprovals } from "@/lib/escrow-actions";
 import { getLiveOrder } from "@/lib/live-orders";
 import { agreeSample, escalateSample, executeSampleSettlement, mediateSample, proposeSample, rejectSample, respondSample } from "@/lib/sample-orders";
 import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
@@ -140,10 +140,36 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
   // On-chain settlement
   const [signed, setSigned] = useState<Record<string, boolean>>({});
   const allocation = claim.settlement ? { buyerValue: claim.settlement.buyerValue, supplierValue: claim.settlement.supplierValue, proposalId: claim.settlement.proposalId ?? claim.settlement.agreementId } : undefined;
+
+  // The chain, not localStorage, decides who has signed and whether execution is allowed - it is
+  // the only place that reflects the counterparty's own signature. A failed read (RPC outage)
+  // leaves chainState null and every gate below falls back to its pre-chain-read behaviour.
+  const [chainState, setChainState] = useState<SettlementApprovals | null>(null);
+  const escrowId = order.raw?.funding?.escrowObjectId;
+  const refreshChainState = async () => {
+    if (!escrowId) { setChainState(null); return; }
+    try { setChainState(await readSettlementState(escrowId)); } catch { setChainState(null); }
+  };
+  useEffect(() => {
+    if (live && claim.status === "settlement_pending" && escrowId) void refreshChainState();
+    else setChainState(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, claim.status, escrowId]);
+
+  const myChainApproved = chainState ? (mySide === "buyer" ? chainState.buyerApproved : chainState.supplierApproved) : null;
+  const counterpartyChainApproved = chainState ? (mySide === "buyer" ? chainState.supplierApproved : chainState.buyerApproved) : null;
+  const counterpartyName = mySide === "buyer" ? order.supplier : order.buyer;
+  // Chain wins once it has answered; the local flag only covers the moment between a successful
+  // sign and the follow-up read (and the non-live sample flow, which never has a chainState).
+  const mySigned = live ? (myChainApproved ?? signed[mySide]) : signed[mySide];
+  const chainAlreadySettled = live && chainState?.status === 2;
+  const approvalsSatisfied = !chainState || chainState.arbitratorApproved || (chainState.buyerApproved && chainState.supplierApproved);
+
   const approve = () => run("approve", async () => {
     if (!allocation) return;
     if (live && order.raw) await escrow.approveSettlement(order.raw, mySide, allocation);
     setSigned((value) => ({ ...value, [mySide]: true }));
+    if (live) await refreshChainState();
   }, "Your approval is signed on BOT Chain.");
   const execute = () => run("execute", async () => {
     if (!live) { const next = executeSampleSettlement(order); onOrderChange(next); return; }
@@ -305,8 +331,9 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
               </dl>
               <p>Both parties sign the exact split on BOT Chain, then either party executes it.</p>
-              <Button className="btn-primary" disabled={Boolean(busy) || signed[mySide] || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void approve()}>{signed[mySide] ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
-              <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
+              {live && chainState && <p>{counterpartyChainApproved ? `${counterpartyName} has signed.` : `Waiting for ${counterpartyName} to sign.`}</p>}
+              <Button className="btn-primary" disabled={Boolean(busy) || mySigned || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void approve()}>{mySigned ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
+              <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch) || (live && !chainAlreadySettled && !approvalsSatisfied)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : chainAlreadySettled ? "Record settlement" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
               {live && <small className="muted">Execution succeeds only after both signatures are on chain.</small>}
             </div>
           )}

@@ -128,7 +128,7 @@ function findEvent(receipt: ContractTransactionReceipt, name: string): LogDescri
 // present, skips the contract call entirely and only retries the POST - no re-signing.
 // ---------------------------------------------------------------------------
 
-type PendingAction = "markShipped" | "acceptDelivery" | "refundUnshipped" | "claimUninspected" | "openClaim";
+type PendingAction = "markShipped" | "acceptDelivery" | "refundUnshipped" | "claimUninspected" | "openClaim" | "executeSettlement";
 type PendingRecord = { orderId: string; action: PendingAction; txHash: string; payload: unknown };
 
 const PENDING_PREFIX = "openlc_pending_action:";
@@ -258,6 +258,43 @@ async function recoverDisputeOpened(escrowId: bigint): Promise<{ txHash: string;
   } catch {
     return null;
   }
+}
+
+/** executeSettlement's fallback when there is no local pending record but the chain call reverted
+ *  InvalidState: read the escrow straight from the chain, and if it is genuinely Settled, search
+ *  backwards for the SettlementExecuted transaction the same bounded way recoverDisputeOpened does. */
+async function recoverSettlementExecuted(escrowId: bigint): Promise<{ txHash: string } | null> {
+  try {
+    const contract = readOnlyEscrow();
+    const escrow = await contract.getEscrow(escrowId);
+    if (Number(escrow.status) !== 2) return null; // Status: Open=0, Disputed=1, Settled=2 - not actually settled
+    const provider = contract.runner as JsonRpcProvider;
+    const latest = await provider.getBlockNumber();
+    const filter = contract.filters.SettlementExecuted(escrowId);
+    const WINDOW = 5000;
+    const MAX_WINDOWS = 40;
+    let to = latest;
+    for (let i = 0; i < MAX_WINDOWS && to >= ESCROW_DEPLOY_BLOCK; i++) {
+      const from = Math.max(ESCROW_DEPLOY_BLOCK, to - WINDOW + 1);
+      const logs = await contract.queryFilter(filter, from, to);
+      if (logs.length > 0) return { txHash: logs[logs.length - 1].transactionHash };
+      to = from - 1;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** The approval state the settlement UI reads before enabling "Sign" / "Execute settlement" -
+ *  works with no wallet connected, same as the recovery lookups above. Callers should treat a
+ *  rejected promise as "unknown" and fall back to their pre-chain-read behaviour rather than
+ *  block the user, since the public RPC does go down for minutes at a time. */
+export type SettlementApprovals = { status: number; buyerApproved: boolean; supplierApproved: boolean; arbitratorApproved: boolean };
+
+export async function readSettlementState(escrowId: string): Promise<SettlementApprovals> {
+  const escrow = await readOnlyEscrow().getEscrow(BigInt(escrowId));
+  return { status: Number(escrow.status), buyerApproved: Boolean(escrow.buyerApproved), supplierApproved: Boolean(escrow.supplierApproved), arbitratorApproved: Boolean(escrow.arbitratorApproved) };
 }
 
 function disputePostPayload(txHash: string, disputedUnits: string, requestedUnits: string, input: ClaimInput) {
@@ -503,18 +540,35 @@ export function useEscrowActions() {
     return receipt.hash;
   }
 
+  /** Executes the agreed split on-chain, then records the proof with confirmClaimExecution. Like
+   *  every other withRecording action, a retry after the chain call succeeds but the recording
+   *  fails re-posts the same proof without re-signing. If the chain call itself reverts
+   *  InvalidState (the escrow already settled - e.g. from a previous attempt whose recording
+   *  failed on a different device, or a signature the user never got to sign because the RPC
+   *  request estimating gas already reverted) with no local pending record, recoverSettlementExecuted
+   *  finds the real SettlementExecuted transaction on-chain and that is recorded instead - exactly
+   *  the same recovery shape openClaim uses for InvalidState on openDispute. */
   async function executeSettlement(order: TradeOrder, disputeId: string) {
-    if (!wallet.account) throw new Error("Connect a wallet before executing the settlement.");
     if (!order.funding) throw new Error("The order has no escrow funding.");
-    const receipt = await sendTx("executeSettlement", [BigInt(order.funding.escrowObjectId)]);
-    // executeSettlement consumes the escrow, so this transaction can never be replayed. Record it
-    // even though recording can still fail independently of the chain call succeeding.
-    try {
-      return await confirmClaimExecution(disputeId, { transactionDigest: receipt.hash, packageId: ESCROW_ADDRESS, escrowObjectId: order.funding.escrowObjectId });
-    } catch (cause) {
-      const reason = cause instanceof Error ? cause.message : String(cause);
-      throw new Error(`The settlement completed on BOT Chain in transaction ${receipt.hash}, but recording it here failed: ${reason}. Do not run the settlement again, the escrow is already closed. Keep this reference.`);
-    }
+    const escrowId = order.funding.escrowObjectId;
+    return withRecording(
+      order.id, "executeSettlement", escrowId,
+      () => { if (!wallet.account) throw new Error("Connect a wallet before executing the settlement."); },
+      async () => {
+        try {
+          return (await sendTx("executeSettlement", [BigInt(escrowId)])).hash;
+        } catch (chainError) {
+          const name = chainError instanceof EscrowTxError ? chainError.errorName : undefined;
+          if (name !== "InvalidState") throw chainError;
+          const recovered = await recoverSettlementExecuted(BigInt(escrowId));
+          if (!recovered) throw stuckNoRecordError(escrowId);
+          return recovered.txHash;
+        }
+      },
+      (txHash) => ({ transactionDigest: txHash, packageId: ESCROW_ADDRESS, escrowObjectId: escrowId }),
+      (payload) => confirmClaimExecution(disputeId, payload),
+      [],
+    );
   }
 
   return { signingAddress: wallet.account, sessionMismatch, fundEscrow, markShipped, anchorEvidence, acceptDelivery, openClaim, refundUnshipped, claimUninspected, approveSettlement, executeSettlement };
