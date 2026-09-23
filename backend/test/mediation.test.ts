@@ -266,6 +266,19 @@ describe("bounded AI mediation", () => {
     expect(result).toMatchObject({ outcome: "proposal", modelCalls: 3 });
   });
 
+  it("reports a busy model as an outage, not a validation failure", async () => {
+    const failing: JsonModel = {
+      async generateJson() { throw new Error("Gemini request failed (503): This model is currently experiencing high demand"); },
+    };
+    const { control, dispute } = disputeFixture();
+    const result = await new MediationOrchestrator(failing, policy, control.ctx).mediate(dispute);
+    expect(result).toMatchObject({
+      outcome: "abstain",
+      reason: "The AI mediator is busy right now. No proposal was created; try again in a minute.",
+      run: { outcome: "validation_failed" },
+    });
+  });
+
   it("records a traceable index from readable citation ids back to submissions", async () => {
     const model = new QueueModel([advocate("15000"), advocate("15000"), proposal("15000")]);
     const { control, dispute } = disputeFixture();

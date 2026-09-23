@@ -552,9 +552,15 @@ Abstain, and state the reason, only when no agreement term or policy clause answ
     } catch (error) {
       const validationIssue = issue(error);
       const run = buildRun("validation_failed", [validationIssue]);
+      // A model outage (429 quota, or a 5xx from every fallback model) is not a validation failure;
+      // say so rather than blaming the output.
+      const message = error instanceof Error ? error.message : "";
+      const busy = message.startsWith("Gemini request failed (429)") || message.startsWith("Gemini request failed (5");
       return {
         outcome: "abstain",
-        reason: "The AI output failed deterministic safety validation; no proposal was created.",
+        reason: busy
+          ? "The AI mediator is busy right now. No proposal was created; try again in a minute."
+          : "The AI output failed deterministic safety validation; no proposal was created.",
         unresolvedIssues: [validationIssue],
         citations: [],
         run,

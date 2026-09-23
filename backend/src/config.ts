@@ -25,7 +25,7 @@ export const config = {
   qdrantUrl: () => required("QDRANT_URL"),
   qdrantApiKey: () => required("QDRANT_API_KEY"),
   geminiApiKey: () => required("GEMINI_API_KEY"),
-  geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.1-flash-lite",
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-3-flash-preview,gemini-3.5-flash",
   embeddingModel: process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-2",
   legalCollection: process.env.LEGAL_COLLECTION ?? "payproof_malaysia_law_v1",
   disputePolicyFile: process.env.DISPUTE_POLICY_FILE ?? fileURLToPath(new URL("../../docs/dispute-policy.md", import.meta.url)),

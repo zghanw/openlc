@@ -3,6 +3,10 @@ export interface JsonModel {
 }
 
 const TRANSIENT_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+// Statuses (plus network/timeout errors) that are worth falling back to the next model for. 404 is
+// included here even though a single model never retries on it: a 404 means this model id is gone
+// for this key (e.g. retired), not that the request itself was bad.
+const FALLBACK_STATUSES = new Set([404, 408, 429, 500, 502, 503, 504]);
 
 async function requestWithRetry(fetcher: typeof fetch, url: string, init: RequestInit, attempts = 3): Promise<Response> {
   let lastError: unknown;
@@ -20,38 +24,67 @@ async function requestWithRetry(fetcher: typeof fetch, url: string, init: Reques
   throw lastError instanceof Error ? lastError : new Error("Gemini request failed after retries");
 }
 
+async function requestOnce(fetcher: typeof fetch, url: string, init: RequestInit): Promise<Response> {
+  return fetcher(url, { ...init, signal: AbortSignal.timeout(30_000) });
+}
+
+async function parseGeneratedJson<T>(response: Response): Promise<T> {
+  const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+  const text = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("");
+  if (!text) throw new Error("Gemini returned no JSON content");
+  return JSON.parse(text) as T;
+}
+
 export class GeminiJsonModel implements JsonModel {
+  /** GEMINI_MODEL is an ordered, comma-separated fallback list; each entry is tried in turn. */
+  private readonly models: string[];
+
   constructor(
     private readonly apiKey: string,
-    private readonly model = "gemini-3.1-flash-lite",
+    model = "gemini-3-flash-preview,gemini-3.5-flash",
     private readonly fetcher: typeof fetch = fetch,
   ) {
     if (!apiKey) throw new Error("GEMINI_API_KEY is required");
+    this.models = model.split(",").map((entry) => entry.trim()).filter(Boolean);
   }
 
   async generateJson<T>(system: string, input: string, jsonSchema?: Record<string, unknown>): Promise<T> {
-    const response = await requestWithRetry(this.fetcher,
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": this.apiKey },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: "user", parts: [{ text: input }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseJsonSchema: jsonSchema,
-            temperature: 0.2,
-            maxOutputTokens: 2048,
-          },
-        }),
-      },
-    );
-    if (!response.ok) throw new Error(`Gemini request failed (${response.status}): ${await response.text()}`);
-    const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-    const text = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("");
-    if (!text) throw new Error("Gemini returned no JSON content");
-    return JSON.parse(text) as T;
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": this.apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: input }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseJsonSchema: jsonSchema,
+          temperature: 0.2,
+          maxOutputTokens: 2048,
+        },
+      }),
+    };
+
+    let lastError: unknown;
+    for (const [index, modelName] of this.models.entries()) {
+      const isLastModel = index === this.models.length - 1;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
+      let response: Response;
+      try {
+        // Every model but the last gets one attempt; the last keeps today's retry-with-backoff.
+        response = isLastModel ? await requestWithRetry(this.fetcher, url, init) : await requestOnce(this.fetcher, url, init);
+      } catch (error) {
+        if (!isLastModel) { lastError = error; continue; }
+        throw error;
+      }
+      if (response.ok) return parseGeneratedJson<T>(response);
+      if (!isLastModel && FALLBACK_STATUSES.has(response.status)) {
+        lastError = new Error(`Gemini request failed (${response.status}): ${await response.text()}`);
+        continue;
+      }
+      // A non-fallback status (e.g. 400, a bad schema) or the last model's own failure: stop here.
+      throw new Error(`Gemini request failed (${response.status}): ${await response.text()}`);
+    }
+    throw lastError instanceof Error ? lastError : new Error("Gemini request failed: no model configured");
   }
 }
 
