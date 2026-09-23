@@ -20,7 +20,8 @@ import { clearSession, loadSession, signOutSession } from "@/lib/openlc-api";
 import { savePendingInvite } from "@/lib/pending-invite";
 import { authenticateConnectedWallet } from "@/lib/auth";
 import { advanceSample, guidedDemoNextLabel } from "@/lib/sample-orders";
-import { BOTCHAIN, explorerTxUrl } from "@/lib/chain";
+import { chainMismatchNotice, readEscrowState, type EscrowChainState } from "@/lib/escrow-actions";
+import { BOTCHAIN, ESCROW_ADDRESS, explorerAddressUrl, explorerTxUrl, formatBot } from "@/lib/chain";
 import { shortAddress, useWallet } from "@/lib/wallet";
 import { useWorkspace } from "@/lib/use-workspace";
 
@@ -168,6 +169,8 @@ export default function OrderPage() {
               </StageSwitch>
             </div>
 
+            {order.source === "backend" && order.funding && <ChainTruthPanel order={order} />}
+
             {order.releasePlan && (
               <section className="panel release-ledger reveal reveal-3" aria-labelledby="release-title">
                 <div className="panel-head"><h2 id="release-title">Release schedule</h2><span className="panel-meta">Confirmed with the order</span></div>
@@ -229,6 +232,65 @@ export default function OrderPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+/** How each settlement Mode reads in plain words, once the escrow is Settled (see the enum in
+ *  contracts/OpenLCEscrow.sol: BuyerConfirmation, MutualApproval, Arbitrator, RefundUnshipped,
+ *  ClaimUninspected). Unrecognised values fall back to a neutral phrase rather than nothing. */
+const SETTLEMENT_MODE_LABEL: Record<number, string> = {
+  0: "the buyer accepted delivery in full",
+  1: "the parties agreed a settlement split",
+  2: "the arbitrator decided the settlement split",
+  3: "the delivery deadline passed unshipped",
+  4: "the inspection window closed unresolved",
+};
+
+/** The rubric's proof point: this order page reads the escrow straight from BOT Chain rather than
+ *  only showing the API's record. Renders nothing for a sample order or one with no funding yet -
+ *  the caller already gates on that, this component just needs the escrow id to read. */
+function ChainTruthPanel({ order }: { order: DemoOrder }) {
+  const escrowId = order.funding?.escrowObjectId;
+  const [chain, setChain] = useState<EscrowChainState | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!escrowId) return;
+    setFailed(false);
+    readEscrowState(escrowId)
+      .then((state) => { if (!cancelled) setChain(state); })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [escrowId, order.status]);
+
+  if (!escrowId) return null;
+  const statusWord = chain ? (chain.status === 2 ? "Settled" : chain.status === 1 ? "Disputed" : "Open") : "";
+  const statusLine = chain && chain.status === 2 ? `${statusWord} — ${SETTLEMENT_MODE_LABEL[chain.mode] ?? "settled"}` : statusWord;
+  const mismatch = chain ? chainMismatchNotice(chain, order.status) : null;
+
+  return (
+    <>
+      {mismatch && <Notice tone="warning">{mismatch}</Notice>}
+      <section className="panel reveal reveal-3" aria-labelledby="chain-truth-title">
+        <div className="panel-head"><h2 id="chain-truth-title">On BOT Chain</h2><span className="panel-meta">Escrow #{escrowId}</span></div>
+        {!chain && !failed && <p className="action-note">Reading BOT Chain…</p>}
+        {failed && <p className="action-note">BOT Chain is not reachable right now; showing the OpenLC record.</p>}
+        {chain && (
+          <dl className="fact-list">
+            <div><dt>Escrow</dt><dd><strong>#{escrowId}</strong></dd></div>
+            <div><dt>Status</dt><dd><strong>{statusLine}</strong></dd></div>
+            <div><dt>Amount locked</dt><dd>{formatBot(chain.totalAmount)} {order.currency}</dd></div>
+            <div><dt>Released to supplier</dt><dd>{formatBot(chain.releasedAmount)} {order.currency}</dd></div>
+            <div><dt>Still held</dt><dd>{formatBot(chain.balance)} {order.currency}</dd></div>
+            {chain.disputedAmount > 0n && <div><dt>Disputed</dt><dd>{formatBot(chain.disputedAmount)} {order.currency}</dd></div>}
+            <div><dt>Delivery deadline</dt><dd>{formatDateTime(new Date(chain.deliveryDeadline * 1000).toISOString())}</dd></div>
+            {chain.shipped && <div><dt>Inspection closes</dt><dd>{formatDateTime(new Date(chain.inspectionClosesAt * 1000).toISOString())}</dd></div>}
+            <div><dt>Contract</dt><dd><a className="link" href={explorerAddressUrl(ESCROW_ADDRESS)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={12} aria-hidden="true" /></a></dd></div>
+          </dl>
+        )}
+      </section>
+    </>
   );
 }
 

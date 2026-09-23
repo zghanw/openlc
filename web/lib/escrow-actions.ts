@@ -12,6 +12,7 @@ import {
   type DeadlineSettlementInput, markLiveShipment, settleLiveDeadline, toUnits, viewLiveOrder,
 } from "@/lib/live-orders";
 import { apiRequest, loadSession, type TradeOrder } from "@/lib/openlc-api";
+import { isDisputed, STATUS, statusLabel, type OrderStatus } from "@/lib/order-status";
 
 /** Inspection window written into every escrow, matching DP-2.1 of the Dispute Resolution Policy. */
 export const INSPECTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -286,15 +287,63 @@ async function recoverSettlementExecuted(escrowId: bigint): Promise<{ txHash: st
   }
 }
 
-/** The approval state the settlement UI reads before enabling "Sign" / "Execute settlement" -
- *  works with no wallet connected, same as the recovery lookups above. Callers should treat a
- *  rejected promise as "unknown" and fall back to their pre-chain-read behaviour rather than
- *  block the user, since the public RPC does go down for minutes at a time. */
-export type SettlementApprovals = { status: number; buyerApproved: boolean; supplierApproved: boolean; arbitratorApproved: boolean };
+/** The full on-chain state of one escrow - the single source of truth for the settlement-approval
+ *  reader in claim-section.tsx, the deadline reader in DeadlineControls, and the order page's "On
+ *  BOT Chain" panel. One getEscrow call plus one inspectionClosesAt call. Works with no wallet
+ *  connected, same as the recovery lookups above. Callers should treat a rejected promise as
+ *  "unknown" and fall back to their pre-chain-read behaviour rather than block the user, since the
+ *  public RPC does go down for minutes at a time. */
+export type EscrowChainState = {
+  /** OpenLCEscrow.Status: Open=0, Disputed=1, Settled=2. */
+  status: number;
+  /** OpenLCEscrow.Mode: BuyerConfirmation=0, MutualApproval=1, Arbitrator=2, RefundUnshipped=3, ClaimUninspected=4. Only meaningful once status is Settled. */
+  mode: number;
+  shipped: boolean;
+  totalAmount: bigint;
+  releasedAmount: bigint;
+  balance: bigint;
+  disputedAmount: bigint;
+  /** Seconds, as the contract stores them. */
+  deliveryDeadline: number;
+  inspectionClosesAt: number;
+  buyerApproved: boolean;
+  supplierApproved: boolean;
+  arbitratorApproved: boolean;
+};
 
-export async function readSettlementState(escrowId: string): Promise<SettlementApprovals> {
-  const escrow = await readOnlyEscrow().getEscrow(BigInt(escrowId));
-  return { status: Number(escrow.status), buyerApproved: Boolean(escrow.buyerApproved), supplierApproved: Boolean(escrow.supplierApproved), arbitratorApproved: Boolean(escrow.arbitratorApproved) };
+export async function readEscrowState(escrowId: string): Promise<EscrowChainState> {
+  const contract = readOnlyEscrow();
+  const id = BigInt(escrowId);
+  const [escrow, closesAt] = await Promise.all([contract.getEscrow(id), contract.inspectionClosesAt(id)]);
+  return {
+    status: Number(escrow.status), mode: Number(escrow.mode), shipped: Boolean(escrow.shipped),
+    totalAmount: escrow.totalAmount, releasedAmount: escrow.releasedAmount, balance: escrow.balance, disputedAmount: escrow.disputedAmount,
+    deliveryDeadline: Number(escrow.deliveryDeadline), inspectionClosesAt: Number(closesAt),
+    buyerApproved: Boolean(escrow.buyerApproved), supplierApproved: Boolean(escrow.supplierApproved), arbitratorApproved: Boolean(escrow.arbitratorApproved),
+  };
+}
+
+/** Plain-word phase for the chain's state, used only by the mismatch notice below (the "On BOT
+ *  Chain" panel's own status field also names the settlement mode once Settled - see the order page). */
+function chainPhraseWord(chain: EscrowChainState): string {
+  if (chain.status === 2) return "Settled";
+  if (chain.status === 1) return "Disputed";
+  return chain.shipped ? "shipped" : "not yet shipped";
+}
+
+/** The order page shows this above the "On BOT Chain" panel whenever the chain has moved past
+ *  what the OpenLC record shows: a settlement or a dispute the record hasn't caught up to yet, a
+ *  shipment the record doesn't know about, or a record that thinks shipment happened when the
+ *  chain shows the escrow still unshipped. Only call this with a successful chain read - a failed
+ *  read means "unknown", not "mismatched", and should show no banner at all. */
+export function chainMismatchNotice(chain: EscrowChainState, orderStatus: OrderStatus): string | null {
+  const mismatched =
+    (chain.status === 2 && orderStatus !== "settled") ||
+    (chain.status === 1 && !isDisputed(orderStatus)) ||
+    (chain.shipped && orderStatus === "funded") ||
+    (!chain.shipped && STATUS[orderStatus].step >= 3);
+  if (!mismatched) return null;
+  return `BOT Chain shows this escrow as ${chainPhraseWord(chain)}, but this record says ${statusLabel(orderStatus)}. BOT Chain is the source of truth; the record catches up when the step is recorded.`;
 }
 
 function disputePostPayload(txHash: string, disputedUnits: string, requestedUnits: string, input: ClaimInput) {

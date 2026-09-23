@@ -11,7 +11,7 @@ import { MediationReportView } from "@/app/components/mediation-report";
 import { ReleasePlanBar, releaseProgress } from "@/app/components/release-plan";
 import { type ClaimProposal, type ClaimView, type DemoOrder, formatDateTime, formatOrderMoney as money } from "@/lib/demo-orders";
 import { acceptClaimProposal, enforceClaimDeadline, loadClaim, proposeClaimSplit, rejectClaimProposal, requestMediation, respondToClaim, type EvidenceFileInput } from "@/lib/dispute-actions";
-import { readSettlementState, useEscrowActions, type SettlementApprovals } from "@/lib/escrow-actions";
+import { readEscrowState, useEscrowActions, type EscrowChainState } from "@/lib/escrow-actions";
 import { getLiveOrder } from "@/lib/live-orders";
 import { agreeSample, escalateSample, executeSampleSettlement, mediateSample, proposeSample, rejectSample, respondSample } from "@/lib/sample-orders";
 import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
@@ -144,11 +144,11 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
   // The chain, not localStorage, decides who has signed and whether execution is allowed - it is
   // the only place that reflects the counterparty's own signature. A failed read (RPC outage)
   // leaves chainState null and every gate below falls back to its pre-chain-read behaviour.
-  const [chainState, setChainState] = useState<SettlementApprovals | null>(null);
+  const [chainState, setChainState] = useState<EscrowChainState | null>(null);
   const escrowId = order.raw?.funding?.escrowObjectId;
   const refreshChainState = async () => {
     if (!escrowId) { setChainState(null); return; }
-    try { setChainState(await readSettlementState(escrowId)); } catch { setChainState(null); }
+    try { setChainState(await readEscrowState(escrowId)); } catch { setChainState(null); }
   };
   useEffect(() => {
     if (live && claim.status === "settlement_pending" && escrowId) void refreshChainState();

@@ -9,7 +9,8 @@ import { ClaimSection } from "@/app/components/claim-section";
 import { type Anchor, ExtractionComparison, attachFile, buildDocument, extractPurchaseOrder, prepareEvidence } from "@/app/components/order-documents";
 import { type DemoOrder, type DocumentKind, type InspectionLine, type OrderDocument, type OrderShipment, claimOwner, formatDate, formatDateTime, formatOrderMoney as money, sha256Hex } from "@/lib/demo-orders";
 import { loadClaim } from "@/lib/dispute-actions";
-import { useEscrowActions } from "@/lib/escrow-actions";
+import { deadlineAction } from "@/lib/deadline-action";
+import { readEscrowState, useEscrowActions, type EscrowChainState } from "@/lib/escrow-actions";
 import { acceptLiveInvitation, acceptLiveInvite, anchorLiveDocument, ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, cancelLiveInvite, markLiveDelivered, sendLiveInvite, tradeOrderToView, viewLiveOrder } from "@/lib/live-orders";
 import { withExtras } from "@/lib/local-order-extras";
 import { STATUS, demoNextStatus, isDisputed, nextAction } from "@/lib/order-status";
@@ -262,7 +263,11 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
 }
 
 /** The buyer reclaims an unshipped escrow after the delivery deadline; the supplier claims an
- *  uninspected one after the window. Both are contract paths that need no counterparty. */
+ *  uninspected one after the window. Both are contract paths that need no counterparty. The chain
+ *  is the gate - deadlineAction mirrors refundUnshipped/claimUninspected exactly - so the button
+ *  only appears when the contract would actually accept the call. A failed chain read (RPC
+ *  outage) falls back to the API's deadline and the browser clock, exactly as before this reader
+ *  existed, so an outage never blocks the user from seeing this panel. */
 function DeadlineControls({ order, company, live, busy, run }: StepProps) {
   const escrow = useEscrowActions();
   const [open, setOpen] = useState(false);
@@ -270,12 +275,21 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(timer); }, []);
   const deadlines = order.deadlines;
   const raw = order.raw;
+  const escrowId = raw?.funding?.escrowObjectId;
+  const [chain, setChain] = useState<EscrowChainState | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!escrowId) { setChain(null); return; }
+    readEscrowState(escrowId).then((state) => { if (!cancelled) setChain(state); }).catch(() => { if (!cancelled) setChain(null); });
+    return () => { cancelled = true; };
+  }, [escrowId, order.status]);
   if (!live || !deadlines || !raw) return null;
   const buyer = order.role === "BUYER";
-  const at = buyer ? deadlines.deliveryDeadlineMs : deadlines.inspectionClosesAtMs;
+  const at = chain ? (buyer ? chain.deliveryDeadline * 1000 : chain.inspectionClosesAt * 1000) : (buyer ? deadlines.deliveryDeadlineMs : deadlines.inspectionClosesAtMs);
   const when = formatDateTime(new Date(at).toISOString());
   const amount = `${money(order.value)} ${order.currency}`;
-  if (now <= at) {
+  const action = chain ? deadlineAction(chain, order.role, Math.floor(now / 1000)) : (now > at ? (buyer ? "reclaim" : "claim") : null);
+  if (!action) {
     return <p className="action-note">{buyer
       ? `If ${order.supplier} has not marked shipment on BOT Chain by ${when}, you can take the escrow back without anyone else's signature.`
       : `If ${order.buyer} has neither accepted the delivery nor opened a claim by ${when}, you can claim the escrow without anyone else's signature.`}</p>;
