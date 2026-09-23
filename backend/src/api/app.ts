@@ -50,6 +50,9 @@ const tradeOrderSchema = z.object({
   deliveryDate: z.string().min(1).max(128), deliveryLocation: z.string().min(1).max(500), lineItems: z.array(lineItemSchema).min(1).max(100),
   releasePlan: z.object({ depositUnits: amount, dispatchUnits: amount, deliveryUnits: amount }).optional(),
   buyerOrganizationId: uuid.optional(), supplierOrganizationId: uuid.optional(),
+  // The demo supplier's address is never trusted from the client: the server resolves it from
+  // its own config, so a buyer can only ask for it, never name it.
+  useDemoSupplier: z.boolean().optional(),
 });
 const inspectionSchema = z.object({
   lines: z.array(z.object({ lineId: z.string().min(1).max(128), accepted: amount, missing: amount, damaged: amount })).min(1).max(100),

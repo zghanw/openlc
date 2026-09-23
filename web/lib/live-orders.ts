@@ -155,13 +155,18 @@ export type CreateLiveOrderInput = {
   organizationId: string;
   supplierWalletAddress?: string;
   releasePercentages: { deposit: number; dispatch: number };
+  /** Buyer-initiated only. The server resolves the actual demo wallet from its own config - this
+   *  app never holds or sends that address. */
+  useDemoSupplier?: boolean;
 };
 
 export async function createLiveOrder(input: CreateLiveOrderInput): Promise<{ order: DemoOrder; inviteUrl: string; inviteDelivery: InvitationDelivery }> {
   if (!arbitratorConfigured) throw new Error(ARBITRATOR_NOT_CONFIGURED_REASON);
   const amount = input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const counterparty = input.initiatorRole === "buyer"
-    ? { supplierEmail: input.counterpartyEmail.trim().toLowerCase(), supplierName: input.counterpartyName.trim(), buyerOrganizationId: input.organizationId }
+    ? input.useDemoSupplier
+      ? { useDemoSupplier: true as const, buyerOrganizationId: input.organizationId }
+      : { supplierEmail: input.counterpartyEmail.trim().toLowerCase(), supplierName: input.counterpartyName.trim(), buyerOrganizationId: input.organizationId }
     : { buyerEmail: input.counterpartyEmail.trim().toLowerCase(), buyerName: input.counterpartyName.trim(), supplierOrganizationId: input.organizationId, supplierWalletAddress: input.supplierWalletAddress };
   const created = await apiRequest<TradeOrder>("/v1/orders", {
     method: "POST",

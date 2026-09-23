@@ -16,7 +16,7 @@ import { MemoryDisputeStore } from "./store/store.js";
 import { SupabaseDisputeStore } from "./store/supabase-store.js";
 import { MemoryTradeStore } from "./store/trade-store.js";
 import { SupabaseTradeStore } from "./store/supabase-trade-store.js";
-import { TradeService } from "./service/trade-service.js";
+import { TradeService, type DemoSupplier } from "./service/trade-service.js";
 import { IdentityService } from "./service/identity-service.js";
 import { SupabaseIdentityStore } from "./store/supabase-identity-store.js";
 import { OrganizationService } from "./service/organization-service.js";
@@ -96,6 +96,16 @@ if (config.escrowVerifierEnabled) {
 const documentStore = config.store === "supabase"
   ? new SupabaseDocumentStore(config.supabaseUrl(), config.supabaseSecretKey(), config.documentsBucket)
   : new MemoryDocumentStore();
-const trades = new TradeService(tradeStore, service, systemContext, process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders", fundingVerifier, organizations, invitationEmail, documentStore);
+// The demo supplier needs both a configured address and wallet sign-in (to find-or-create its
+// account), so it is only built when both are available - never a required part of the deployment.
+const demoSupplierAddress = config.demoSupplierAddress();
+const demoSupplier: DemoSupplier | undefined = demoSupplierAddress && identity
+  ? {
+      address: demoSupplierAddress,
+      name: "OpenLC Demo Supplier",
+      accountId: async () => (await identity.findOrCreateWalletAccount(demoSupplierAddress)).id,
+    }
+  : undefined;
+const trades = new TradeService(tradeStore, service, systemContext, process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders", fundingVerifier, organizations, invitationEmail, documentStore, demoSupplier);
 const app = createApp(service, verifier, mediator, demo, settlementVerifier, trades, config.demoMode, identity, organizations);
 serve({ fetch: app.fetch, port: config.port }, ({ port }) => console.log(`OpenLC API listening on port ${port}`));

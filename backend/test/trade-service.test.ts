@@ -3,7 +3,7 @@ import { createApp, type TokenVerifier } from "../src/api/app.js";
 import { DemoAwareTokenVerifier, issueDemoGoogleSession } from "../src/api/demo-auth.js";
 import { DisputeService } from "../src/service/dispute-service.js";
 import { OrganizationService } from "../src/service/organization-service.js";
-import { TradeService } from "../src/service/trade-service.js";
+import { TradeService, type DemoSupplier } from "../src/service/trade-service.js";
 import { MemoryDisputeStore } from "../src/store/store.js";
 import { MemoryOrganizationStore } from "../src/store/organization-store.js";
 import { MemoryTradeStore } from "../src/store/trade-store.js";
@@ -654,5 +654,81 @@ describe("trade lifecycle API", () => {
     await expect(trades.previewInvite(invited.inviteToken!, stranger)).rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 403 });
     const named = { id: SUPPLIER, walletAddress: supplierWallet };
     expect((await trades.previewInvite(invited.inviteToken!, named)).id).toBe(order.id);
+  });
+
+  // --- Task 12: the demo supplier confirms in the same request that creates its invite, so a
+  // lone judge completes create -> fund with one wallet. ---
+
+  const DEMO_SUPPLIER_ADDRESS = `0x${"d".repeat(40)}`;
+  const DEMO_SUPPLIER_ACCOUNT_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const fakeDemoSupplier: DemoSupplier = { address: DEMO_SUPPLIER_ADDRESS, name: "OpenLC Demo Supplier", accountId: async () => DEMO_SUPPLIER_ACCOUNT_ID };
+  const tradesWithDemoSupplier = (demoSupplier?: DemoSupplier) => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    return new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, undefined, undefined, undefined, demoSupplier);
+  };
+
+  it("a demo-supplier order reaches supplier_confirmed as soon as its invite is created, with no second session", async () => {
+    const trades = tradesWithDemoSupplier(fakeDemoSupplier);
+    const buyer = { id: BUYER, name: "Judge", walletAddress: `0x${"1".repeat(40)}` };
+    const order = await trades.createOrder({
+      reference: "PO-DEMO-1", useDemoSupplier: true, arbitratorId: ARBITRATOR, arbitratorWalletAddress: `0x${"e".repeat(40)}`,
+      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer);
+    // Named at creation, but not yet accepted - createInvite is what confirms it.
+    expect(order.supplierWalletAddress).toBe(DEMO_SUPPLIER_ADDRESS);
+    expect(order.supplierId).toBeUndefined();
+    expect(order.status).toBe("awaiting_supplier");
+
+    const invited = await trades.createInvite(order.id, buyer);
+    expect(invited.status).toBe("supplier_confirmed");
+    expect(invited.supplierWalletAddress).toBe(DEMO_SUPPLIER_ADDRESS);
+    expect(invited.supplierId).toBe(DEMO_SUPPLIER_ACCOUNT_ID);
+    expect((await trades.getOrder(order.id, buyer)).status).toBe("supplier_confirmed");
+  });
+
+  it("recordFunding's supplier-wallet guard passes for the demo address and refuses a different one", async () => {
+    const trades = tradesWithDemoSupplier(fakeDemoSupplier);
+    const buyerWallet = `0x${"1".repeat(40)}`;
+    const arbitratorWallet = `0x${"e".repeat(40)}`;
+    const buyer = { id: BUYER, name: "Judge", walletAddress: buyerWallet };
+    const order = await trades.createOrder({
+      reference: "PO-DEMO-2", useDemoSupplier: true, arbitratorId: ARBITRATOR, arbitratorWalletAddress: arbitratorWallet,
+      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer);
+    await trades.createInvite(order.id, buyer);
+
+    await expect(trades.recordFunding(order.id, buyer, {
+      packageId: `0x${"9".repeat(40)}`, escrowObjectId: "1", transactionDigest: `0x${"a".repeat(64)}`,
+      buyerAddress: buyerWallet, supplierAddress: `0x${"7".repeat(40)}`, arbitratorAddress: arbitratorWallet,
+    })).rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 409 });
+
+    const funded = await trades.recordFunding(order.id, buyer, {
+      packageId: `0x${"9".repeat(40)}`, escrowObjectId: "1", transactionDigest: `0x${"a".repeat(64)}`,
+      buyerAddress: buyerWallet, supplierAddress: DEMO_SUPPLIER_ADDRESS, arbitratorAddress: arbitratorWallet,
+    });
+    expect(funded.status).toBe("funded");
+  });
+
+  it("rejects useDemoSupplier when the buyer's own wallet is the configured demo address", async () => {
+    const trades = tradesWithDemoSupplier(fakeDemoSupplier);
+    const buyer = { id: BUYER, name: "Self Dealer", walletAddress: DEMO_SUPPLIER_ADDRESS };
+    await expect(trades.createOrder({
+      reference: "PO-DEMO-3", useDemoSupplier: true, arbitratorId: ARBITRATOR,
+      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer)).rejects.toMatchObject({ code: "INVALID_PARTIES", status: 400 });
+  });
+
+  it("refuses useDemoSupplier when this deployment has no demo supplier configured", async () => {
+    const trades = tradesWithDemoSupplier(undefined);
+    const buyer = { id: BUYER, name: "Judge", walletAddress: `0x${"1".repeat(40)}` };
+    await expect(trades.createOrder({
+      reference: "PO-DEMO-4", useDemoSupplier: true, arbitratorId: ARBITRATOR,
+      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer)).rejects.toMatchObject({ code: "DEMO_SUPPLIER_NOT_CONFIGURED", status: 503 });
   });
 });
