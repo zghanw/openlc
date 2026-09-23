@@ -246,25 +246,32 @@ const SETTLEMENT_MODE_LABEL: Record<number, string> = {
   4: "the inspection window closed unresolved",
 };
 
+/** Loading/failed/ready, as one value - so the panel below can render exactly one of the three
+ *  and never, say, a stale "ready" alongside a fresh "failed" (see the read effect). */
+type ChainRead = { view: "loading" } | { view: "failed" } | { view: "ready"; chain: EscrowChainState };
+
 /** The rubric's proof point: this order page reads the escrow straight from BOT Chain rather than
  *  only showing the API's record. Renders nothing for a sample order or one with no funding yet -
  *  the caller already gates on that, this component just needs the escrow id to read. */
 function ChainTruthPanel({ order }: { order: DemoOrder }) {
   const escrowId = order.funding?.escrowObjectId;
-  const [chain, setChain] = useState<EscrowChainState | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [read, setRead] = useState<ChainRead>({ view: "loading" });
 
   useEffect(() => {
     let cancelled = false;
+    // Drop the previous escrow's (or order status's) read before this one starts, so a slow or
+    // degraded RPC never leaves a stale "ready" snapshot - or a stale mismatch banner built from
+    // it - on screen looking current for the new escrow id or step.
+    setRead({ view: "loading" });
     if (!escrowId) return;
-    setFailed(false);
     readEscrowState(escrowId)
-      .then((state) => { if (!cancelled) setChain(state); })
-      .catch(() => { if (!cancelled) setFailed(true); });
+      .then((chain) => { if (!cancelled) setRead({ view: "ready", chain }); })
+      .catch(() => { if (!cancelled) setRead({ view: "failed" }); });
     return () => { cancelled = true; };
   }, [escrowId, order.status]);
 
   if (!escrowId) return null;
+  const chain = read.view === "ready" ? read.chain : null;
   const statusWord = chain ? (chain.status === 2 ? "Settled" : chain.status === 1 ? "Disputed" : "Open") : "";
   const statusLine = chain && chain.status === 2 ? `${statusWord} — ${SETTLEMENT_MODE_LABEL[chain.mode] ?? "settled"}` : statusWord;
   const mismatch = chain ? chainMismatchNotice(chain, order.status) : null;
@@ -274,8 +281,8 @@ function ChainTruthPanel({ order }: { order: DemoOrder }) {
       {mismatch && <Notice tone="warning">{mismatch}</Notice>}
       <section className="panel reveal reveal-3" aria-labelledby="chain-truth-title">
         <div className="panel-head"><h2 id="chain-truth-title">On BOT Chain</h2><span className="panel-meta">Escrow #{escrowId}</span></div>
-        {!chain && !failed && <p className="action-note">Reading BOT Chain…</p>}
-        {failed && <p className="action-note">BOT Chain is not reachable right now; showing the OpenLC record.</p>}
+        {read.view === "loading" && <p className="action-note">Reading BOT Chain…</p>}
+        {read.view === "failed" && <p className="action-note">BOT Chain is not reachable right now; showing the OpenLC record.</p>}
         {chain && (
           <dl className="fact-list">
             <div><dt>Escrow</dt><dd><strong>#{escrowId}</strong></dd></div>

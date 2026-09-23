@@ -279,7 +279,11 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
   const [chain, setChain] = useState<EscrowChainState | null>(null);
   useEffect(() => {
     let cancelled = false;
-    if (!escrowId) { setChain(null); return; }
+    // Clear the previous escrow's (or order status's) chain state before this read starts, so a
+    // slow or degraded RPC never leaves a stale snapshot on screen looking current - the fallback
+    // below already treats a null chain as "use the API deadline and browser clock for now".
+    setChain(null);
+    if (!escrowId) return;
     readEscrowState(escrowId).then((state) => { if (!cancelled) setChain(state); }).catch(() => { if (!cancelled) setChain(null); });
     return () => { cancelled = true; };
   }, [escrowId, order.status]);
