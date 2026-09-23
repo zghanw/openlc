@@ -46,8 +46,9 @@ question. See [On-chain activity](#deployment) below for the transaction hashes.
 
 ### One wallet (fastest)
 
-1. Open https://openlc.vercel.app, connect MetaMask, and sign the one-time sign-in message.
-   BOT Chain Testnet is added to your wallet automatically if you don't already have it.
+1. Open https://openlc.vercel.app, connect MetaMask, and sign the one-time sign-in message. If
+   your wallet is on another network, a banner offers "Switch to BOT Chain Testnet"; the app also
+   asks MetaMask to switch to it (adding it first if needed) before your first transaction.
 2. Get testnet BOT from the faucet: https://faucet.botchain.ai/basic
 3. Create an order and tick **"Use the OpenLC demo supplier."** It defaults to a 0% deposit / 0%
    dispatch / 100% on delivery release plan, and the order is confirmed in the same request — no
@@ -94,9 +95,12 @@ BOT Chain runs around 20 gwei; a single escrow action (fund, ship, claim, settle
   [ship + 0.2 BOT dispatch](https://scan.bohr.life/tx/0xd8bff88315199b0a36b16c9c7b361ad0eeded6775668aed130ac4d60bb4746af) ·
   [damage photo anchored](https://scan.bohr.life/tx/0x2f4631e0741b19cd99004ab3b82b7bbc12a301ecce0c35f88c75923499c220eb) ·
   [claim opens, 0.55 BOT paid to the supplier in the same tx](https://scan.bohr.life/tx/0x8a72ab5e9f79100ee522063024443288a8bba20f23c634aa2a78667c6060f97a) ·
+  [buyer approves the split](https://scan.bohr.life/tx/0x456a3a260b1cfb44a35100aa08c0d5024cd83a6818ccbdaa0696a109b7f518a2) ·
+  [supplier approves the same split](https://scan.bohr.life/tx/0x0b83f4cd77cd363bcab2ee6ba35483b033bd12e168bb7c935642b1bee0c2f765) ·
   [settlement executed, 0.15 BOT refunded to the buyer](https://scan.bohr.life/tx/0xb57dc85208eee87e171db06dbcecc370ad310d382c9af0101ae014d6fe220e61)
-- A third escrow proved the deadline path: a 150-second delivery deadline, reclaimed with
-  `refundUnshipped()` moments after it passed (internal test run; no public transaction link kept).
+- **DEMO-DEADLINE-79452557** (escrow #3, 0.01 BOT, a 150-second delivery deadline — proving the
+  other deadline path): [fund](https://scan.bohr.life/tx/0x0f9b65e2737c099c4fa374f165dd2b9bb6deb393bbac8c460a168cb00f550646) ·
+  [reclaimed with refundUnshipped() after the deadline passed](https://scan.bohr.life/tx/0xed3f2817831236bf4cb8df7502868149495a05bd293d1ef1235e12d31c246344)
 
 ## Architecture
 
@@ -180,7 +184,8 @@ from the faucet.
   and more).
 - [`web/.env.example`](web/.env.example) — `NEXT_PUBLIC_OPENLC_BACKEND_URL`,
   `NEXT_PUBLIC_BOTCHAIN_CHAIN_ID`, `NEXT_PUBLIC_OPENLC_ESCROW_ADDRESS`,
-  `NEXT_PUBLIC_OPENLC_ESCROW_DEPLOY_BLOCK`, `NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS`.
+  `NEXT_PUBLIC_OPENLC_ESCROW_DEPLOY_BLOCK`, `NEXT_PUBLIC_OPENLC_ARBITRATOR_ADDRESS`, `GEMINI_API_KEY`,
+  `GEMINI_MODEL` (used by the Import-from-file purchase-order reader), and more.
 
 See [`backend/README.md`](backend/README.md) for which backend variables are optional.
 
@@ -191,7 +196,7 @@ See [`backend/README.md`](backend/README.md) for which backend variables are opt
 npm ci
 npm test              # 41 passing
 npm run compile
-npm run deploy:testnet   # writes deployments/botchainTestnet.json
+npm run deploy:testnet   # writes deployments/botchain-testnet.json
 
 # backend
 cd backend && npm ci

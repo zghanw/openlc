@@ -29,7 +29,8 @@ A client-supplied hash alone is never accepted as proof that something happened 
   `GET /v1/invites/:token`, `POST /v1/invites/:token/accept`
 - **Escrow lifecycle (chain-verified):** `POST /v1/orders/:id/funding`,
   `POST /v1/orders/:id/shipment`, `POST /v1/orders/:id/delivery`,
-  `POST/GET /v1/orders/:id/documents`, `PATCH /v1/orders/:id/documents/:documentId/anchor`,
+  `POST /v1/orders/:id/documents`, `GET /v1/orders/:id/documents/:documentId` (downloads the file),
+  `PATCH /v1/orders/:id/documents/:documentId/anchor`,
   `POST /v1/orders/:id/acceptance`, `POST /v1/orders/:id/dispute`,
   `POST /v1/orders/:id/deadline-settlement`
 - **Disputes & mediation:** `POST /v1/disputes`, `GET /v1/disputes/:id`,
@@ -37,8 +38,9 @@ A client-supplied hash alone is never accepted as proof that something happened 
   `POST /v1/disputes/:id/mediate`, `POST /v1/disputes/:id/early-position`,
   `POST /v1/disputes/:id/arbitrator-decision`, `GET /v1/disputes/:id/arbitration-package`,
   `POST /v1/disputes/:id/settlement-execution`, `POST /v1/disputes/:id/enforce-deadline`
-- **Demo controls** (only when `OPENLC_DEMO_MODE=true`): `GET /v1/demo/orders`,
-  `POST /v1/demo/orders/reset`, `POST /v1/demo/orders/:id/advance`
+- **Demo controls** (demo-only, disabled by default — only enabled when `OPENLC_DEMO_MODE=true`):
+  `POST /auth/demo/google`, `GET /v1/demo/orders`, `POST /v1/demo/orders/reset`,
+  `POST /v1/demo/orders/:id/advance`
 
 ## Configuration
 
