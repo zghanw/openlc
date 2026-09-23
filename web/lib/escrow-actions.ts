@@ -355,6 +355,14 @@ function disputePostPayload(txHash: string, disputedUnits: string, requestedUnit
   };
 }
 
+/** Fails closed if MetaMask isn't (or is no longer) on BOT Chain - a signed transaction on the
+ *  wrong chain would send the order value to 0x20C3... where this contract doesn't exist. Thrown
+ *  as a plain Error so describeEscrowError/describeTxError pass its message straight through
+ *  (neither one has a JSON-RPC-shaped field to prefer over Error.message - see contract() below). */
+function wrongChainError(): Error {
+  return new Error(`Switch MetaMask to ${BOTCHAIN.chainName} to continue. OpenLC only sends transactions on ${BOTCHAIN.chainName}.`);
+}
+
 /**
  * Every escrow action that sends a transaction, on ethers against BOT Chain. Keeps the same
  * function signatures so every caller keeps compiling.
@@ -376,10 +384,20 @@ export function useEscrowActions() {
     }
   }
 
+  /** Every signed escrow call goes through here (via sendTx below), so this is the one place that
+   *  must confirm MetaMask is on BOT Chain before a transaction can be built. ensureBotChain drives
+   *  wallet_switchEthereumChain (falling back to wallet_addEthereumChain on MetaMask's 4902), and
+   *  only returns true once the wallet actually reports the target chain id back - a rejection or a
+   *  failed add both come back false, never a thrown error, so it reads naturally as a guard here.
+   *  The chain id is re-checked against the signer's own provider afterwards - belt and braces
+   *  against a stale "any"-network provider view surviving the switch. */
   async function contract(): Promise<Contract> {
     requireEscrowConfigured();
+    if (!(await wallet.ensureBotChain())) throw wrongChainError();
     const signer = await wallet.getSigner();
     requireWalletMatchesSession(wallet.account!);
+    const network = await signer.provider.getNetwork();
+    if (network.chainId !== BigInt(BOTCHAIN.chainIdDec)) throw wrongChainError();
     return new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
   }
 
