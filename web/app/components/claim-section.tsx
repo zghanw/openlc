@@ -164,6 +164,10 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
   const mySigned = live ? (myChainApproved ?? signed[mySide]) : signed[mySide];
   const chainAlreadySettled = live && chainState?.status === 2;
   const approvalsSatisfied = !chainState || chainState.arbitratorApproved || (chainState.buyerApproved && chainState.supplierApproved);
+  // The arbitrator's approval or an already-Settled escrow makes my own buyer/supplier signature
+  // pointless - the Sign button should say so instead of asking for a signature that either isn't
+  // needed or (once Settled) would just revert.
+  const signNotRequired = chainState ? chainState.arbitratorApproved || chainState.status === 2 : false;
 
   const approve = () => run("approve", async () => {
     if (!allocation) return;
@@ -331,8 +335,14 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
               </dl>
               <p>Both parties sign the exact split on BOT Chain, then either party executes it.</p>
-              {live && chainState && <p>{counterpartyChainApproved ? `${counterpartyName} has signed.` : `Waiting for ${counterpartyName} to sign.`}</p>}
-              <Button className="btn-primary" disabled={Boolean(busy) || mySigned || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void approve()}>{mySigned ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
+              {live && chainState && (
+                <p>{chainState.status === 2
+                  ? "Settled on BOT Chain. Record it here to close the claim."
+                  : chainState.arbitratorApproved
+                  ? "The arbitrator has signed this split. Either party can execute it."
+                  : counterpartyChainApproved ? `${counterpartyName} has signed.` : `Waiting for ${counterpartyName} to sign.`}</p>
+              )}
+              <Button className="btn-primary" disabled={Boolean(busy) || signNotRequired || mySigned || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void approve()}>{signNotRequired ? (myChainApproved ? "Signed" : "Not needed") : mySigned ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
               <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch) || (live && !chainAlreadySettled && !approvalsSatisfied)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : chainAlreadySettled ? "Record settlement" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
               {live && <small className="muted">Execution succeeds only after both signatures are on chain.</small>}
             </div>
