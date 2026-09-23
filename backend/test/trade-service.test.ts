@@ -289,7 +289,7 @@ describe("trade lifecycle API", () => {
     expect(confirmed.status).toBe("supplier_confirmed");
     expect(confirmed.buyerId).toBe(BUYER);
     expect(confirmed.buyerEmail).toBe(buyer.email);
-    expect(confirmed.confirmation).toMatchObject({ confirmedBy: BUYER, confirmedRole: "buyer", termsVersion: "1.1", orderVersion: 1 });
+    expect(confirmed.confirmation).toMatchObject({ confirmedBy: BUYER, confirmedRole: "buyer", termsVersion: "1.2", orderVersion: 1 });
     expect(await trades.listInvitations(buyer)).toEqual([]);
 
     const funded = await trades.recordFunding(order.id, buyer, {
@@ -316,7 +316,7 @@ describe("trade lifecycle API", () => {
     }, buyer);
     await trades.createInvite(order.id, buyer);
     const confirmed = await trades.acceptInvitation(order.id, supplier);
-    expect(confirmed.confirmation).toMatchObject({ confirmedBy: SUPPLIER, confirmedRole: "supplier", email: supplier.email, termsVersion: "1.1" });
+    expect(confirmed.confirmation).toMatchObject({ confirmedBy: SUPPLIER, confirmedRole: "supplier", email: supplier.email, termsVersion: "1.2" });
   });
 
   it("settles a fully accepted delivery against the release transaction", async () => {

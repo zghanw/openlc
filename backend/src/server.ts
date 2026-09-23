@@ -44,9 +44,14 @@ const productionVerifier: TokenVerifier = identity ? new WalletSessionVerifier(i
 const verifier = new DemoAwareTokenVerifier(productionVerifier, config.demoMode);
 let mediator: MediationOrchestrator | undefined;
 if (process.env.GEMINI_API_KEY) {
-  const embedder = new GeminiEmbedder(config.geminiApiKey(), config.embeddingModel);
-  // Statute and case law are retrieved for the human arbitration package only.
-  const candidateAuthorities = new QdrantLegalIndex(config.qdrantUrl(), config.qdrantApiKey(), config.legalCollection, embedder);
+  // Statute and case law are retrieved for the human arbitration package only, so Qdrant (and the
+  // embedder, which only Qdrant uses) is optional: without both env vars, mediation still runs.
+  let candidateAuthorities: QdrantLegalIndex | undefined;
+  if (process.env.QDRANT_URL && process.env.QDRANT_API_KEY) {
+    const embedder = new GeminiEmbedder(config.geminiApiKey(), config.embeddingModel);
+    candidateAuthorities = new QdrantLegalIndex(config.qdrantUrl(), config.qdrantApiKey(), config.legalCollection, embedder);
+  }
+  console.log(`Legal authorities retrieval ${candidateAuthorities ? "enabled" : "disabled"} (QDRANT_URL/QDRANT_API_KEY ${candidateAuthorities ? "set" : "not set"})`);
   const policy = await loadPolicyCorpus(config.disputePolicyFile);
   console.log(`Dispute policy v${policy.version} loaded with ${policy.clauses.length} quotable clauses`);
   mediator = new MediationOrchestrator(

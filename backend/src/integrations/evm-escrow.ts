@@ -554,7 +554,9 @@ export class EvmSettlementVerifier implements EscrowSettlementVerifier {
       address(created.arbitrator, "EscrowCreated.arbitrator", SETTLEMENT_INVALID) !== arbitrator ||
       fundingSender !== buyer ||
       created.orderReference !== dispute.tradeTerms.orderReference ||
-      created.amount.toString() !== dispute.totalEscrowUnits
+      // The dispute's total is the delivery tranche still held when it was opened (openDispute in
+      // trade-service.ts), not the whole escrow, so it lines up with EscrowCreated.delivery.
+      created.delivery.toString() !== dispute.totalEscrowUnits
     ) {
       failSettlement(SETTLEMENT_FAILED, "The funding transaction does not match the dispute escrow binding");
     }

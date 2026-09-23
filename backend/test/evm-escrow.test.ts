@@ -446,9 +446,12 @@ function fullSettlementReader(options: {
     .setEscrow("1", baseEscrowRecord({ status: options.escrowStatus ?? 2, settledBuyerRefund: buyerRefund, settledSupplierRelease: supplierRelease }));
 }
 
-function settlementDispute(overrides: { buyerUnits?: string; supplierUnits?: string; proposalHash?: string } = {}) {
+function settlementDispute(overrides: { buyerUnits?: string; supplierUnits?: string; proposalHash?: string; totalEscrowUnits?: string } = {}) {
   const control = controlledContext();
+  // Production opens a dispute with totalEscrowUnits set to the delivery tranche still held
+  // (trade-service.ts), not the whole 100000 order, so the fixture matches that shape by default.
   const dispute = openDispute(openInput({
+    totalEscrowUnits: overrides.totalEscrowUnits ?? "70000",
     onchainEscrow: {
       packageId: ESCROW, escrowObjectId: "1", fundingTransactionDigest: FUNDING_TX, disputeTransactionDigest: DISPUTE_TX,
       buyerAddress: BUYER_ADDR, supplierAddress: SUPPLIER_ADDR, arbitratorAddress: ARBITRATOR_ADDR,
@@ -520,5 +523,13 @@ describe("EvmSettlementVerifier.verify (dispute settlement)", () => {
   it("rejects a dispute transaction not signed by the buyer", async () => {
     const verifier = new EvmSettlementVerifier({ escrowAddress: ESCROW, reader: fullSettlementReader({ disputeSender: SUPPLIER_ADDR }) });
     await expect(verifier.verify(settlementDispute(), settlementProof)).rejects.toMatchObject({ code: "ESCROW_SETTLEMENT_VERIFICATION_FAILED" });
+  });
+
+  it("rejects a dispute whose totalEscrowUnits differs from EscrowCreated.delivery", async () => {
+    // A dispute opened against the whole order (100000) rather than the delivery tranche still
+    // held (70000, per EscrowCreated's deposit/dispatch/delivery split) is not production-shaped.
+    const dispute = settlementDispute({ totalEscrowUnits: "100000" });
+    const verifier = new EvmSettlementVerifier({ escrowAddress: ESCROW, reader: fullSettlementReader() });
+    await expect(verifier.verify(dispute, settlementProof)).rejects.toMatchObject({ code: "ESCROW_SETTLEMENT_VERIFICATION_FAILED" });
   });
 });

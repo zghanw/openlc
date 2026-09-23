@@ -26,7 +26,7 @@ import type { OrganizationService } from "./organization-service.js";
 import { DisabledInvitationEmailSender, type InvitationEmailSender } from "../integrations/invitation-email.js";
 
 /** Version of the platform terms a party accepts when confirming an order. */
-export const TERMS_VERSION = "1.1";
+export const TERMS_VERSION = "1.2";
 
 export interface CreateTradeOrderInput {
   reference: string;
