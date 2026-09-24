@@ -94,13 +94,22 @@ body:has(.lp) {
 
 /* ---------- Type ---------- */
 
+/* Display face (Bricolage Grotesque, owner's choice) for the headlines only; everything else stays
+   Mona Sans. Optical size pinned to display. */
+.lp-display,
+.lp-h2,
+.lp-tile--contract h3 {
+  font-family: var(--font-lp-display), "Mona Sans", ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 100%;
+  font-variation-settings: "opsz" 96;
+}
+
 .lp-display {
-  /* Sized so each sentence holds one line at every width: "Locked before it ships." is ~10.1em. */
-  font-size: clamp(1.75rem, calc((100vw - 44px) / 10.4), 5.5rem);
-  font-weight: 600;
-  font-stretch: 110%;
-  letter-spacing: -0.035em;
-  line-height: 1.06;
+  /* Sized so each sentence holds one line at every width: "Locked before it ships." is ~9.11em. */
+  font-size: clamp(1.75rem, calc((100vw - 44px) / 9.5), 5.5rem);
+  font-weight: 620;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
   text-wrap: balance;
 }
 
@@ -112,10 +121,9 @@ body:has(.lp) {
 
 .lp-h2 {
   font-size: clamp(2rem, 1.3rem + 2.5vw, 3.5rem);
-  font-weight: 580;
-  font-stretch: 106%;
-  letter-spacing: -0.032em;
-  line-height: 1.04;
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.06;
   text-wrap: balance;
 }
 
@@ -136,6 +144,10 @@ body:has(.lp) {
 
 .lp-section-head {
   max-width: 680px;
+}
+
+.lp-nowrap {
+  white-space: nowrap;
 }
 
 .lp-section-head--center {
@@ -631,6 +643,8 @@ body:has(.lp) {
 .lp-timeline {
   --day-col: 112px;
   --lane-gap: 28px;
+  --lanes-h: 64px; /* the sticky lane header */
+  --lanes-fade: 56px; /* the dissolve zone under it */
   margin-top: clamp(56px, 7vw, 96px);
 }
 
@@ -640,21 +654,56 @@ body:has(.lp) {
   z-index: 5;
   display: grid;
   grid-template-columns: 1fr var(--day-col) 1fr;
+  align-items: center;
   column-gap: var(--lane-gap);
-  padding: 18px 0;
+  height: var(--lanes-h);
   background: #000;
 }
 
-/* Solid black behind the lane heads, then a short fade, so entries scroll away underneath cleanly. */
+/* Solid black behind the lane heads, then an eased fade over the dissolve zone. Entries also fade
+   themselves out across that zone (below), so nothing reaches the header's edge still visible. */
 .lp-lanes::after {
   content: "";
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  height: 24px;
-  background: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.85) 40%, transparent 100%);
+  height: var(--lanes-fade);
+  background: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.94) 22%, rgba(0, 0, 0, 0.72) 48%,
+      rgba(0, 0, 0, 0.32) 76%, transparent 100%);
   pointer-events: none;
+}
+
+@media (min-width: 820px) {
+  /* At rest the dissolve zone covers only this padding, never the Day 0 entries. */
+  .lp-track {
+    padding-top: var(--lanes-fade);
+  }
+}
+
+@media (min-width: 820px) and (max-width: 1079px) {
+  .lp-lanes .lp-state {
+    display: none;
+  }
+}
+
+/* Each entry fades to nothing over the last --lanes-fade of scroll before its top meets the header,
+   so no entry or day pill is ever seen sliced by the header's edge. */
+@supports (animation-timeline: view()) {
+  @media (min-width: 820px) {
+    .lp-day,
+    .lp-cell > * {
+      animation: lp-under linear both;
+      animation-timeline: view(block calc(var(--lp-header-h) + var(--lanes-h) + var(--lanes-fade)) 0px);
+      animation-range: exit 0px exit var(--lanes-fade);
+    }
+  }
+}
+
+@keyframes lp-under {
+  to {
+    opacity: 0;
+  }
 }
 
 .lp-lane-head {
@@ -972,6 +1021,7 @@ body:has(.lp) {
 
   .lp-lanes {
     position: static;
+    height: auto;
     display: flex;
     flex-wrap: wrap;
     gap: 10px 24px;
@@ -1609,6 +1659,7 @@ body:has(.lp) {
   color: var(--lp-muted);
   font-size: 15px;
   line-height: 1.6;
+  text-wrap: pretty;
 }
 
 .lp-tile .lp-inline-link {
@@ -1624,8 +1675,8 @@ body:has(.lp) {
 .lp-tile--contract h3 {
   max-width: 15ch;
   font-size: clamp(1.75rem, 1.25rem + 1.6vw, 2.75rem);
-  font-weight: 580;
-  letter-spacing: -0.03em;
+  font-weight: 600;
+  letter-spacing: -0.026em;
   line-height: 1.06;
 }
 
@@ -1842,17 +1893,10 @@ body:has(.lp) {
   align-items: center;
 }
 
-.lp-display--close {
-  font-size: clamp(1.75rem, calc((100vw - 44px) / 8.8), 5.25rem);
-}
-
+/* The close shares the hero's size, so it never outranks it. */
 @media (min-width: 720px) {
   .lp-display {
-    font-size: clamp(1.75rem, calc((100vw - 80px) / 10.4), 5.5rem);
-  }
-
-  .lp-display--close {
-    font-size: clamp(1.75rem, calc((100vw - 80px) / 8.8), 5.25rem);
+    font-size: clamp(1.75rem, calc((100vw - 80px) / 9.5), 5.5rem);
   }
 }
 
@@ -1942,6 +1986,10 @@ body:has(.lp) {
   .lp *::after {
     transition-duration: 0.01ms !important;
     transition-delay: 0s !important;
-    animation: none !important;
+  }
+
+  /* The scroll-linked entry fade stays: it moves nothing, it only keeps the lane header clean. */
+  .lp-spin {
+    animation: none;
   }
 }

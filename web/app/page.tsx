@@ -15,6 +15,7 @@ import {
   Scale,
 } from "lucide-react";
 import { BuiltOnBotChain } from "@/app/components/built-on-botchain";
+import { displayFont } from "@/app/components/landing/display-font";
 import { TunnelCanvas } from "@/app/components/landing/tunnel-canvas";
 import { WalletEntry } from "@/app/components/landing/wallet-entry";
 import { CreditTimeline } from "@/app/components/landing/credit-timeline";
@@ -177,8 +178,8 @@ function TimelineSection() {
             Sixty days of credit, or paid on proof.
           </h2>
           <p className="lp-lede">
-            The same 3 BOT sale, two ways. On the right are the real transactions of order PO-90758439 on BOT Chain
-            testnet, set on the days a shipment takes.
+            The same 3 BOT sale, two ways. On the right are the real transactions of order{" "}
+            <span className="lp-nowrap">PO-90758439</span> on BOT Chain testnet, set on the days a shipment takes.
           </p>
         </motion.div>
         <CreditTimeline />
@@ -202,7 +203,7 @@ function ClaimSection() {
             When part of it goes wrong, only that part waits.
           </h2>
           <p className="lp-lede">
-            Order PO-97139111 was for 1 BOT. The 0.1 BOT deposit and the 0.2 BOT dispatch payment had already reached
+            Order <span className="lp-nowrap">PO-97139111</span> was for 1 BOT. The 0.1 BOT deposit and the 0.2 BOT dispatch payment had already reached
             the supplier, leaving 0.7 BOT held for delivery. A carton arrived damaged, so the buyer claimed 0.15 BOT.
           </p>
           <p className="lp-mediator">
@@ -503,7 +504,7 @@ function Close() {
         viewport={ONCE}
         transition={{ duration: 1.3, ease: EASE }}
       >
-        <h2 id="lp-close-title" className="lp-display lp-display--close">
+        <h2 id="lp-close-title" className="lp-display">
           <span className="lp-display-line">Lock the payment.</span>
           <span className="lp-display-line">Ship on proof.</span>
         </h2>
@@ -547,7 +548,7 @@ function Footer() {
 export default function Home() {
   return (
     <MotionConfig reducedMotion="user">
-      <div id="top" className="lp">
+      <div id="top" className={`lp ${displayFont.variable}`}>
         <Header />
         <main>
           <Hero />
