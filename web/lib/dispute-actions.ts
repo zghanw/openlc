@@ -58,6 +58,13 @@ function nearestAiProposal(proposals: ClaimProposal[], at: string): ClaimProposa
   return proposals.filter((proposal) => proposal.source === "ai").sort((a, b) => Math.abs(new Date(a.createdAt).getTime() - target) - Math.abs(new Date(b.createdAt).getTime() - target))[0];
 }
 
+const MEDIATOR_BUSY = "The AI mediator was busy. Try again in a minute.";
+
+/** A Gemini quota (429) or overload (5xx) failure is an outage, not a finding: show it as one line, never the raw API body. */
+function isModelOutage(text?: string): boolean {
+  return /^Gemini request failed \((429|5\d\d)\)/.test(text ?? "");
+}
+
 export function disputeToClaim(dispute: DisputeRecord): ClaimView {
   const proposals: ClaimProposal[] = dispute.proposals.map((proposal) => ({
     id: proposal.id, source: proposal.source, side: proposal.proposerSide, round: proposal.round,
@@ -65,7 +72,10 @@ export function disputeToClaim(dispute: DisputeRecord): ClaimView {
     summary: proposal.summary, reasoning: proposal.reasoning, status: proposal.status, acceptances: proposal.acceptances,
     citations: proposal.citations ?? [], unresolvedIssues: proposal.unresolvedIssues ?? [], evidenceSufficiency: proposal.evidenceSufficiency, createdAt: proposal.createdAt,
   }));
-  const mediations: ClaimMediation[] = dispute.mediationRuns.map((run) => ({
+  const mediations: ClaimMediation[] = dispute.mediationRuns.map((run) => isModelOutage(run.validationIssues[0]) ? {
+    id: run.id, createdAt: run.createdAt, outcome: run.outcome, modelCalls: run.modelCalls,
+    reason: MEDIATOR_BUSY, unresolved: [],
+  } : {
     id: run.id, createdAt: run.createdAt, outcome: run.outcome, modelCalls: run.modelCalls,
     reason: run.mediatorFinal?.reason ?? run.validationIssues[0],
     unresolved: run.mediatorFinal?.unresolvedQuestions ?? run.validationIssues,
@@ -82,7 +92,7 @@ export function disputeToClaim(dispute: DisputeRecord): ClaimView {
         unresolvedQuestions: run.mediatorFinal.unresolvedQuestions ?? [],
       } : undefined,
     },
-  }));
+  });
   return {
     id: dispute.id, status: dispute.status,
     totalValue: fromUnits(dispute.totalEscrowUnits), disputedValue: fromUnits(dispute.disputedUnits), requestedValue: fromUnits(dispute.requestedBuyerUnits),
@@ -132,7 +142,8 @@ export type MediationOutcome = { outcome: "proposal" | "abstain"; reason?: strin
 
 export async function requestMediation(disputeId: string): Promise<MediationOutcome> {
   const result = await apiRequest<{ outcome: "proposal" | "abstain"; reason?: string; unresolvedIssues?: string[]; dispute: DisputeRecord }>(`/v1/disputes/${encodeURIComponent(disputeId)}/mediate`, { method: "POST" });
-  return { outcome: result.outcome, reason: result.reason, unresolvedIssues: result.unresolvedIssues, claim: disputeToClaim(result.dispute) };
+  const busy = result.outcome === "abstain" && (result.unresolvedIssues ?? []).some(isModelOutage);
+  return { outcome: result.outcome, reason: busy ? MEDIATOR_BUSY : result.reason, unresolvedIssues: busy ? [] : result.unresolvedIssues, claim: disputeToClaim(result.dispute) };
 }
 
 export async function enforceClaimDeadline(disputeId: string): Promise<ClaimView> {

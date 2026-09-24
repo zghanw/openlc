@@ -214,8 +214,8 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
       {mediationNote && mediationNote.outcome === "abstain" && (
         <Notice tone="info" onDismiss={() => setMediationNote(null)}>
           <strong>The AI mediator did not propose a split.</strong> {mediationNote.reason}
-          {mediationNote.unresolved.length > 0 && <ul className="extraction-warnings">{mediationNote.unresolved.map((item, index) => <li key={index}>{item}</li>)}</ul>}
-          Attach the evidence the questions point to, then request mediation again.
+          {mediationNote.unresolved.length > 0 && <><ul className="extraction-warnings">{mediationNote.unresolved.map((item, index) => <li key={index}>{item}</li>)}</ul>
+          Attach the evidence the questions point to, then request mediation again.</>}
         </Notice>
       )}
 
