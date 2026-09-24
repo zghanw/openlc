@@ -234,7 +234,8 @@ export type DemoOrder = {
   raw?: TradeOrder;
 };
 
-export const formatOrderMoney = (value: number) => formatBotAmount(value);
+/** Exact for a wei-derived string (formatBot); a number is display maths, see formatBotAmount. */
+export const formatOrderMoney = (value: number | string) => formatBotAmount(value);
 
 export function itemSummary(items: DemoOrderLine[], fallback = "Untitled order"): string {
   const first = items[0]?.description?.trim();

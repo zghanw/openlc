@@ -13,13 +13,13 @@ type QueueItem = { key: string; href: string; reference: string; title: string; 
 
 export default function OverviewPage() {
   const workspace = useWorkspace();
-  const [balance, setBalance] = useState<number | null>(null);
+  const [balance, setBalance] = useState<string | null>(null);
 
   useEffect(() => {
     const address = workspace.session?.walletAddress;
     if (!address) { setBalance(null); return; }
     new JsonRpcProvider(BOTCHAIN.rpcUrl).getBalance(address)
-      .then((wei) => setBalance(Number(formatBot(wei))))
+      .then((wei) => setBalance(formatBot(wei)))
       .catch(() => setBalance(null));
   }, [workspace.session?.walletAddress]);
 

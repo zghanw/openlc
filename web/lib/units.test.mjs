@@ -68,3 +68,20 @@ test("formatBotAmount shows sub-cent amounts exactly and drops trailing zeros", 
   assert.equal(formatBotAmount(formatBot(parseBot("0.0035"))), "0.0035");
   assert.equal(formatBotAmount(formatBot(parseBot("30000"))), "30,000");
 });
+
+test("formatBotAmount truncates, so an amount never shows more than it is", () => {
+  assert.equal(formatBotAmount("0.0000019"), "0.000001");
+  assert.equal(formatBotAmount(formatBot(333333333333333n)), "0.000333");
+  assert.equal(formatBotAmount(formatBot(parseBot("0.99999999"))), "0.999999");
+  assert.equal(formatBotAmount(0.0000019), "0.000001");
+  // Float noise is still fixed before truncating: 3 * 0.15 is 0.44999999999999996.
+  assert.equal(formatBotAmount(3 * 0.15), "0.45");
+});
+
+test("formatBotAmount shows a non-zero amount below 0.000001 as <0.000001, and zero as 0", () => {
+  assert.equal(formatBotAmount(formatBot(1n)), "<0.000001");
+  assert.equal(formatBotAmount(0.0000005), "<0.000001");
+  assert.equal(formatBotAmount(0), "0");
+  assert.equal(formatBotAmount(formatBot(0n)), "0");
+  assert.equal(formatBotAmount("0.000001"), "0.000001");
+});

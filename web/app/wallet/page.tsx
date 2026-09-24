@@ -18,7 +18,7 @@ import { Contract, JsonRpcProvider } from "ethers";
 /** "in" and "out" change the wallet balance. "escrow" moves money the contract holds, so it
  *  is shown without a sign: the buyer already paid it in when the order was funded. */
 type Movement = { id: string; type: "in" | "out" | "escrow"; title: string; detail: string; amount: number; currency?: string; at: string; state: "pending" | "complete"; transactionDigest?: string; stage?: ReleaseStageKey | "escrow"; orderId?: string };
-type Balances = { bot: number };
+type Balances = { bot: string };
 
 function sumOrders(orders: DemoOrder[], pick: (order: DemoOrder) => number = (order) => order.value): string {
   return `${money(orders.reduce((total, order) => total + pick(order), 0))} BOT`;
@@ -83,7 +83,7 @@ export default function WalletPage() {
   const readBalances = useCallback(async (): Promise<Balances | null> => {
     if (!address) return null;
     const wei = await new JsonRpcProvider(BOTCHAIN.rpcUrl).getBalance(address);
-    return { bot: Number(formatBot(wei)) };
+    return { bot: formatBot(wei) };
   }, [address]);
 
   const refreshBalances = useCallback(() => readBalances()
@@ -180,7 +180,7 @@ export default function WalletPage() {
           ) : (
             <strong className="wallet-amount">{money(balances.bot)} <small>BOT</small></strong>
           )}
-          {balances !== null && balances.bot === 0 && <p className="wallet-note">New orders are priced in BOT. <a className="link-light" href={BOTCHAIN.getBotUrl} target="_blank" rel="noreferrer">{BOTCHAIN.getBotLabel}</a> and it appears here.</p>}
+          {balances !== null && Number(balances.bot) === 0 && <p className="wallet-note">New orders are priced in BOT. <a className="link-light" href={BOTCHAIN.getBotUrl} target="_blank" rel="noreferrer">{BOTCHAIN.getBotLabel}</a> and it appears here.</p>}
           <p className="wallet-address">{address ? <><code>{address.slice(0, 10)}...{address.slice(-8)}</code><button type="button" className="text-button text-button-light" onClick={() => void navigator.clipboard.writeText(address)}><ClipboardCopy size={12} aria-hidden="true" />Copy address</button></> : balanceNote}</p>
           {address && balanceNote && <p className="wallet-note">{balanceNote}</p>}
           <div className="wallet-actions">

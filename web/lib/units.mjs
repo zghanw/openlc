@@ -24,9 +24,17 @@ export function parseBotNumber(value) {
   return parseBot(value.toFixed(9));
 }
 
-/** A BOT amount for display: up to 6 decimals, no trailing zeros, thousands grouped, e.g.
- *  0.005 -> "0.005", 1234.5 -> "1,234.5". Takes a number, or formatBot's exact decimal string.
- *  Display only: never parse this back into an amount. */
+const BOT_DISPLAY = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6, roundingMode: "trunc" });
+
+/** A BOT amount for display: up to 6 decimals, truncated (a balance never shows more than it
+ *  is), no trailing zeros, thousands grouped, e.g. 0.005 -> "0.005", 1234.5 -> "1,234.5", and
+ *  "<0.000001" for a non-zero amount below the last shown digit. Takes a number, or formatBot's
+ *  exact decimal string (Intl formats a string as an exact decimal). Display only: never parse
+ *  this back into an amount. */
 export function formatBotAmount(value) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(value);
+  const amount = Number(value);
+  if (amount > 0 && amount < 0.000001) return "<0.000001";
+  // ponytail: a number is float maths (3 * 0.15 = 0.44999999999999996); fix it at 9 decimals,
+  // as parseBotNumber does, before truncating, or 0.45 would show as 0.449999.
+  return BOT_DISPLAY.format(typeof value === "number" ? value.toFixed(9) : value);
 }
