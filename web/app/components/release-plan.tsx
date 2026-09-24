@@ -14,7 +14,7 @@ const DISPATCHED = ["in_transit", "delivered", "dispute_open", "negotiation_open
 const CONTESTED = ["dispute_open", "negotiation_open", "arbitration_pending", "settlement_pending"];
 
 /** Released amounts for a live order, or undefined while the plan is only agreed.
- *  Prefers the recorded payouts and falls back to the lifecycle for sample orders. */
+ *  Prefers the recorded payouts and falls back to the lifecycle for orders recorded without them. */
 export function releaseProgress(order: DemoOrder): ReleaseProgress | undefined {
   const plan = order.releasePlan;
   if (!plan || !FUNDED.includes(order.status)) return undefined;

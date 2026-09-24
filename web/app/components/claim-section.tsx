@@ -12,9 +12,9 @@ import { ReleasePlanBar, releaseProgress } from "@/app/components/release-plan";
 import { type ClaimProposal, type ClaimView, type DemoOrder, formatDateTime, formatOrderMoney as money } from "@/lib/demo-orders";
 import { acceptClaimProposal, enforceClaimDeadline, loadClaim, proposeClaimSplit, rejectClaimProposal, requestMediation, respondToClaim, type EvidenceFileInput } from "@/lib/dispute-actions";
 import { readEscrowState, useEscrowActions, type EscrowChainState } from "@/lib/escrow-actions";
-import { getLiveOrder } from "@/lib/live-orders";
-import { agreeSample, escalateSample, executeSampleSettlement, mediateSample, proposeSample, rejectSample, respondSample } from "@/lib/sample-orders";
-import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
+import { fromUnits, getLiveOrder, toUnits } from "@/lib/live-orders";
+import { splitUnits } from "@/lib/split.mjs";
+import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl, formatBot } from "@/lib/chain";
 
 type Props = { order: DemoOrder; claim: ClaimView; company: string; onOrderChange: (order: DemoOrder) => void; onClaimChange: (claim: ClaimView) => void; railId?: string };
 
@@ -47,7 +47,6 @@ function sourceLabel(proposal: ClaimProposal, order: DemoOrder): string {
 }
 
 export function ClaimSection({ order, claim, company, onOrderChange, onClaimChange, railId }: Props) {
-  const live = order.source === "backend";
   const [rail, setRail] = useState<HTMLElement | null>(null);
   useEffect(() => { setRail(railId ? document.getElementById(railId) : null); }, [railId]);
   const mySide: "buyer" | "supplier" = order.role === "BUYER" ? "buyer" : "supplier";
@@ -72,7 +71,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
     finally { setBusy(""); }
   };
 
-  /** Live claims re-read the order so its status follows the dispute. */
+  /** Re-read the order so its status follows the dispute. */
   const applyLive = async (next: ClaimView) => {
     const refreshed = await getLiveOrder(order.id);
     onOrderChange({ ...refreshed, claim: next });
@@ -85,14 +84,8 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
 
   const respond = (agrees: boolean) => run("respond", async () => {
     let files: EvidenceFileInput[] | undefined;
-    let base = order;
-    if (evidenceFile) { const evidence = await prepareEvidence(order, evidenceFile, "SUPPLIER"); base = evidence.order; files = [evidence.input]; }
-    if (!live) {
-      onOrderChange(respondSample(base, agrees, statement.trim() || (agrees ? "The supplier accepts the claim." : "The supplier disputes the claim."), evidenceFile ? 1 : 0));
-    } else {
-      const next = await respondToClaim(claim.id, { agrees, statement: statement.trim() || (agrees ? "The supplier accepts the buyer's requested remedy." : "The supplier disputes the claim."), files });
-      await applyLive(next);
-    }
+    if (evidenceFile) files = [(await prepareEvidence(order, evidenceFile, "SUPPLIER")).input];
+    await applyLive(await respondToClaim(claim.id, { agrees, statement: statement.trim() || (agrees ? "The supplier accepts the buyer's requested remedy." : "The supplier disputes the claim."), files }));
     setRespondOpen(null);
     setStatement("");
     setEvidenceFile(null);
@@ -100,41 +93,36 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
 
   // Proposals
   const [proposeOpen, setProposeOpen] = useState(false);
-  const [buyerShare, setBuyerShare] = useState(() => Math.round(claim.requestedValue / 2));
+  // The typed share stays text; splitUnits converts it once and gives the supplier exactly the rest in wei.
+  const [buyerShare, setBuyerShare] = useState(() => formatBot(BigInt(claim.requestedBuyerUnits || "0") / 2n));
   const [summary, setSummary] = useState("");
+  const split = splitUnits(claim.disputedUnits || "0", Number(buyerShare));
   const propose = () => run("propose", async () => {
-    const buyerValue = Math.max(0, Math.min(claim.disputedValue, buyerShare));
-    const supplierValue = Math.round((claim.disputedValue - buyerValue) * 100) / 100;
-    const text = summary.trim() || `Refund ${money(buyerValue)} ${order.currency} to the buyer and release ${money(supplierValue)} ${order.currency} to the supplier.`;
-    if (!live) { const next = proposeSample(order, mySide, buyerValue, supplierValue, text); onOrderChange(next); }
-    else await applyLive(await proposeClaimSplit(claim.id, { buyerValue, supplierValue, summary: text, reasoning: `${company} proposed this split during negotiation.` }, open?.id));
+    const text = summary.trim() || `Refund ${money(fromUnits(split.buyerUnits))} ${order.currency} to the buyer and release ${money(fromUnits(split.supplierUnits))} ${order.currency} to the supplier.`;
+    await applyLive(await proposeClaimSplit(claim.id, { ...split, summary: text, reasoning: `${company} proposed this split during negotiation.` }, open?.id));
     setProposeOpen(false);
     setSummary("");
   }, "Your proposal was sent. The other party can accept, reject or counter it.");
 
   const accept = () => run("accept", async () => {
     if (!open) return;
-    if (!live) { const next = agreeSample(order, mySide); onOrderChange(next); }
-    else await applyLive(await acceptClaimProposal(claim.id, open.id));
+    await applyLive(await acceptClaimProposal(claim.id, open.id));
   }, "You accepted the proposal.");
 
   const reject = () => run("reject", async () => {
     if (!open) return;
-    if (!live) { const next = rejectSample(order, mySide); onOrderChange(next); }
-    else await applyLive(await rejectClaimProposal(claim.id, open.id));
+    await applyLive(await rejectClaimProposal(claim.id, open.id));
   }, "You rejected the proposal.");
 
   const [mediationNote, setMediationNote] = useState<{ outcome: "proposal" | "abstain"; reason?: string; unresolved: string[] } | null>(null);
   const mediate = () => run("mediate", async () => {
-    if (!live) { const next = mediateSample(order); onOrderChange(next); setMediationNote({ outcome: "proposal", unresolved: [] }); return; }
     const result = await requestMediation(claim.id);
     setMediationNote({ outcome: result.outcome, reason: result.reason, unresolved: result.unresolvedIssues ?? [] });
     await applyLive(result.claim);
   });
 
   const escalate = () => run("escalate", async () => {
-    if (!live) { const next = escalateSample(order); onOrderChange(next); }
-    else await applyLive(await enforceClaimDeadline(claim.id));
+    await applyLive(await enforceClaimDeadline(claim.id));
   }, "The claim was sent to the arbitrator.");
 
   // On-chain settlement
@@ -151,18 +139,18 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
     try { setChainState(await readEscrowState(escrowId)); } catch { setChainState(null); }
   };
   useEffect(() => {
-    if (live && claim.status === "settlement_pending" && escrowId) void refreshChainState();
+    if (claim.status === "settlement_pending" && escrowId) void refreshChainState();
     else setChainState(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live, claim.status, escrowId]);
+  }, [claim.status, escrowId]);
 
   const myChainApproved = chainState ? (mySide === "buyer" ? chainState.buyerApproved : chainState.supplierApproved) : null;
   const counterpartyChainApproved = chainState ? (mySide === "buyer" ? chainState.supplierApproved : chainState.buyerApproved) : null;
   const counterpartyName = mySide === "buyer" ? order.supplier : order.buyer;
   // Chain wins once it has answered; the local flag only covers the moment between a successful
-  // sign and the follow-up read (and the non-live sample flow, which never has a chainState).
-  const mySigned = live ? (myChainApproved ?? signed[mySide]) : signed[mySide];
-  const chainAlreadySettled = live && chainState?.status === 2;
+  // sign and the follow-up read.
+  const mySigned = myChainApproved ?? signed[mySide];
+  const chainAlreadySettled = chainState?.status === 2;
   const approvalsSatisfied = !chainState || chainState.arbitratorApproved || (chainState.buyerApproved && chainState.supplierApproved);
   // The arbitrator's approval or an already-Settled escrow makes my own buyer/supplier signature
   // pointless - the Sign button should say so instead of asking for a signature that either isn't
@@ -171,12 +159,12 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
 
   const approve = () => run("approve", async () => {
     if (!allocation) return;
-    if (live && order.raw) await escrow.approveSettlement(order.raw, mySide, allocation);
+    if (!order.raw) throw new Error("Order data is missing.");
+    await escrow.approveSettlement(order.raw, mySide, allocation);
     setSigned((value) => ({ ...value, [mySide]: true }));
-    if (live) await refreshChainState();
+    await refreshChainState();
   }, "Your approval is signed on BOT Chain.");
   const execute = () => run("execute", async () => {
-    if (!live) { const next = executeSampleSettlement(order); onOrderChange(next); return; }
     if (!order.raw) throw new Error("Order data is missing.");
     await applyLive(await escrow.executeSettlement(order.raw, claim.id));
   }, "Settlement executed. The record is final.");
@@ -210,7 +198,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
 
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
       {error && <Notice tone="error" onDismiss={() => setError("")}>{error}</Notice>}
-      {live && !escrowConfigured && <Notice tone="warning">{ESCROW_NOT_CONFIGURED_REASON}</Notice>}
+      {!escrowConfigured && <Notice tone="warning">{ESCROW_NOT_CONFIGURED_REASON}</Notice>}
       {mediationNote && mediationNote.outcome === "abstain" && (
         <Notice tone="info" onDismiss={() => setMediationNote(null)}>
           <strong>The AI mediator did not propose a split.</strong> {mediationNote.reason}
@@ -312,7 +300,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                   </dl>
                   <p>Accept it to settle, counter with your own split, or reject it.</p>
                   <Button className="btn-primary" disabled={Boolean(busy)} onClick={() => void accept()}><Check size={14} aria-hidden="true" />{busy === "accept" ? "Accepting" : "Accept proposal"}</Button>
-                  <Button variant="outline" disabled={Boolean(busy)} onClick={() => { setBuyerShare(Math.round(open.buyerValue)); setProposeOpen(true); }}>Counter with another split</Button>
+                  <Button variant="outline" disabled={Boolean(busy)} onClick={() => { setBuyerShare(formatBot(toUnits(open.buyerValue))); setProposeOpen(true); }}>Counter with another split</Button>
                   <Button variant="outline" className="btn-danger-outline" disabled={Boolean(busy)} onClick={() => void reject()}><X size={14} aria-hidden="true" />Reject</Button>
                 </>
               )}
@@ -325,7 +313,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                   <Button variant="outline" disabled={Boolean(busy)} onClick={() => setProposeOpen(true)}>Propose a split</Button>
                 </>
               )}
-              {(countdown.expired || !live) && <Button variant="outline" disabled={Boolean(busy)} onClick={() => void escalate()}><Gavel size={14} aria-hidden="true" />{live ? "Escalate to arbitrator" : "Send to arbitrator"}</Button>}
+              {countdown.expired && <Button variant="outline" disabled={Boolean(busy)} onClick={() => void escalate()}><Gavel size={14} aria-hidden="true" />Escalate to arbitrator</Button>}
               {busy === "mediate" && <p className="claim-working">Two advocates argue each side, then a neutral mediator applies the policy. This takes about half a minute.</p>}
             </div>
           )}
@@ -340,16 +328,16 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
               </dl>
               <p>Both parties sign the exact split on BOT Chain, then either party executes it.</p>
-              {live && chainState && (
+              {chainState && (
                 <p>{chainState.status === 2
                   ? "Settled on BOT Chain. Record it here to close the claim."
                   : chainState.arbitratorApproved
                   ? "The arbitrator has signed this split. Either party can execute it."
                   : counterpartyChainApproved ? `${counterpartyName} has signed.` : `Waiting for ${counterpartyName} to sign.`}</p>
               )}
-              <Button className="btn-primary" disabled={Boolean(busy) || signNotRequired || mySigned || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => void approve()}>{signNotRequired ? (myChainApproved ? "Signed" : "Not needed") : mySigned ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
-              <Button variant="outline" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch) || (live && !chainAlreadySettled && !approvalsSatisfied)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : chainAlreadySettled ? "Record settlement" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
-              {live && <small className="muted">Execution succeeds only after both signatures are on chain.</small>}
+              <Button className="btn-primary" disabled={Boolean(busy) || signNotRequired || mySigned || !escrowConfigured || escrow.sessionMismatch} onClick={() => void approve()}>{signNotRequired ? (myChainApproved ? "Signed" : "Not needed") : mySigned ? "Signed" : busy === "approve" ? "Signing" : `Sign as ${mySide}`}</Button>
+              <Button variant="outline" disabled={Boolean(busy) || !escrowConfigured || escrow.sessionMismatch || (!chainAlreadySettled && !approvalsSatisfied)} onClick={() => void execute()}>{busy === "execute" ? "Executing" : chainAlreadySettled ? "Record settlement" : "Execute settlement"}<ArrowRight size={14} aria-hidden="true" /></Button>
+              <small className="muted">Execution succeeds only after both signatures are on chain.</small>
             </div>
           )}
 
@@ -359,7 +347,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
               <dl className="fact-list">
                 <div><dt>Back to buyer</dt><dd><strong>{money(claim.settlement.buyerValue)} {order.currency}</strong></dd></div>
                 <div><dt>To supplier</dt><dd><strong>{money(claim.settlement.supplierValue)} {order.currency}</strong></dd></div>
-                <div><dt>Transaction</dt><dd>{claim.settlement.transactionDigest && claim.settlement.executionStatus === "verified_on_chain" && live ? <a className="link" href={explorerTxUrl(claim.settlement.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={12} aria-hidden="true" /></a> : "Sample record"}</dd></div>
+                <div><dt>Transaction</dt><dd>{claim.settlement.transactionDigest && claim.settlement.executionStatus === "verified_on_chain" ? <a className="link" href={explorerTxUrl(claim.settlement.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={12} aria-hidden="true" /></a> : "Recorded without on-chain verification"}</dd></div>
               </dl>
             </div>
           )}
@@ -393,7 +381,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
         description={`${money(claim.disputedValue)} ${order.currency} is in dispute. Choose how much goes back to ${order.buyer}; the rest is released to ${order.supplier}.`}
         clauses={["A proposal you make is binding on your company once the other party accepts it.", "Each proposal uses one negotiation round."]}
         confirmLabel="Send proposal" busy={busy === "propose"} onConfirm={propose}>
-        <label className="field"><span>Back to buyer ({order.currency})</span><Input type="number" min={0} max={claim.disputedValue} step="0.01" value={buyerShare} onChange={(event) => setBuyerShare(Number(event.target.value))} /><small>To supplier: {money(Math.max(0, claim.disputedValue - Math.min(claim.disputedValue, buyerShare)))} {order.currency}</small></label>
+        <label className="field"><span>Back to buyer ({order.currency})</span><Input type="number" min={0} max={claim.disputedValue} step="any" value={buyerShare} onChange={(event) => setBuyerShare(event.target.value)} /><small>To supplier: {money(fromUnits(split.supplierUnits))} {order.currency}</small></label>
         <label className="field"><span>Why this split (optional)</span><Input value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Half of the damaged cartons were still saleable." /></label>
       </ConsentDialog>
     </section>

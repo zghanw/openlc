@@ -148,6 +148,7 @@ export type CreateLiveOrderInput = {
   reference: string;
   initiatorRole: "buyer" | "supplier";
   counterpartyName: string;
+  /** Optional. Blank means no email: the invitation is the copy-paste link. */
   counterpartyEmail: string;
   deliveryDate: string;
   deliveryLocation: string;
@@ -155,19 +156,16 @@ export type CreateLiveOrderInput = {
   organizationId: string;
   supplierWalletAddress?: string;
   releasePercentages: { deposit: number; dispatch: number };
-  /** Buyer-initiated only. The server resolves the actual demo wallet from its own config - this
-   *  app never holds or sends that address. */
-  useDemoSupplier?: boolean;
 };
 
 export async function createLiveOrder(input: CreateLiveOrderInput): Promise<{ order: DemoOrder; inviteUrl: string; inviteDelivery: InvitationDelivery }> {
   if (!arbitratorConfigured) throw new Error(ARBITRATOR_NOT_CONFIGURED_REASON);
   const amount = input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  // The API validates the email as optional-but-valid, so "" would be a 400: a blank email is left out.
+  const email = input.counterpartyEmail.trim().toLowerCase() || undefined;
   const counterparty = input.initiatorRole === "buyer"
-    ? input.useDemoSupplier
-      ? { useDemoSupplier: true as const, buyerOrganizationId: input.organizationId }
-      : { supplierEmail: input.counterpartyEmail.trim().toLowerCase(), supplierName: input.counterpartyName.trim(), buyerOrganizationId: input.organizationId }
-    : { buyerEmail: input.counterpartyEmail.trim().toLowerCase(), buyerName: input.counterpartyName.trim(), supplierOrganizationId: input.organizationId, supplierWalletAddress: input.supplierWalletAddress };
+    ? { supplierEmail: email, supplierName: input.counterpartyName.trim(), buyerOrganizationId: input.organizationId }
+    : { buyerEmail: email, buyerName: input.counterpartyName.trim(), supplierOrganizationId: input.organizationId, supplierWalletAddress: input.supplierWalletAddress };
   const created = await apiRequest<TradeOrder>("/v1/orders", {
     method: "POST",
     body: JSON.stringify({
@@ -252,7 +250,8 @@ export async function acceptLiveInvitation(id: string): Promise<DemoOrder> {
 export async function acceptLiveInvite(token: string): Promise<DemoOrder> {
   const session = loadSession();
   return withProfile(apiRequest<TradeOrder>(`/v1/invites/${encodeURIComponent(token)}/accept`, {
-    method: "POST", body: JSON.stringify({ email: session?.user.email, name: session?.user.name, supplierWalletAddress: session?.walletAddress }),
+    // Wallet sessions carry an empty email; leave it out rather than send "".
+    method: "POST", body: JSON.stringify({ email: session?.user.email || undefined, name: session?.user.name, supplierWalletAddress: session?.walletAddress }),
   }));
 }
 

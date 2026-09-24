@@ -2,14 +2,14 @@
 
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowRight, LockKeyhole, Plus, ShieldCheck, WalletCards } from "lucide-react";
-import { AppShell, HelpHint, Notice, RoleTag, SampleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
+import { AppShell, HelpHint, Notice, RoleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
 import { type DemoOrder, claimOwner, formatOrderMoney as money } from "@/lib/demo-orders";
 import { nextAction } from "@/lib/order-status";
 import { BOTCHAIN, formatBot } from "@/lib/chain";
 import { useWorkspace } from "@/lib/use-workspace";
 import { JsonRpcProvider } from "ethers";
 
-type QueueItem = { key: string; href: string; reference: string; title: string; detail: string; counterparty: string; role: "BUYER" | "SUPPLIER"; value: number; currency: string; status?: string; sample: boolean };
+type QueueItem = { key: string; href: string; reference: string; title: string; detail: string; counterparty: string; role: "BUYER" | "SUPPLIER"; value: number; currency: string; status?: string };
 
 export default function OverviewPage() {
   const workspace = useWorkspace();
@@ -23,29 +23,27 @@ export default function OverviewPage() {
       .catch(() => setBalance(null));
   }, [workspace.session?.walletAddress]);
 
-  const { queue, waiting, samplesLeftOut, ledger } = useMemo(() => {
+  const { queue, waiting, ledger } = useMemo(() => {
     const queue: QueueItem[] = workspace.invitations.map((invitation) => ({
       key: `invite-${invitation.orderId}`, href: `/orders/${encodeURIComponent(invitation.orderId)}`, reference: invitation.reference,
       title: "Review and confirm the order", detail: `${invitation.counterpartyName} invited you to ${invitation.invitedRole === "buyer" ? "buy" : "supply"} this order. Delivery ${invitation.deliveryDate}.`,
-      counterparty: invitation.counterpartyName, role: invitation.invitedRole === "buyer" ? "BUYER" : "SUPPLIER", value: invitation.value, currency: invitation.currency, status: invitation.invitedRole === "buyer" ? "awaiting_buyer" : "awaiting_supplier", sample: false,
+      counterparty: invitation.counterpartyName, role: invitation.invitedRole === "buyer" ? "BUYER" : "SUPPLIER", value: invitation.value, currency: invitation.currency, status: invitation.invitedRole === "buyer" ? "awaiting_buyer" : "awaiting_supplier",
     }));
     const waiting: QueueItem[] = [];
     const isOpen = (order: DemoOrder) => !["settled", "cancelled"].includes(order.status);
     for (const order of workspace.orders) {
       if (!isOpen(order)) continue;
-      const action = nextAction(order.status, order.role, { invited: order.source === "backend" ? Boolean(order.invited) : true, claimOwner: claimOwner(order.claim) });
-      const item: QueueItem = { key: order.id, href: `/orders/${encodeURIComponent(order.id)}`, reference: order.reference, title: action.title, detail: action.detail, counterparty: order.counterparty, role: order.role, value: order.value, currency: order.currency, status: order.status, sample: order.source === "sample" };
+      const action = nextAction(order.status, order.role, { invited: Boolean(order.invited), claimOwner: claimOwner(order.claim) });
+      const item: QueueItem = { key: order.id, href: `/orders/${encodeURIComponent(order.id)}`, reference: order.reference, title: action.title, detail: action.detail, counterparty: order.counterparty, role: order.role, value: order.value, currency: order.currency, status: order.status };
       if (action.owner === "you" && !queue.some((entry) => entry.href === item.href)) queue.push(item);
       else if (action.owner !== "you") waiting.push(item);
     }
-    // Money figures count real orders only. Sample orders stay in the lists, tagged, but never add to what you hold.
-    const real = workspace.orders.filter((order) => order.source !== "sample");
-    const secured = (role: "BUYER" | "SUPPLIER") => real.filter((order) => order.role === role && ["funded", "in_transit", "delivered", "dispute_open", "negotiation_open", "arbitration_pending", "settlement_pending"].includes(order.status));
+    const secured = (role: "BUYER" | "SUPPLIER") => workspace.orders.filter((order) => order.role === role && ["funded", "in_transit", "delivered", "dispute_open", "negotiation_open", "arbitration_pending", "settlement_pending"].includes(order.status));
     const buying = secured("BUYER");
     const supplying = secured("SUPPLIER");
-    const releaseReady = real.filter((order) => order.role === "SUPPLIER" && order.status === "settlement_pending");
+    const releaseReady = workspace.orders.filter((order) => order.role === "SUPPLIER" && order.status === "settlement_pending");
     return {
-      queue, waiting, samplesLeftOut: real.length < workspace.orders.length,
+      queue, waiting,
       ledger: {
         buying: { value: buying.reduce((sum, order) => sum + order.value, 0), count: buying.length },
         supplying: { value: supplying.reduce((sum, order) => sum + order.value, 0), count: supplying.length },
@@ -63,7 +61,7 @@ export default function OverviewPage() {
           <div className="metric-head"><span className="metric-title">Available in wallet</span><span className="metric-icon"><WalletCards size={16} aria-hidden="true" /></span></div>
           {balance === null
             ? <strong className="metric-value metric-value-text">Not connected</strong>
-            : <strong className="metric-value">{balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<small>BOT</small></strong>}
+            : <strong className="metric-value">{money(balance)}<small>BOT</small></strong>}
           <p className="metric-caption">{balance === null ? (workspace.live ? "Connect MetaMask to load your balance." : "Sign in to load your balance.") : "Spendable now. Separate from escrow."}</p>
         </a>
         <div className="metric-tile" style={{ "--i": 1 } as CSSProperties}>
@@ -81,7 +79,6 @@ export default function OverviewPage() {
           <strong className="metric-value">{money(ledger.release.value)}<small>BOT</small></strong>
           <p className="metric-caption">{ledger.release.count} {ledger.release.count === 1 ? "settlement" : "settlements"} waiting to be executed</p>
         </div>
-        {samplesLeftOut && <p className="metric-note">Sample orders are not counted in these amounts.</p>}
       </section>
 
       <section className="list-card" aria-labelledby="queue-title">
@@ -104,7 +101,7 @@ export default function OverviewPage() {
               <li key={item.key} className="list-row">
                 <span className="list-avatar" aria-hidden="true">{item.counterparty.charAt(0).toUpperCase()}</span>
                 <div className="list-row-main">
-                  <div className="list-row-tags"><RoleTag role={item.role} compact />{item.status && <StatusPill status={item.status} />}{item.sample && <SampleTag />}</div>
+                  <div className="list-row-tags"><RoleTag role={item.role} compact />{item.status && <StatusPill status={item.status} />}</div>
                   <strong>{item.title}</strong>
                   <span>{item.reference} with {item.counterparty}. {item.detail}</span>
                 </div>

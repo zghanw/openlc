@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Check, ClipboardCopy, ExternalLink, FastForward, Link2, PackageCheck, ScanSearch, Truck, X } from "lucide-react";
+import { ArrowRight, Check, ClipboardCopy, ExternalLink, Link2, PackageCheck, ScanSearch, Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AgreementBlock, ConsentDialog, FileField, HelpHint, Notice } from "@/app/components/app-shell";
@@ -11,15 +11,13 @@ import { type DemoOrder, type DocumentKind, type InspectionLine, type OrderDocum
 import { loadClaim } from "@/lib/dispute-actions";
 import { deadlineAction } from "@/lib/deadline-action";
 import { readEscrowState, useEscrowActions, type EscrowChainState } from "@/lib/escrow-actions";
-import { acceptLiveInvitation, acceptLiveInvite, anchorLiveDocument, ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, cancelLiveInvite, markLiveDelivered, sendLiveInvite, tradeOrderToView, viewLiveOrder } from "@/lib/live-orders";
+import { acceptLiveInvitation, acceptLiveInvite, anchorLiveDocument, ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, cancelLiveInvite, fromUnits, markLiveDelivered, sendLiveInvite, viewLiveOrder } from "@/lib/live-orders";
 import { withExtras } from "@/lib/local-order-extras";
-import { STATUS, demoNextStatus, isDisputed, nextAction } from "@/lib/order-status";
+import { isDisputed, nextAction } from "@/lib/order-status";
 import type { InvitationDelivery } from "@/lib/openlc-api";
-import { advanceSample, confirmSample, deliverSample, recordSampleInspection, shipSample, withStatus } from "@/lib/sample-orders";
 import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl } from "@/lib/chain";
 import { clearPendingInvite } from "@/lib/pending-invite";
 
-export const DEMO_CONTROLS = true;
 const CARRIERS = ["DHL Express", "City-Link Express", "GDEX", "J&T Express", "Pos Laju", "Own fleet"];
 
 type Props = {
@@ -31,7 +29,7 @@ type Props = {
 };
 
 type Run = (name: string, task: () => Promise<DemoOrder | null | void>, success?: string) => Promise<boolean>;
-type StepProps = { order: DemoOrder; company: string; live: boolean; busy: string; run: Run };
+type StepProps = { order: DemoOrder; company: string; busy: string; run: Run };
 
 function errorText(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -39,11 +37,10 @@ function errorText(error: unknown, fallback: string): string {
 
 
 export function ActionPanel({ order, company, inviteToken, onChange, onInviteConsumed }: Props) {
-  const live = order.source === "backend";
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const action = nextAction(order.status, order.role, { invited: live ? Boolean(inviteToken || order.invited) : true, claimOwner: claimOwner(order.claim) });
+  const action = nextAction(order.status, order.role, { invited: Boolean(inviteToken || order.invited), claimOwner: claimOwner(order.claim) });
 
   const run: Run = async (name, task, success) => {
     setBusy(name);
@@ -61,7 +58,7 @@ export function ActionPanel({ order, company, inviteToken, onChange, onInviteCon
       setBusy("");
     }
   };
-  const step = { order, company, live, busy, run };
+  const step = { order, company, busy, run };
 
   if ((isDisputed(order.status) || order.status === "settled") && order.claim) {
     return <ClaimSection order={order} claim={order.claim} company={company} onOrderChange={onChange} onClaimChange={(claim) => onChange({ ...order, claim })} />;
@@ -72,14 +69,13 @@ export function ActionPanel({ order, company, inviteToken, onChange, onInviteCon
       <div className="action-head">
         <div className="action-head-row">
           <span className="action-owner">{action.owner === "you" ? "Your action" : action.owner === "counterparty" ? `Waiting on ${order.counterparty}` : "No action needed"}</span>
-          {DEMO_CONTROLS && <DemoControl {...step} />}
         </div>
         <h2 id="action-title">{action.title}</h2>
         <p>{action.detail}</p>
       </div>
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
       {error && <Notice tone="error" onDismiss={() => setError("")}>{error}</Notice>}
-      {live && !escrowConfigured && <Notice tone="warning">{ESCROW_NOT_CONFIGURED_REASON}</Notice>}
+      {!escrowConfigured && <Notice tone="warning">{ESCROW_NOT_CONFIGURED_REASON}</Notice>}
 
       {(order.status === "awaiting_supplier" || order.status === "awaiting_buyer" || order.status === "changes_requested") && !action.owner.startsWith("you") && order.initiatorRole === (order.role === "BUYER" ? "buyer" : "supplier") && (
         <InvitationControls {...step} />
@@ -95,7 +91,7 @@ export function ActionPanel({ order, company, inviteToken, onChange, onInviteCon
       {order.status === "delivered" && order.role === "SUPPLIER" && order.deliveryRecord && <p className="action-note">Delivery was recorded on {formatDateTime(order.deliveryRecord.recordedAt)}{order.deliveryRecord.reference ? `, reference ${order.deliveryRecord.reference}` : ""}. The buyer checks the goods next.</p>}
       {order.status === "funded" && order.role === "BUYER" && <DeadlineControls {...step} />}
       {(order.status === "in_transit" || order.status === "delivered") && order.role === "SUPPLIER" && <DeadlineControls {...step} />}
-      {(isDisputed(order.status) || (order.status === "settled" && order.disputeId)) && !order.claim && live && <LoadClaim order={order} onChange={onChange} />}
+      {(isDisputed(order.status) || (order.status === "settled" && order.disputeId)) && !order.claim && <LoadClaim order={order} onChange={onChange} />}
       {order.status === "settled" && <SettlementRecord order={order} />}
     </section>
   );
@@ -111,10 +107,12 @@ function LoadClaim({ order, onChange }: { order: DemoOrder; onChange: (order: De
   return error ? <Notice tone="error">{error}</Notice> : <p className="action-note">Loading the claim.</p>;
 }
 
-function InvitationControls({ order, live, busy, run }: StepProps) {
+function InvitationControls({ order, busy, run }: StepProps) {
   const [inviteUrl, setInviteUrl] = useState(order.inviteToken ? `${window.location.origin}/orders/${encodeURIComponent(order.id)}?invite=${order.inviteToken}` : "");
   const [delivery, setDelivery] = useState<InvitationDelivery>();
   const [copied, setCopied] = useState(false);
+  // The email is optional; without one the link is the only invitation.
+  const invitedEmail = order.initiatorRole === "buyer" ? order.raw?.supplierEmail : order.raw?.buyerEmail;
   const copy = async () => { await navigator.clipboard.writeText(inviteUrl); setCopied(true); window.setTimeout(() => setCopied(false), 2000); };
   return (
     <div className="action-body">
@@ -127,27 +125,25 @@ function InvitationControls({ order, live, busy, run }: StepProps) {
       ) : (
         <p className="action-note">{order.counterparty} can confirm from their own OpenLC workspace after signing in with their wallet. Earlier links are not shown again. Send a new invitation to replace them.</p>
       )}
-      {delivery && <Notice tone={delivery.status === "sent" ? "success" : "info"}>{delivery.status === "sent" ? "The invitation email was sent. Any earlier link no longer works." : delivery.status === "failed" ? "The email could not be delivered. Copy the link and send it yourself." : "Automatic email is not configured. Copy the link and send it yourself."}</Notice>}
+      {delivery && <Notice tone={delivery.status === "sent" ? "success" : "info"}>{delivery.status === "sent" ? "The invitation email was sent. Any earlier link no longer works."
+        : delivery.status === "failed" ? "The email could not be delivered. Copy the link and send it yourself."
+        : invitedEmail ? "Automatic email is not set up. Copy the link and send it yourself."
+        : `Copy the new link and send it to ${order.counterparty}. Any earlier link no longer works.`}</Notice>}
       <div className="action-buttons">
-        {live && (
-          <Button variant="outline" disabled={Boolean(busy)} onClick={() => void run("invite", async () => { const result = await sendLiveInvite(order.id); setInviteUrl(result.inviteUrl); setDelivery(result.inviteDelivery); return withExtras(result.order); })}>
-            {busy === "invite" ? "Sending" : "Send new invitation"}
-          </Button>
-        )}
-        {live && order.inviteExpiresAt && (
+        <Button variant="outline" disabled={Boolean(busy)} onClick={() => void run("invite", async () => { const result = await sendLiveInvite(order.id); setInviteUrl(result.inviteUrl); setDelivery(result.inviteDelivery); return withExtras(result.order); })}>
+          {busy === "invite" ? "Sending" : "Send new invitation"}
+        </Button>
+        {order.inviteExpiresAt && (
           <Button variant="outline" className="btn-danger-outline" disabled={Boolean(busy)} onClick={() => void run("cancel", async () => withExtras(await cancelLiveInvite(order.id)), "The invitation was cancelled.")}>
             <X size={14} aria-hidden="true" />{busy === "cancel" ? "Cancelling" : "Cancel invitation"}
           </Button>
-        )}
-        {!live && order.status === "changes_requested" && (
-          <Button className="btn-primary" disabled={Boolean(busy)} onClick={() => void run("resend", async () => withStatus(order, order.initiatorRole === "buyer" ? "awaiting_supplier" : "awaiting_buyer", "Revised order sent for confirmation."), "The revised order was sent.")}>Send revised order</Button>
         )}
       </div>
     </div>
   );
 }
 
-function ConfirmControls({ order, company, live, inviteToken, busy, run, onInviteConsumed }: StepProps & { inviteToken?: string; onInviteConsumed?: () => void }) {
+function ConfirmControls({ order, company, inviteToken, busy, run, onInviteConsumed }: StepProps & { inviteToken?: string; onInviteConsumed?: () => void }) {
   const [reviewed, setReviewed] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [changeOpen, setChangeOpen] = useState(false);
@@ -160,7 +156,6 @@ function ConfirmControls({ order, company, live, inviteToken, busy, run, onInvit
   const iAmBuyer = order.role === "BUYER";
 
   const confirm = () => run("confirm", async () => {
-    if (!live) return confirmSample(order, company);
     const result = inviteToken ? await acceptLiveInvite(inviteToken) : await acceptLiveInvitation(order.id);
     clearPendingInvite();
     onInviteConsumed?.();
@@ -209,8 +204,8 @@ function ConfirmControls({ order, company, live, inviteToken, busy, run, onInvit
         clauses={["The order is not confirmed until a revised version is sent and accepted."]}
         confirmLabel="Send change request" busy={busy === "changes"}
         onConfirm={async () => {
-          if (live) { setChangeOpen(false); await run("changes", async () => { throw new Error("Change requests on live orders are not available yet. Contact the other company directly and ask them to cancel and reissue the order."); }); return; }
-          if (await run("changes", async () => withStatus(order, "changes_requested", reason || "Changes were requested."), "Your change request was sent.")) setChangeOpen(false);
+          setChangeOpen(false);
+          await run("changes", async () => { throw new Error("Change requests are not available yet. Contact the other company directly and ask them to cancel and reissue the order."); });
         }}>
         <label className="field"><span>What should change?</span><Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="For example: unit price for line 2 should be 265" /></label>
       </ConsentDialog>
@@ -225,23 +220,23 @@ function ConfirmControls({ order, company, live, inviteToken, busy, run, onInvit
   );
 }
 
-function FundControls({ order, company, live, busy, run }: StepProps) {
+function FundControls({ order, company, busy, run }: StepProps) {
   const [open, setOpen] = useState(false);
   const escrow = useEscrowActions();
   const payout = order.raw?.supplierWalletAddress;
   const short = (value?: string) => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : "Not attached yet";
-  const needsArbitrator = live && !order.raw?.arbitratorWalletAddress && !arbitratorConfigured;
+  const needsArbitrator = !order.raw?.arbitratorWalletAddress && !arbitratorConfigured;
   return (
     <div className="action-body">
       {order.confirmation && <div className="agreement agreement-done"><Check size={15} aria-hidden="true" /><span>Confirmed by <strong>{order.confirmation.organizationName || order.counterparty}</strong> on {formatDateTime(order.confirmation.confirmedAt)} under Terms of Service and Dispute Resolution Policy version {order.confirmation.termsVersion}.</span></div>}
       <dl className="fact-list">
         <div><dt>Amount to secure</dt><dd><strong>{money(order.value)} {order.currency}</strong>{order.releasePlan && <small>{money(order.releasePlan.depositValue)} {order.currency} releases in this transaction</small>}</dd></div>
-        <div><dt>Released to</dt><dd>{order.supplier}<small>{live ? short(payout) : "Verified payout address"}</small></dd></div>
-        <div><dt>Signed by</dt><dd>{live ? (escrow.signingAddress ? short(escrow.signingAddress) : "No wallet connected in this session") : "Your business wallet"}<small>{live ? "Connected wallet" : ""}</small></dd></div>
+        <div><dt>Released to</dt><dd>{order.supplier}<small>{short(payout)}</small></dd></div>
+        <div><dt>Signed by</dt><dd>{escrow.signingAddress ? short(escrow.signingAddress) : "No wallet connected in this session"}<small>Connected wallet</small></dd></div>
       </dl>
       {needsArbitrator && <Notice tone="warning">{ARBITRATOR_NOT_CONFIGURED_REASON}</Notice>}
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured) || needsArbitrator || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
+        <Button className="btn-primary" disabled={Boolean(busy) || !escrowConfigured || needsArbitrator || escrow.sessionMismatch} onClick={() => setOpen(true)}>Fund escrow<ArrowRight size={14} aria-hidden="true" /></Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title={`Fund ${money(order.value)} ${order.currency} into escrow`}
         description={order.releasePlan ? `${money(order.releasePlan.depositValue)} ${order.currency} is paid to ${order.supplier} now. The remaining ${money(order.releasePlan.dispatchValue + order.releasePlan.deliveryValue)} ${order.currency} stays in the escrow contract.` : "The amount moves from your wallet into the escrow contract for this order. OpenLC escrow keeps it."}
@@ -250,10 +245,9 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
           "The confirmed order terms are hashed into the escrow so neither party can later dispute what was agreed.",
           "Any amount released before delivery is final and cannot be refunded through OpenLC.",
         ]}
-        confirmLabel={live ? "Sign and fund escrow" : "Fund escrow"} busy={busy === "fund"}
+        confirmLabel="Sign and fund escrow" busy={busy === "fund"}
         onConfirm={async () => {
           if (await run("fund", async () => {
-            if (!live) return withStatus(order, "funded", `${order.buyer} secured ${money(order.value)} ${order.currency} in escrow.`);
             if (!order.raw) throw new Error("Order data is missing.");
             return withExtras(await viewLiveOrder(await escrow.fundEscrow(order.raw)));
           }, "Escrow is funded. The supplier can ship now.")) setOpen(false);
@@ -268,7 +262,7 @@ function FundControls({ order, company, live, busy, run }: StepProps) {
  *  only appears when the contract would actually accept the call. A failed chain read (RPC
  *  outage) falls back to the API's deadline and the browser clock, exactly as before this reader
  *  existed, so an outage never blocks the user from seeing this panel. */
-function DeadlineControls({ order, company, live, busy, run }: StepProps) {
+function DeadlineControls({ order, company, busy, run }: StepProps) {
   const escrow = useEscrowActions();
   const [open, setOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -287,11 +281,13 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
     readEscrowState(escrowId).then((state) => { if (!cancelled) setChain(state); }).catch(() => { if (!cancelled) setChain(null); });
     return () => { cancelled = true; };
   }, [escrowId, order.status]);
-  if (!live || !deadlines || !raw) return null;
+  if (!deadlines || !raw) return null;
   const buyer = order.role === "BUYER";
   const at = chain ? (buyer ? chain.deliveryDeadline * 1000 : chain.inspectionClosesAt * 1000) : (buyer ? deadlines.deliveryDeadlineMs : deadlines.inspectionClosesAtMs);
   const when = formatDateTime(new Date(at).toISOString());
-  const amount = `${money(order.value)} ${order.currency}`;
+  // Only what is still held moves: the deposit (and any dispatch payment) was already released.
+  const held = chain ? fromUnits(chain.balance.toString()) : buyer ? order.value - (order.releasePlan?.depositValue ?? 0) : (order.releasePlan?.deliveryValue ?? order.value);
+  const amount = `${money(held)} ${order.currency}`;
   const action = chain ? deadlineAction(chain, order.role, Math.floor(now / 1000)) : (now > at ? (buyer ? "reclaim" : "claim") : null);
   if (!action) {
     return <p className="action-note">{buyer
@@ -319,7 +315,7 @@ function DeadlineControls({ order, company, live, busy, run }: StepProps) {
   );
 }
 
-function ShipForm({ order, company, live, busy, run }: StepProps) {
+function ShipForm({ order, company, busy, run }: StepProps) {
   const escrow = useEscrowActions();
   const [carrier, setCarrier] = useState(CARRIERS[0]);
   const [tracking, setTracking] = useState("");
@@ -341,20 +337,15 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
       </div>
       <FileField label="Attach dispatch note or carrier receipt" hint="Required. Its fingerprint is anchored to the shipment release on BOT Chain." accept=".pdf,.png,.jpg,.jpeg,.webp" onFile={setFile} file={file} />
       <div className="action-buttons">
-        <Button className="btn-primary" disabled={!valid || Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
+        <Button className="btn-primary" disabled={!valid || Boolean(busy) || !escrowConfigured || escrow.sessionMismatch} onClick={() => setOpen(true)}><Truck size={14} aria-hidden="true" />Mark as shipped</Button>
       </div>
       <ConsentDialog open={open} onOpenChange={setOpen} company={company} title="Mark as shipped"
-        description={`${order.buyer} will see the carrier, tracking number and expected arrival.${order.releasePlan ? ` ${money(order.releasePlan.dispatchValue)} ${order.currency} is released now.` : ""}${live ? " One BOT Chain transaction records shipment, anchors the evidence and releases the agreed amount." : ""}`}
+        description={`${order.buyer} will see the carrier, tracking number and expected arrival.${order.releasePlan ? ` ${money(order.releasePlan.dispatchValue)} ${order.currency} is released now.` : ""} One BOT Chain transaction records shipment, anchors the evidence and releases the agreed amount.`}
         clauses={["The dispatch details and attached evidence are genuine and unaltered.", order.releasePlan ? `The ${money(order.releasePlan.dispatchValue)} ${order.currency} dispatch payment is final and reduces the balance available for a later claim.` : "Shipment is recorded on the escrow contract, and the document fingerprint is anchored in the same transaction."]}
-        confirmLabel={live ? "Sign and mark as shipped" : "Mark as shipped"} busy={busy === "ship"}
+        confirmLabel="Sign and mark as shipped" busy={busy === "ship"}
         onConfirm={async () => {
           if (await run("ship", async () => {
             let next: DemoOrder;
-            if (!live) {
-              next = shipSample(order, shipment);
-              if (file) next = await attachFile(next, file, "dispatch_evidence", "SUPPLIER");
-              return next;
-            }
             if (!order.raw) throw new Error("Order data is missing.");
             if (!file) throw new Error("Attach a carrier receipt or dispatch note before marking shipment.");
             const fileHash = await sha256Hex(file);
@@ -368,15 +359,15 @@ function ShipForm({ order, company, live, busy, run }: StepProps) {
             const transactionDigest = next.shipment?.transactionDigest;
             if (transactionDigest) next = withExtras(await anchorLiveDocument(order.id, stagedDocument.id, transactionDigest));
             return next;
-          }, live ? "Shipment is signed on BOT Chain. The order is in transit." : "The order is marked in transit.")) setOpen(false);
+          }, "Shipment is signed on BOT Chain. The order is in transit.")) setOpen(false);
         }} />
     </div>
   );
 }
 
-function TransitCard({ order, company, live, busy, run }: StepProps) {
+function TransitCard({ order, company, busy, run }: StepProps) {
   const escrow = useEscrowActions();
-  const anchor: Anchor | undefined = live && order.raw?.funding ? (sha256, kind) => escrow.anchorEvidence(order.raw!, kind, sha256) : undefined;
+  const anchor: Anchor | undefined = order.raw?.funding ? (sha256, kind) => escrow.anchorEvidence(order.raw!, kind, sha256) : undefined;
   const [open, setOpen] = useState(false);
   const [reference, setReference] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -400,11 +391,7 @@ function TransitCard({ order, company, live, busy, run }: StepProps) {
         confirmLabel="Record delivery" busy={busy === "deliver"}
         onConfirm={async () => {
           if (await run("deliver", async () => {
-            let next: DemoOrder;
-            if (!live) next = deliverSample(order, order.role, reference.trim() || undefined);
-            else {
-              next = withExtras(await markLiveDelivered(order.id, { reference: reference.trim() || undefined }));
-            }
+            let next = withExtras(await markLiveDelivered(order.id, { reference: reference.trim() || undefined }));
             if (file) next = await attachFile(next, file, "delivery_evidence", order.role, {}, anchor);
             return next;
           }, buyer ? "Delivery recorded. Now check the goods." : "Delivery recorded. The buyer checks the goods next.")) setOpen(false);
@@ -416,13 +403,23 @@ function TransitCard({ order, company, live, busy, run }: StepProps) {
   );
 }
 
-function InspectionFlow({ order, company, live, busy, run }: StepProps) {
+function InspectionFlow({ order, company, busy, run }: StepProps) {
   const [choice, setChoice] = useState<"intact" | "exceptions" | null>(null);
   const [lines, setLines] = useState<InspectionLine[]>(() => order.items.map((item) => ({ lineId: item.id, accepted: item.quantity, missing: 0, damaged: 0 })));
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const escrow = useEscrowActions();
+  // Deposit and dispatch are already paid, so accepting releases only what the escrow still holds:
+  // the on-chain balance when it can be read, else the release plan's delivery amount.
+  const escrowId = order.raw?.funding?.escrowObjectId;
+  const [chainHeld, setChainHeld] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (escrowId) readEscrowState(escrowId).then((state) => { if (!cancelled) setChainHeld(fromUnits(state.balance.toString())); }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [escrowId]);
+  const deliveryHeld = chainHeld ?? order.releasePlan?.deliveryValue ?? order.value;
 
   const update = (lineId: string, field: "missing" | "damaged", value: number) => setLines((current) => current.map((entry) => {
     if (entry.lineId !== lineId) return entry;
@@ -448,28 +445,22 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
   const fullLines = () => order.items.map((item) => ({ lineId: item.id, accepted: item.quantity, missing: 0, damaged: 0 }));
 
   const acceptAll = () => run("accept", async () => {
-    if (!live) return recordSampleInspection(order, fullLines(), "");
     if (!order.raw) throw new Error("Order data is missing.");
     return withExtras(await escrow.acceptDelivery(order.raw, { lines: fullLines() }));
   }, "Delivery accepted in full. The whole escrow was released to the supplier.");
 
-  const openClaim = (demo: boolean) => run("claim", async () => {
+  const openClaim = () => run("claim", async () => {
     let base = order;
     let files;
     if (file) {
-      const anchor: Anchor | undefined = live && order.raw?.funding ? (sha256, kind) => escrow.anchorEvidence(order.raw!, kind, sha256) : undefined;
+      const anchor: Anchor | undefined = order.raw?.funding ? (sha256, kind) => escrow.anchorEvidence(order.raw!, kind, sha256) : undefined;
       const evidence = await prepareEvidence(order, file, "BUYER", anchor);
       base = evidence.order; files = [evidence.input];
     }
-    let next: DemoOrder;
-    if (!live) next = recordSampleInspection(base, lines, note.trim(), file ? 1 : 0);
-    else {
-      if (!base.raw) throw new Error("Order data is missing.");
-      const input = { disputedValue: totals.held, requestedValue: totals.held, claim: note.trim(), evidence: `${note.trim()}${file ? ` Evidence file ${file.name} attached.` : ""}`, files, inspection: { lines, note: note.trim() } };
-      const result = await escrow.openClaim(base.raw, input);
-      next = { ...withExtras(result.order), claim: result.claim };
-    }
-    return next;
+    if (!base.raw) throw new Error("Order data is missing.");
+    const input = { disputedValue: totals.held, requestedValue: totals.held, claim: note.trim(), evidence: `${note.trim()}${file ? ` Evidence file ${file.name} attached.` : ""}`, files, inspection: { lines, note: note.trim() } };
+    const result = await escrow.openClaim(base.raw, input);
+    return { ...withExtras(result.order), claim: result.claim };
   }, "Claim opened. The accepted value is released and the disputed amount stays in escrow until the claim is settled.");
 
   return (
@@ -487,7 +478,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
         <strong>Did everything arrive as ordered?</strong>
         <div className="choice-grid" role="radiogroup" aria-label="Inspection result">
           <button type="button" role="radio" aria-checked={choice === "intact"} className={choice === "intact" ? "choice choice-active" : "choice"} onClick={() => setChoice("intact")}>
-            <Check size={18} aria-hidden="true" /><span><strong>Yes, everything intact</strong><small>{money(order.value)} {order.currency} is released to {order.supplier}.</small></span>
+            <Check size={18} aria-hidden="true" /><span><strong>Yes, everything intact</strong><small>{money(deliveryHeld)} {order.currency} is released to {order.supplier}.</small></span>
           </button>
           <button type="button" role="radio" aria-checked={choice === "exceptions"} className={choice === "exceptions" ? "choice choice-active choice-danger" : "choice"} onClick={() => setChoice("exceptions")}>
             <X size={18} aria-hidden="true" /><span><strong>Some items missing or damaged</strong><small>Record what was wrong and open a claim for that value.</small></span>
@@ -497,7 +488,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
 
       {choice === "intact" && (
         <div className="action-buttons">
-          <Button className="btn-primary" disabled={Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setConfirmOpen(true)}>Accept delivery and release {money(order.value)} {order.currency}</Button>
+          <Button className="btn-primary" disabled={Boolean(busy) || !escrowConfigured || escrow.sessionMismatch} onClick={() => setConfirmOpen(true)}>Accept delivery and release {money(deliveryHeld)} {order.currency}</Button>
         </div>
       )}
 
@@ -522,7 +513,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
             </tbody>
           </table>
           <div className="inspection-summary">
-            <div><span>Released to supplier</span><strong>{money(totals.accepted)} {order.currency}</strong></div>
+            <div><span>Released to supplier now</span><strong>{money(Math.max(0, deliveryHeld - totals.held))} {order.currency}</strong></div>
             <div><span>Held for claim</span><strong>{money(totals.held)} {order.currency}</strong></div>
             <div><span>Rejected</span><strong>{totals.rejectedUnits} units</strong></div>
           </div>
@@ -535,7 +526,7 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
               <FileField label="Attach evidence" hint="Signed delivery order or photos. The file is read into text for the mediator. Its fingerprint is anchored to the escrow on BOT Chain and kept with the order." accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" onFile={setFile} file={file} />
               {note.trim().length < 10 && <p className="action-note">Describe what was wrong in at least 10 characters before you can open the claim. You have written {note.trim().length}.</p>}
               <div className="action-buttons">
-                <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || (live && !escrowConfigured) || (live && escrow.sessionMismatch)} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
+                <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || !escrowConfigured || escrow.sessionMismatch} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
               </div>
             </>
           )}
@@ -545,13 +536,13 @@ function InspectionFlow({ order, company, live, busy, run }: StepProps) {
       <ConsentDialog open={confirmOpen} onOpenChange={setConfirmOpen} company={company}
         title={choice === "intact" ? "Accept the delivery in full" : "Open a claim"}
         description={choice === "intact"
-          ? `${money(order.value)} ${order.currency} is released to ${order.supplier} from the escrow contract.${live ? " You sign one BOT Chain transaction." : ""} This cannot be reversed.`
-          : `${money(totals.accepted)} ${order.currency} is released to ${order.supplier} now. ${money(totals.held)} ${order.currency} stays in escrow until the claim is settled.${live ? " You sign one BOT Chain transaction." : ""}`}
+          ? `The ${money(deliveryHeld)} ${order.currency} still held for delivery is released to ${order.supplier} from the escrow contract. You sign one BOT Chain transaction. This cannot be reversed.`
+          : `${money(Math.max(0, deliveryHeld - totals.held))} ${order.currency} still held for delivery is released to ${order.supplier} now. ${money(totals.held)} ${order.currency} stays in escrow until the claim is settled. You sign one BOT Chain transaction.`}
         clauses={choice === "intact"
           ? ["The quantities received match the order in full.", "The release is final and settles this order."]
           : ["The quantities entered are what your company actually received, and any evidence attached is genuine and unaltered.", "The accepted value is released to the supplier now. Only the held amount is disputed.", "The claim follows the Dispute Resolution Policy: supplier response, negotiation with optional AI mediation, then arbitration if no agreement is reached."]}
         confirmLabel={choice === "intact" ? "Release payment" : "Open claim"} busy={busy === "accept" || busy === "claim"}
-        onConfirm={async () => { const ok = choice === "intact" ? await acceptAll() : await openClaim(false); if (ok) setConfirmOpen(false); }} />
+        onConfirm={async () => { const ok = choice === "intact" ? await acceptAll() : await openClaim(); if (ok) setConfirmOpen(false); }} />
     </div>
   );
 }
@@ -569,24 +560,9 @@ function SettlementRecord({ order }: { order: DemoOrder }) {
           : "Delivery accepted in full. The whole escrow was released to the supplier."}</dd></div>
         <div><dt>BOT Chain transaction</dt><dd>{settlement?.transactionDigest && settlement.verifiedOnChain
           ? <a className="link" href={explorerTxUrl(settlement.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={12} aria-hidden="true" /></a>
-          : order.source === "sample" ? "Sample order, no on-chain record" : "Recorded without on-chain verification"}</dd></div>
+          : "Recorded without on-chain verification"}</dd></div>
       </dl>
     </div>
-  );
-}
-
-function DemoControl({ order, live, busy, run }: StepProps) {
-  if (order.guidedDemo) return null;
-  const next = demoNextStatus(order.status);
-  if (!next) return null;
-  const step = async () => run("demo", async () => {
-    return advanceSample(live ? { ...order, source: "sample" } : order);
-  }, `Moved to ${STATUS[next].label}.`);
-  const hint = `Demo control: show "${STATUS[next].label}" immediately without changing the backend or the chain.`;
-  return (
-    <button type="button" className="demo-skip" aria-label="Skip to next step" title={hint} disabled={Boolean(busy)} onClick={() => void step()}>
-      <FastForward size={13} aria-hidden="true" />{busy === "demo" ? "Moving" : `Skip to ${STATUS[next].label}`}
-    </button>
   );
 }
 

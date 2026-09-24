@@ -1,7 +1,7 @@
 "use client";
 
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useRef } from "react";
-import { AnimatePresence, MotionConfig, animate, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
+import { type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { AnimatePresence, MotionConfig, motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 
 /** Motion defaults for the app: honours the reduced-motion setting everywhere. */
 export function MotionShell({ children }: { children: ReactNode }) {
@@ -37,21 +37,6 @@ export function LiftCard({ children, className = "", tilt = 2, lift = 3, as = "d
       {children}
     </Component>
   );
-}
-
-/** Counts up once on first paint, then stays still for every later change. */
-export function AnimatedAmount({ value, decimals = 0 }: { value: number; decimals?: number }) {
-  const reduceMotion = useReducedMotion();
-  const count = useMotionValue(0);
-  const first = useRef(true);
-  const formatted = useTransform(count, (latest) => latest.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }));
-  useEffect(() => {
-    if (reduceMotion || !first.current) { count.set(value); return; }
-    first.current = false;
-    const controls = animate(count, value, { duration: 0.7, ease: [0.25, 1, 0.5, 1] });
-    return () => controls.stop();
-  }, [count, reduceMotion, value]);
-  return <span aria-label={value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}><motion.span aria-hidden="true">{formatted}</motion.span></span>;
 }
 
 /** Slides the outgoing stage out and the next stage in when the key changes. */

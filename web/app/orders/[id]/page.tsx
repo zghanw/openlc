@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Copy, ExternalLink, FastForward, FileText, LockKeyhole, RotateCcw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Copy, ExternalLink, FileText, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AppShell, HelpHint, Logo, Notice, RoleTag, SampleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
+import { AppShell, HelpHint, Logo, Notice, RoleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
 import { ClaimSection } from "@/app/components/claim-section";
 import { ActionPanel } from "@/app/components/order-actions";
 import { DocumentsPanel } from "@/app/components/order-documents";
@@ -19,7 +19,6 @@ import { STATUS, isDisputed } from "@/lib/order-status";
 import { loadSession } from "@/lib/openlc-api";
 import { savePendingInvite } from "@/lib/pending-invite";
 import { authenticateConnectedWallet } from "@/lib/auth";
-import { advanceSample, guidedDemoNextLabel } from "@/lib/sample-orders";
 import { chainMismatchNotice, readEscrowState, type EscrowChainState } from "@/lib/escrow-actions";
 import { BOTCHAIN, ESCROW_ADDRESS, explorerAddressUrl, explorerTxUrl, formatBot } from "@/lib/chain";
 import { shortAddress, useWallet } from "@/lib/wallet";
@@ -36,14 +35,12 @@ export default function OrderPage() {
   const [inviteAuthRequired, setInviteAuthRequired] = useState(false);
   const [claimError, setClaimError] = useState("");
   const [escrowCopied, setEscrowCopied] = useState(false);
-  const isSample = id.startsWith("sample-");
 
   useEffect(() => {
     void (async () => {
       const token = new URLSearchParams(window.location.search).get("invite") ?? "";
       setInviteToken(token);
       if (token) savePendingInvite(id, token);
-      if (isSample) return;
       if (loadSession()) {
         try {
           setOrder(withExtras(token ? await previewLiveInvite(token) : await getLiveOrder(id)));
@@ -58,19 +55,11 @@ export default function OrderPage() {
       }
       setReady(true);
     })();
-  }, [id, isSample]);
+  }, [id]);
 
+  // Claims are loaded from the dispute record once the order arrives.
   useEffect(() => {
-    if (!isSample || !workspace.ready) return;
-    const found = workspace.sampleOrders.find((item) => item.id === id) ?? null;
-    setOrder(found);
-    if (!found) setLoadError("This sample order does not exist for your account.");
-    setReady(true);
-  }, [isSample, workspace.ready, workspace.sampleOrders, id]);
-
-  // Live claims are loaded from the dispute record once the order arrives.
-  useEffect(() => {
-    if (!order || order.source !== "backend" || !order.disputeId || order.claim) return;
+    if (!order || !order.disputeId || order.claim) return;
     let cancelled = false;
     loadClaim(order.disputeId)
       .then((claim) => { if (!cancelled) setOrder((current) => current && current.id === order.id ? { ...current, claim } : current); })
@@ -78,10 +67,7 @@ export default function OrderPage() {
     return () => { cancelled = true; };
   }, [order]);
 
-  const change = (next: DemoOrder) => {
-    if (next.source === "sample") { workspace.updateSample(next.id, () => next); setOrder(next); return; }
-    setOrder(next);
-  };
+  const change = (next: DemoOrder) => setOrder(next);
 
   if (!ready) {
     return (
@@ -111,7 +97,7 @@ export default function OrderPage() {
   const roleKey = order.role.toLowerCase();
   const escrowState = order.funding
     ? order.funding.verificationStatus === "verified_on_chain" ? "Verified on BOT Chain" : "Recorded on-chain"
-    : order.source === "sample" && meta.step >= 2 ? "Secured (sample)" : "Not funded yet";
+    : "Not funded yet";
   const copyEscrowObject = async () => {
     if (!order.funding) return;
     await navigator.clipboard.writeText(order.funding.escrowObjectId);
@@ -125,7 +111,7 @@ export default function OrderPage() {
       <header className={`order-header order-header-${roleKey} reveal`}>
         <div className="order-header-top">
           <div>
-            <div className="order-head-tags"><StatusPill status={order.status} /><RoleTag role={order.role} compact />{order.source === "sample" && <SampleTag label={order.guidedDemo ? "Guided demo" : undefined} />}</div>
+            <div className="order-head-tags"><StatusPill status={order.status} /><RoleTag role={order.role} compact /></div>
             <h1>{order.reference}</h1>
             <p>{order.item}. {money(quantity)} units across {order.items.length} {order.items.length === 1 ? "line" : "lines"}. {meta.summary}</p>
           </div>
@@ -136,24 +122,10 @@ export default function OrderPage() {
           <div><dt>Supplier</dt><dd><strong>{order.supplier}</strong>{order.raw?.supplierEmail && <small>{order.raw.supplierEmail}</small>}</dd></div>
           <div><dt>Expected delivery</dt><dd><strong>{formatDate(order.delivery)}</strong>{order.shipment?.carrier && <small>{order.shipment.carrier}</small>}</dd></div>
           <div><dt>Delivery location</dt><dd><strong>{order.deliveryLocation}</strong></dd></div>
-          <div><dt>Escrow<HelpHint text="Funds are held in escrow on BOT Chain, not by OpenLC, and are released according to the inspection result and the Dispute Resolution Policy." /></dt><dd><strong>{escrowState}</strong>{order.funding && <><small className="escrow-object-id" title={order.funding.escrowObjectId}>#{order.funding.escrowObjectId}</small><span className="escrow-object-actions"><button type="button" className="escrow-copy-button" onClick={() => void copyEscrowObject()} aria-label="Copy escrow ID">{escrowCopied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}{escrowCopied ? "Copied" : "Copy"}</button>{order.source === "backend" && order.funding.verificationStatus === "verified_on_chain" && <a className="link" href={explorerTxUrl(order.funding.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={11} aria-hidden="true" /></a>}</span></>}</dd></div>
+          <div><dt>Escrow<HelpHint text="Funds are held in escrow on BOT Chain, not by OpenLC, and are released according to the inspection result and the Dispute Resolution Policy." /></dt><dd><strong>{escrowState}</strong>{order.funding && <><small className="escrow-object-id" title={order.funding.escrowObjectId}>#{order.funding.escrowObjectId}</small><span className="escrow-object-actions"><button type="button" className="escrow-copy-button" onClick={() => void copyEscrowObject()} aria-label="Copy escrow ID">{escrowCopied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}{escrowCopied ? "Copied" : "Copy"}</button>{order.funding.verificationStatus === "verified_on_chain" && <a className="link" href={explorerTxUrl(order.funding.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={11} aria-hidden="true" /></a>}</span></>}</dd></div>
         </dl>
       </header>
-      {order.source === "sample" && <Notice tone="info">This is a sample order for demonstration. Every action changes only this sample. Nothing is sent to the backend or to BOT Chain.</Notice>}
       {claimError && <Notice tone="error">{claimError}</Notice>}
-      {order.guidedDemo && (
-        <section className="guided-demo-bar" aria-label="Guided demo controls">
-          <div><strong>Buyer-led guided demo</strong><span>Use the normal action, or jump ahead with realistic prefilled data and evidence.</span></div>
-          <Button variant="outline" onClick={() => {
-            if (order.status === "settled") { workspace.resetSamples(); return; }
-            const next = advanceSample(order);
-            if (next) change(next);
-          }}>
-            {order.status === "settled" ? <RotateCcw size={14} aria-hidden="true" /> : <FastForward size={14} aria-hidden="true" />}
-            {guidedDemoNextLabel(order)}
-          </Button>
-        </section>
-      )}
       {/* The stepper and the working columns share one block container so the bar can stick while they scroll. */}
       <div className="order-body">
         <div className="stepper-bar reveal reveal-1"><OrderStepper status={order.status} /></div>
@@ -168,7 +140,7 @@ export default function OrderPage() {
               </StageSwitch>
             </div>
 
-            {order.source === "backend" && order.funding && <ChainTruthPanel order={order} />}
+            {order.funding && <ChainTruthPanel order={order} />}
 
             {order.releasePlan && (
               <section className="panel release-ledger reveal reveal-3" aria-labelledby="release-title">
@@ -250,8 +222,8 @@ const SETTLEMENT_MODE_LABEL: Record<number, string> = {
 type ChainRead = { view: "loading" } | { view: "failed" } | { view: "ready"; chain: EscrowChainState };
 
 /** The rubric's proof point: this order page reads the escrow straight from BOT Chain rather than
- *  only showing the API's record. Renders nothing for a sample order or one with no funding yet -
- *  the caller already gates on that, this component just needs the escrow id to read. */
+ *  only showing the API's record. Renders nothing for an order with no funding yet - the caller
+ *  already gates on that, this component just needs the escrow id to read. */
 function ChainTruthPanel({ order }: { order: DemoOrder }) {
   const escrowId = order.funding?.escrowObjectId;
   const [read, setRead] = useState<ChainRead>({ view: "loading" });
@@ -342,7 +314,6 @@ function InviteGate({ error }: { error: string }) {
               {signingIn ? "Signing in…" : needsAccountSwitch ? `Switch to ${shortAddress(wallet.account)}` : "Sign in with this wallet"}<ArrowRight size={14} aria-hidden="true" />
             </Button>
           )}
-          <Button variant="outline" asChild><a href="/orders/sample-demo-1001"><FastForward size={14} aria-hidden="true" />Open guided demo</a></Button>
           <small className="legal-copy">By continuing you agree to the <a href="/legal/terms">Terms of Service</a> and the <a href="/legal/dispute-policy">Dispute Resolution Policy</a>.</small>
           <a className="gate-back" href="/">Return to OpenLC</a>
         </section>

@@ -35,7 +35,6 @@ export function updateExtras(orderId: string, update: (extras: Extras) => Extras
 }
 
 export function withExtras(order: DemoOrder): DemoOrder {
-  if (order.source !== "backend") return order;
   const extras = loadExtras(order.id);
   const known = new Set(order.events.map((event) => `${event.at}|${event.label}`));
   return {

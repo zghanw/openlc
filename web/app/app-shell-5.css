@@ -41,13 +41,11 @@
 .phase-tab{color:var(--muted-foreground)}
 .phase-tab:hover{color:var(--foreground)}
 .segment{color:var(--muted-foreground)}
-.sample-tag{color:var(--foreground);border-color:var(--border-strong)}
 .data-table th{color:var(--muted-foreground)}
 .rail-group h3{color:var(--foreground)}
 .rail-list dt,.fact-list dt,.fact-strip dt{color:var(--foreground)}
 .action-counterparty .action-owner,.action-none .action-owner{color:var(--foreground)}
 .owner-counterparty,.owner-none{color:var(--foreground)}
-.toggle{color:var(--foreground)}
 .stepper-label{color:var(--muted-foreground)}
 .claim-stages{color:var(--muted-foreground)}
 .report-tab{color:var(--muted-foreground)}
@@ -66,12 +64,6 @@
 .register-table th:nth-child(2),.register-table td:nth-child(2),
 .register-table th:nth-child(3),.register-table td:nth-child(3){min-width:150px}
 /* Queue rows: grey only the description line, never the badges and pills inside it */
-.guided-demo-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:14px 0;padding:13px 15px;border:1px solid var(--border);border-radius:10px;background:var(--secondary);border-color:var(--border-strong)}
-.guided-demo-bar>div{display:grid;gap:2px}
-.guided-demo-bar strong{font-size:13px;color:var(--foreground)}
-.guided-demo-bar span{font-size:12.5px;color:var(--muted-foreground)}
-.guided-demo-bar .btn{flex:none;background:var(--card)}
-@media(max-width:640px){.guided-demo-bar{align-items:stretch;flex-direction:column;border-color:var(--border-strong);background:var(--secondary)}.guided-demo-bar .btn{width:100%}}
 /* The six-step bar pins under the header while the order columns scroll past it.
    It sits in a block container rather than the shell grid, because a grid item
    can only stick inside its own row and would never move. */
@@ -140,7 +132,6 @@
 .waiting-list .pill{grid-area:pill;justify-self:start}
 .waiting-list .list-amount{grid-area:amount;justify-self:end}
 @media(max-width:767px){.waiting-list .pill{justify-self:end}}
-.metric-note{grid-column:1/-1;margin:-4px 0 0;color:var(--muted-foreground);font-size:.8125rem}
 :is(.shell,.po-dialog,.consent-dialog,.money-dialog,.preview-sheet) code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .phase-tab{flex:none}
 .phase-tabs{scrollbar-width:thin}

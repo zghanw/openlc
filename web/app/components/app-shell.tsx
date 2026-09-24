@@ -47,10 +47,6 @@ export function RoleTag({ role, compact = false, label }: { role: "BUYER" | "SUP
   );
 }
 
-export function SampleTag({ label = "Sample" }: { label?: string }) {
-  return <span className="sample-tag" title="Sample order. Actions only change this sample, nothing is sent to the backend or blockchain.">{label}</span>;
-}
-
 export function Notice({ tone = "info", children, onDismiss }: { tone?: "info" | "success" | "warning" | "error"; children: ReactNode; onDismiss?: () => void }) {
   const Icon = tone === "success" ? CheckCircle2 : tone === "warning" ? AlertTriangle : tone === "error" ? AlertCircle : Info;
   return (

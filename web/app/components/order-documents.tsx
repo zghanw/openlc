@@ -8,7 +8,6 @@ import { type DemoOrder, type DocumentKind, type ExtractedPurchaseOrder, type Or
 import type { EvidenceFileInput } from "@/lib/dispute-actions";
 import { openOrderDocument, uploadOrderDocument } from "@/lib/live-orders";
 import { withExtras } from "@/lib/local-order-extras";
-import { addSampleDocument } from "@/lib/sample-orders";
 
 export const documentLabels: Record<DocumentKind, string> = {
   internal_agreement: "Internal agreement",
@@ -47,17 +46,15 @@ export async function buildDocument(file: File, kind: DocumentKind, uploadedBy: 
 export type Anchor = (sha256: string, kind: DocumentKind) => Promise<string>;
 
 /**
- * Attach a file to an order. Live orders upload to the backend so both parties
- * can open the file; sample orders keep it in the browser. With an `anchor`, a
- * funded live order first binds the file's hash to the escrow on BOT Chain.
+ * Attach a file to an order. It uploads to the backend so both parties can open
+ * the file. With an `anchor`, a funded order first binds the file's hash to the
+ * escrow on BOT Chain. The backend records the uploader's side from the session,
+ * so `role` is not sent.
  */
 export async function attachFile(order: DemoOrder, file: File, kind: DocumentKind, role: "BUYER" | "SUPPLIER", extras: { transcript?: string; extracted?: ExtractedPurchaseOrder; anchorTransactionDigest?: string } = {}, anchor?: Anchor): Promise<DemoOrder> {
-  if (order.source === "backend") {
-    let anchorTransactionDigest = extras.anchorTransactionDigest;
-    if (!anchorTransactionDigest && anchor && order.funding) anchorTransactionDigest = await anchor(await sha256Hex(file), kind);
-    return withExtras(await uploadOrderDocument(order.id, file, kind, { ...extras, anchorTransactionDigest }));
-  }
-  return addSampleDocument(order, await buildDocument(file, kind, role, extras.extracted, extras.transcript));
+  let anchorTransactionDigest = extras.anchorTransactionDigest;
+  if (!anchorTransactionDigest && anchor && order.funding) anchorTransactionDigest = await anchor(await sha256Hex(file), kind);
+  return withExtras(await uploadOrderDocument(order.id, file, kind, { ...extras, anchorTransactionDigest }));
 }
 
 /** Transcribes and attaches an evidence file, returning the updated order and the record the claim endpoints expect. */
@@ -71,7 +68,6 @@ export async function prepareEvidence(order: DemoOrder, file: File, role: "BUYER
 
 export function DocumentLink({ order, document }: { order: DemoOrder; document: OrderDocument }) {
   const [error, setError] = useState("");
-  if (document.url) return <a href={document.url} target="_blank" rel="noreferrer">{document.name}</a>;
   if (!document.remote) return <span className="muted" title="Kept in this browser only">{document.name}</span>;
   return (
     <>
@@ -189,8 +185,7 @@ export function DocumentsPanel({ order, role, company, onOrderChange, busy }: { 
                 <code title="SHA-256 fingerprint">{document.sha256.slice(0, 16)}</code>
               </div>
               <div className="document-actions">
-                {document.url && <Button variant="outline" size="sm" asChild><a href={document.url} target="_blank" rel="noreferrer">View</a></Button>}
-                {!document.url && document.remote && <Button variant="outline" size="sm" onClick={() => openOrderDocument(order.id, document.id).catch((cause) => setError(cause instanceof Error ? cause.message : "The document could not be opened."))}>View</Button>}
+                {document.remote && <Button variant="outline" size="sm" onClick={() => openOrderDocument(order.id, document.id).catch((cause) => setError(cause instanceof Error ? cause.message : "The document could not be opened."))}>View</Button>}
                 {document.extracted && <Button variant="outline" size="sm" onClick={() => setShowing(showing?.id === document.id ? null : document)}><ScanSearch size={14} aria-hidden="true" />{showing?.id === document.id ? "Hide comparison" : "Compare with order"}</Button>}
               </div>
             </li>

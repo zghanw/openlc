@@ -2,7 +2,7 @@
 
 import { apiRequest } from "@/lib/openlc-api";
 import type { ClaimMediation, ClaimProposal, ClaimView, MediationReport } from "@/lib/demo-orders";
-import { fromUnits, toUnits } from "@/lib/live-orders";
+import { fromUnits } from "@/lib/live-orders";
 
 /** The backend dispute aggregate, limited to the fields the order page reads. */
 export type DisputeRecord = {
@@ -96,6 +96,7 @@ export function disputeToClaim(dispute: DisputeRecord): ClaimView {
   return {
     id: dispute.id, status: dispute.status,
     totalValue: fromUnits(dispute.totalEscrowUnits), disputedValue: fromUnits(dispute.disputedUnits), requestedValue: fromUnits(dispute.requestedBuyerUnits),
+    disputedUnits: dispute.disputedUnits, requestedBuyerUnits: dispute.requestedBuyerUnits,
     undisputedReleased: BigInt(dispute.undisputedReleasedUnits || "0") > 0n,
     claim: dispute.claim, deadline: dispute.negotiationDeadline, round: dispute.currentRound, maxRounds: dispute.maxHumanRounds,
     evidence: dispute.evidence.map((entry) => ({ id: entry.id, side: entry.side, statement: entry.statement, files: entry.files.length, submittedAt: entry.submittedAt })),
@@ -124,18 +125,15 @@ export async function rejectClaimProposal(disputeId: string, proposalId: string)
   return disputeToClaim(await apiRequest<DisputeRecord>(`/v1/disputes/${encodeURIComponent(disputeId)}/proposals/${encodeURIComponent(proposalId)}/reject`, { method: "POST" }));
 }
 
-export type ProposalInput = { buyerValue: number; supplierValue: number; summary: string; reasoning: string };
-
-function proposalBody(input: ProposalInput) {
-  return JSON.stringify({ buyerUnits: toUnits(input.buyerValue), supplierUnits: toUnits(input.supplierValue), summary: input.summary, reasoning: input.reasoning });
-}
+/** Both shares in wei (see lib/split.mjs), so they sum to the disputed units exactly as the API requires. */
+export type ProposalInput = { buyerUnits: string; supplierUnits: string; summary: string; reasoning: string };
 
 /** Counter an open proposal, or table a fresh one when nothing is open. */
 export async function proposeClaimSplit(disputeId: string, input: ProposalInput, counterTo?: string): Promise<ClaimView> {
   const path = counterTo
     ? `/v1/disputes/${encodeURIComponent(disputeId)}/proposals/${encodeURIComponent(counterTo)}/counter`
     : `/v1/disputes/${encodeURIComponent(disputeId)}/proposals`;
-  return disputeToClaim(await apiRequest<DisputeRecord>(path, { method: "POST", body: proposalBody(input) }));
+  return disputeToClaim(await apiRequest<DisputeRecord>(path, { method: "POST", body: JSON.stringify(input) }));
 }
 
 export type MediationOutcome = { outcome: "proposal" | "abstain"; reason?: string; unresolvedIssues?: string[]; claim: ClaimView };

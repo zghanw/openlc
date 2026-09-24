@@ -21,8 +21,8 @@ export const STEPS = ["Confirm", "Fund", "Ship", "Deliver", "Inspect", "Settle"]
 
 /** Version and effective date of the platform terms shown in agreement blocks. */
 export const TERMS = {
-  version: "1.2",
-  effective: "23 September 2026",
+  version: "1.3",
+  effective: "25 September 2026",
   documents: [
     { title: "Terms of Service", href: "/legal/terms" },
     { title: "Dispute Resolution Policy", href: "/legal/dispute-policy" },
@@ -148,22 +148,5 @@ export function nextAction(status: OrderStatus, role: OrderRole, options: { invi
       return { owner: "none", title: "Settlement complete", detail: "View the settlement record and the BOT Chain transaction." };
     case "cancelled":
       return { owner: "none", title: "No action", detail: "This order is closed." };
-  }
-}
-
-/** The next status a demo control can move an order to. */
-export function demoNextStatus(status: OrderStatus): OrderStatus | null {
-  switch (status) {
-    case "awaiting_supplier": case "awaiting_buyer": return "supplier_confirmed";
-    case "changes_requested": return "awaiting_supplier";
-    case "supplier_confirmed": return "funded";
-    case "funded": return "in_transit";
-    case "in_transit": return "delivered";
-    case "delivered": return "settled";
-    case "dispute_open": return "negotiation_open";
-    case "negotiation_open": return "settlement_pending";
-    case "arbitration_pending": return "settlement_pending";
-    case "settlement_pending": return "settled";
-    default: return null;
   }
 }

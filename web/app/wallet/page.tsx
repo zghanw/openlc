@@ -136,8 +136,7 @@ export default function WalletPage() {
     }
   };
 
-  // The wallet only reflects real orders. Sample orders stay on the orders page and never count as money.
-  const ledgerOrders = workspace.liveOrders;
+  const ledgerOrders = workspace.orders;
   const position = useMemo(() => {
     const funded = (role: "BUYER" | "SUPPLIER") => ledgerOrders.filter((order) => order.role === role && ["funded", "in_transit", "delivered", "dispute_open", "negotiation_open", "arbitration_pending", "settlement_pending"].includes(order.status));
     const buying = funded("BUYER");
@@ -179,7 +178,7 @@ export default function WalletPage() {
           {balances === null ? (
             <strong className="wallet-amount"><span className="wallet-amount-text">Not connected</span></strong>
           ) : (
-            <strong className="wallet-amount">{balances.bot.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <small>BOT</small></strong>
+            <strong className="wallet-amount">{money(balances.bot)} <small>BOT</small></strong>
           )}
           {balances !== null && balances.bot === 0 && <p className="wallet-note">New orders are priced in BOT. <a className="link-light" href={BOTCHAIN.getBotUrl} target="_blank" rel="noreferrer">{BOTCHAIN.getBotLabel}</a> and it appears here.</p>}
           <p className="wallet-address">{address ? <><code>{address.slice(0, 10)}...{address.slice(-8)}</code><button type="button" className="text-button text-button-light" onClick={() => void navigator.clipboard.writeText(address)}><ClipboardCopy size={12} aria-hidden="true" />Copy address</button></> : balanceNote}</p>

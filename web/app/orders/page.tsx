@@ -4,19 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { AppShell, EmptyArt, HelpHint, Notice, SampleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
+import { AppShell, EmptyArt, Notice, Skeleton, StatusPill } from "@/app/components/app-shell";
 import { CreateOrderDialog } from "@/app/components/create-order-dialog";
 import { OrderPreviewSheet } from "@/app/components/order-preview-sheet";
 import { type DemoOrder, claimOwner, formatDate, formatOrderMoney as money } from "@/lib/demo-orders";
 import { PHASES, STATUS, nextAction, phaseOf, type Phase } from "@/lib/order-status";
-import { loadSampleOrders, saveSampleOrders } from "@/lib/sample-orders";
 import { useWorkspace } from "@/lib/use-workspace";
 
 type RoleFilter = "all" | "buyer" | "supplier";
 type PhaseFilter = "all" | "action" | Phase;
 
 function actionFor(order: DemoOrder) {
-  return nextAction(order.status, order.role, { invited: order.source === "backend" ? Boolean(order.invited) : true, claimOwner: claimOwner(order.claim) });
+  return nextAction(order.status, order.role, { invited: Boolean(order.invited), claimOwner: claimOwner(order.claim) });
 }
 
 export default function OrdersPage() {
@@ -25,9 +24,8 @@ export default function OrdersPage() {
   const [role, setRole] = useState<RoleFilter>("all");
   const [phase, setPhase] = useState<PhaseFilter>("all");
   const [query, setQuery] = useState("");
+  // ?action=create opens the create-order dialog.
   const [createOpen, setCreateOpen] = useState(false);
-  // ?action=create&demo=1 opens the dialog with the OpenLC demo supplier already ticked (the one-wallet path).
-  const [createWithDemo, setCreateWithDemo] = useState(false);
   const [notice, setNotice] = useState("");
   const [created, setCreated] = useState<DemoOrder[]>([]);
   const [selected, setSelected] = useState<DemoOrder | null>(null);
@@ -36,7 +34,7 @@ export default function OrdersPage() {
     const params = new URLSearchParams(window.location.search);
     const wanted = params.get("role");
     if (wanted === "buyer" || wanted === "supplier") setRole(wanted);
-    if (params.get("action") === "create") { setCreateOpen(true); setCreateWithDemo(params.get("demo") === "1"); }
+    if (params.get("action") === "create") setCreateOpen(true);
     const status = params.get("status");
     if (status === "action" || PHASES.some((entry) => entry.id === status)) setPhase(status as PhaseFilter);
   }, []);
@@ -64,8 +62,7 @@ export default function OrdersPage() {
   }), [all, role, phase, query]);
 
   const addOrder = (order: DemoOrder) => {
-    if (order.source === "sample") saveSampleOrders(workspace.accountKey, [order, ...loadSampleOrders(workspace.accountKey, workspace.company).filter((item) => item.id !== order.id)]);
-    else workspace.replaceLiveOrder(order);
+    workspace.replaceLiveOrder(order);
     setCreated((current) => [order, ...current.filter((item) => item.id !== order.id)]);
     setPhase("all");
     setNotice(`${order.reference} was sent to ${order.counterparty} for confirmation.`);
@@ -77,7 +74,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <AppShell active="orders" title="Orders" company={workspace.company} actionCount={counts.action} onNewOrder={() => { setCreateWithDemo(false); setCreateOpen(true); }}>
+    <AppShell active="orders" title="Orders" company={workspace.company} actionCount={counts.action} onNewOrder={() => setCreateOpen(true)}>
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
       {workspace.error && <Notice tone="error">{workspace.error}</Notice>}
 
@@ -107,11 +104,6 @@ export default function OrdersPage() {
             <Search size={15} aria-hidden="true" />
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search order, company or product" aria-label="Search orders" />
           </label>
-          <div className="toolbar-samples">
-            <label className="toggle"><input type="checkbox" checked={!workspace.hideSamples} onChange={(event) => workspace.setHideSamples(!event.target.checked)} /><span>Show sample orders</span></label>
-            <HelpHint text="Sample orders show every stage of a trade so you can explore the workflow. They belong to your account only and never reach the backend or BOT Chain." />
-            {!workspace.hideSamples && <button type="button" className="text-button" onClick={workspace.resetSamples}>Reset samples</button>}
-          </div>
         </div>
 
         <div className="table-scroll">
@@ -131,7 +123,7 @@ export default function OrdersPage() {
               {!workspace.ready ? (
                 <tr><td colSpan={7}><Skeleton lines={4} /></td></tr>
               ) : visible.length === 0 ? (
-                <tr><td colSpan={7} className="table-empty"><EmptyArt kind="inbox" /><strong>{all.length === 0 ? "No orders yet" : "No orders here"}</strong><span>{all.length === 0 ? "Create a purchase order, or turn on sample orders to explore the workflow." : "Try another stage, company or order number."}</span></td></tr>
+                <tr><td colSpan={7} className="table-empty"><EmptyArt kind="inbox" /><strong>{all.length === 0 ? "No orders yet" : "No orders here"}</strong><span>{all.length === 0 ? "Create a purchase order, then send the other company its confirmation link." : "Try another stage, company or order number."}</span></td></tr>
               ) : visible.map((order, index) => {
                 const action = actionFor(order);
                 return (
@@ -140,7 +132,6 @@ export default function OrdersPage() {
                       {action.owner === "you" && <span className="action-dot" title="Needs your action" aria-hidden="true" />}
                       <a className="row-link" href={`/orders/${encodeURIComponent(order.id)}`}><strong>{order.reference}</strong></a>
                       <small>{order.item}, {order.items.length} {order.items.length === 1 ? "line" : "lines"}</small>
-                      {order.source === "sample" && <SampleTag label={order.guidedDemo ? "Guided demo" : undefined} />}
                     </td>
                     <td><span className="cell-party"><strong>{order.buyer}</strong>{order.role === "BUYER" && <small className="side-buying">You · Buying</small>}</span></td>
                     <td><span className="cell-party"><strong>{order.supplier}</strong>{order.role === "SUPPLIER" && <small className="side-supplying">You · Supplying</small>}</span></td>
@@ -157,7 +148,7 @@ export default function OrdersPage() {
         <div className="table-foot"><span>{visible.length} of {all.length} orders shown</span></div>
       </section>
 
-      <CreateOrderDialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) setCreateWithDemo(false); }} initialDemoSupplier={createWithDemo} onCreate={addOrder} profile={workspace.profile} company={workspace.company} />
+      <CreateOrderDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={addOrder} profile={workspace.profile} company={workspace.company} />
       <OrderPreviewSheet order={selected} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }} />
     </AppShell>
   );

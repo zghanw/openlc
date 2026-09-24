@@ -3,19 +3,19 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { RoleTag, SampleTag, StatusPill } from "@/app/components/app-shell";
+import { RoleTag, StatusPill } from "@/app/components/app-shell";
 import { type DemoOrder, claimOwner, formatDate, formatOrderMoney as money } from "@/lib/demo-orders";
 import { nextAction } from "@/lib/order-status";
 
 export function OrderPreviewSheet({ order, open, onOpenChange }: { order: DemoOrder | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   if (!order) return null;
-  const action = nextAction(order.status, order.role, { invited: order.source === "backend" ? Boolean(order.invited) : true, claimOwner: claimOwner(order.claim) });
+  const action = nextAction(order.status, order.role, { invited: Boolean(order.invited), claimOwner: claimOwner(order.claim) });
   const href = `/orders/${encodeURIComponent(order.id)}`;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className={`preview-sheet preview-sheet-${order.role.toLowerCase()}`}>
         <SheetHeader className="preview-head">
-          <div className="preview-tags"><StatusPill status={order.status} /><RoleTag role={order.role} compact />{order.source === "sample" && <SampleTag />}</div>
+          <div className="preview-tags"><StatusPill status={order.status} /><RoleTag role={order.role} compact /></div>
           <SheetTitle>{order.reference}</SheetTitle>
           <SheetDescription>{order.item}, {order.role === "BUYER" ? "from" : "for"} {order.counterparty}.</SheetDescription>
         </SheetHeader>

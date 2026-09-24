@@ -1,4 +1,5 @@
 import type { TradeOrder } from "@/lib/openlc-api";
+import { formatBotAmount } from "@/lib/units.mjs";
 import type { OrderRole, OrderStatus } from "@/lib/order-status";
 
 export type DemoOrderRole = OrderRole;
@@ -49,8 +50,6 @@ export type OrderDocument = {
   remote?: boolean;
   /** The BOT Chain transaction that anchored this file's fingerprint to the escrow. */
   anchor?: { transactionDigest: string; verificationStatus: "verified_on_chain" | "external_reference" };
-  /** Public demo asset that can be opened without the private document API. */
-  url?: string;
 };
 
 export type QuotedClause = { clauseId: string; quote: string };
@@ -172,13 +171,16 @@ export type ClaimMediation = {
   report?: MediationReport;
 };
 
-/** A dispute normalised for the order page, for live and sample orders alike. */
+/** A dispute normalised for the order page. */
 export type ClaimView = {
   id: string;
   status: ClaimStatus;
   totalValue: number;
   disputedValue: number;
   requestedValue: number;
+  /** The same two amounts in wei, for split maths that must sum exactly. */
+  disputedUnits: string;
+  requestedBuyerUnits: string;
   undisputedReleased: boolean;
   claim: string;
   deadline: string;
@@ -216,9 +218,7 @@ export type DemoOrder = {
   /** True when the signed-in account is the invited party who still has to confirm. */
   invited?: boolean;
   version: number;
-  source: "sample" | "backend";
-  /** Curated sample whose demo control walks through the complete claim journey. */
-  guidedDemo?: boolean;
+  source: "backend";
   documents: OrderDocument[];
   confirmation?: OrderConfirmation;
   shipment?: OrderShipment;
@@ -233,8 +233,7 @@ export type DemoOrder = {
   raw?: TradeOrder;
 };
 
-export const formatOrderMoney = (value: number) =>
-  new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
+export const formatOrderMoney = (value: number) => formatBotAmount(value);
 
 export function itemSummary(items: DemoOrderLine[], fallback = "Untitled order"): string {
   const first = items[0]?.description?.trim();

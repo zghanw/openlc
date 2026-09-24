@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, Box, Building2, Check, ClipboardCopy, Link2, Plus, ScanSearch, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,7 +16,7 @@ import { loadSession, SESSION_EXPIRED_MESSAGE, type InvitationDelivery, type Wor
 type DraftLine = { id: number; description: string; quantity: number; unit: string; unitPrice: number };
 const blankLine = (id: number): DraftLine => ({ id, description: "", quantity: 1, unit: "units", unitPrice: 0 });
 
-export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, company, initialDemoSupplier = false }: { open: boolean; onOpenChange: (open: boolean) => void; onCreate: (order: DemoOrder) => void; profile?: WorkspaceProfile; company: string; initialDemoSupplier?: boolean }) {
+export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, company }: { open: boolean; onOpenChange: (open: boolean) => void; onCreate: (order: DemoOrder) => void; profile?: WorkspaceProfile; company: string }) {
   const [page, setPage] = useState<1 | 2>(1);
   const [role, setRole] = useState<"buyer" | "supplier">("buyer");
   const [counterpartyName, setCounterpartyName] = useState("");
@@ -40,31 +40,21 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
   const [imported, setImported] = useState<ExtractedPurchaseOrder | null>(null);
   const [depositPercent, setDepositPercent] = useState(20);
   const [dispatchPercent, setDispatchPercent] = useState(40);
-  const [useDemoSupplier, setUseDemoSupplier] = useState(false);
 
   const buying = role === "buyer";
-  const usingDemoSupplier = buying && useDemoSupplier;
   const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(counterpartyEmail.trim());
-  const detailsValid = Boolean((usingDemoSupplier || (counterpartyName.trim() && emailValid)) && delivery && location.trim() && total > 0 && items.every((item) => item.description.trim() && item.quantity > 0 && item.unitPrice > 0));
+  // The email is optional: identity is the wallet, and the confirmation link is the invitation.
+  const email = counterpartyEmail.trim();
+  const emailInvalid = Boolean(email) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const detailsValid = Boolean(counterpartyName.trim() && !emailInvalid && delivery && location.trim() && total > 0 && items.every((item) => item.description.trim() && item.quantity > 0 && item.unitPrice > 0));
   const canSend = Boolean(accepted && detailsValid);
   const deliveryPercent = 100 - depositPercent - dispatchPercent;
-  const releaseValue = (percent: number) => Math.round(total * percent) / 100;
-
-  const toggleDemoSupplier = (checked: boolean) => {
-    setUseDemoSupplier(checked);
-    if (checked) { setDepositPercent(0); setDispatchPercent(0); }
-  };
-
-  // Opened from the one-wallet link (/orders?action=create&demo=1): start with the demo supplier ticked,
-  // through the same toggle the checkbox uses, so every validation and the release plan still apply.
-  useEffect(() => {
-    if (open && initialDemoSupplier) toggleDemoSupplier(true);
-  }, [open, initialDemoSupplier]);
+  // Display only: the request splits the exact wei total (live-orders.ts), so no cent rounding here.
+  const releaseValue = (percent: number) => (total * percent) / 100;
 
   const reset = () => {
     setRole("buyer"); setCounterpartyName(""); setCounterpartyEmail(""); setReference(""); setDelivery(""); setLocation("");
-    setItems([blankLine(1)]); setAgreementFile(null); setAccepted(false); setCreated(null); setCopied(false); setInviteUrl(""); setError(""); setDeliveryResult(undefined); setImported(null); setImportFile(null); setImportError(""); setPage(1); setDepositPercent(20); setDispatchPercent(40); setUseDemoSupplier(false);
+    setItems([blankLine(1)]); setAgreementFile(null); setAccepted(false); setCreated(null); setCopied(false); setInviteUrl(""); setError(""); setDeliveryResult(undefined); setImported(null); setImportFile(null); setImportError(""); setPage(1); setDepositPercent(20); setDispatchPercent(40);
   };
   const changeOpen = (next: boolean) => { if (!next) reset(); onOpenChange(next); };
   const updateLine = (id: number, field: keyof DraftLine, value: string | number) => setItems((current) => current.map((item) => item.id === id ? { ...item, [field]: value } : item));
@@ -112,7 +102,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
       const session = loadSession();
       if (!session) throw new Error(SESSION_EXPIRED_MESSAGE);
       if (!profile) throw new Error("Your workspace is still loading. Try again in a moment.");
-      const result = await createLiveOrder({ reference: reference.trim(), initiatorRole: role, counterpartyName: counterpartyName.trim(), counterpartyEmail: counterpartyEmail.trim(), deliveryDate: delivery, deliveryLocation: location.trim(), organizationId: profile.primary.organizationId, items: lines(), supplierWalletAddress: buying ? undefined : session?.walletAddress, releasePercentages: { deposit: depositPercent, dispatch: dispatchPercent }, useDemoSupplier: usingDemoSupplier });
+      const result = await createLiveOrder({ reference: reference.trim(), initiatorRole: role, counterpartyName: counterpartyName.trim(), counterpartyEmail: email, deliveryDate: delivery, deliveryLocation: location.trim(), organizationId: profile.primary.organizationId, items: lines(), supplierWalletAddress: buying ? undefined : session?.walletAddress, releasePercentages: { deposit: depositPercent, dispatch: dispatchPercent } });
       let order = result.order;
       const documents = await attachments();
       if (documents.length) {
@@ -137,31 +127,25 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
           <div className="order-created">
             <span className="order-created-mark"><Check size={22} aria-hidden="true" /></span>
             <DialogHeader>
-              <DialogTitle>{usingDemoSupplier ? `Order ${created.reference} confirmed` : `Order ${created.reference} sent for confirmation`}</DialogTitle>
-              <DialogDescription>{usingDemoSupplier ? "The OpenLC demo supplier confirmed instantly. No second wallet needed." : `${created.counterparty} has to confirm the terms before ${buying ? "you can fund escrow" : "the buyer can fund escrow"}.`}</DialogDescription>
+              <DialogTitle>{`Order ${created.reference} sent for confirmation`}</DialogTitle>
+              <DialogDescription>{`${created.counterparty} has to confirm the terms before ${buying ? "you can fund escrow" : "the buyer can fund escrow"}.`}</DialogDescription>
             </DialogHeader>
             <dl className="fact-list fact-list-inline">
               <div><dt>Order value</dt><dd><strong>{money(created.value)} {created.currency}</strong></dd></div>
               <div><dt>{buying ? "Supplier" : "Buyer"}</dt><dd>{created.counterparty}</dd></div>
               <div><dt>Expected delivery</dt><dd>{created.delivery}</dd></div>
             </dl>
-            {usingDemoSupplier ? (
-              <Notice tone="success">The demo supplier already confirmed. Next step: Fund escrow.</Notice>
-            ) : (
-              <>
-                <div className="invite-link">
-                  <Link2 size={15} aria-hidden="true" />
-                  <span><strong>Confirmation link</strong><code>{inviteUrl}</code></span>
-                  <Button variant="outline" size="sm" onClick={async () => { await navigator.clipboard.writeText(inviteUrl); setCopied(true); }}><ClipboardCopy size={14} aria-hidden="true" />{copied ? "Copied" : "Copy link"}</Button>
-                </div>
-                <Notice tone={deliveryResult?.status === "sent" ? "success" : "info"}>
-                  {deliveryResult?.status === "sent" ? `An invitation email was sent to ${counterpartyEmail.trim()}.`
-                    : deliveryResult?.status === "failed" ? "The invitation email could not be delivered. Copy the link and send it yourself."
-                    : deliveryResult?.status === "not_configured" ? "Automatic email is not configured. Copy the link and send it yourself."
-                    : `This is a sample order. Use the link to open it as the ${otherRole}.`}
-                </Notice>
-              </>
-            )}
+            <div className="invite-link">
+              <Link2 size={15} aria-hidden="true" />
+              <span><strong>Confirmation link</strong><code>{inviteUrl}</code></span>
+              <Button variant="outline" size="sm" onClick={async () => { await navigator.clipboard.writeText(inviteUrl); setCopied(true); }}><ClipboardCopy size={14} aria-hidden="true" />{copied ? "Copied" : "Copy link"}</Button>
+            </div>
+            <Notice tone={email && deliveryResult?.status === "sent" ? "success" : "info"}>
+              {!email ? `Copy the link and send it to ${created.counterparty}. They confirm from their own wallet.`
+                : deliveryResult?.status === "sent" ? `An invitation email was sent to ${email}. You can also copy the link and send it yourself.`
+                : deliveryResult?.status === "failed" ? "The invitation email could not be delivered. Copy the link and send it yourself."
+                : "Automatic email is not set up. Copy the link and send it yourself."}
+            </Notice>
             <DialogFooter>
               <Button variant="outline" onClick={() => changeOpen(false)}>Done</Button>
               <Button className="btn-primary" asChild><a href={`/orders/${encodeURIComponent(created.id)}`}>Open order<ArrowRight size={14} aria-hidden="true" /></a></Button>
@@ -189,7 +173,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
                   <span><strong>{company} is buying</strong><small>You fund escrow after the supplier confirms.</small></span>
                 </label>
                 <label className={!buying ? "role-option role-option-active role-option-supplier" : "role-option role-option-supplier"}>
-                  <input type="radio" name="role" value="supplier" checked={!buying} onChange={() => { setRole("supplier"); setCounterpartyName(""); setUseDemoSupplier(false); }} />
+                  <input type="radio" name="role" value="supplier" checked={!buying} onChange={() => { setRole("supplier"); setCounterpartyName(""); }} />
                   <Box size={17} aria-hidden="true" />
                   <span><strong>{company} is supplying</strong><small>The buyer confirms the terms, then funds escrow.</small></span>
                 </label>
@@ -204,18 +188,10 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
 
             <fieldset className="form-section">
               <legend>{buying ? "Supplier" : "Buyer"}</legend>
-              {buying && (
-                <label className="agreement-check agreement-check-secondary">
-                  <input type="checkbox" checked={useDemoSupplier} onChange={(event) => toggleDemoSupplier(event.target.checked)} />
-                  <span><strong>Use the OpenLC demo supplier.</strong> Confirms instantly. Does not ship. Use a second wallet to try shipment.</span>
-                </label>
-              )}
-              {!usingDemoSupplier && (
-                <div className="form-grid">
-                  <label className="field"><span>{buying ? "Supplier company" : "Buyer company"}</span><Input aria-label={buying ? "Supplier company name" : "Buyer company name"} value={counterpartyName} onChange={(event) => setCounterpartyName(event.target.value)} placeholder={buying ? "FreshSource Foods" : "GreenBite Trading"} /></label>
-                  <label className="field"><span>{buying ? "Supplier contact email" : "Buyer contact email"}<HelpHint text="Contact details for your records. The other company confirms from its own wallet using the link you copy after creating the order." /></span><Input aria-label={buying ? "Supplier contact email" : "Buyer contact email"} type="email" autoComplete="email" value={counterpartyEmail} onChange={(event) => setCounterpartyEmail(event.target.value)} placeholder={buying ? "orders@supplier.com" : "purchasing@buyer.com"} aria-invalid={counterpartyEmail.length > 0 && !emailValid} /></label>
-                </div>
-              )}
+              <div className="form-grid">
+                <label className="field"><span>{buying ? "Supplier company" : "Buyer company"}</span><Input aria-label={buying ? "Supplier company name" : "Buyer company name"} value={counterpartyName} onChange={(event) => setCounterpartyName(event.target.value)} placeholder={buying ? "FreshSource Foods" : "GreenBite Trading"} /></label>
+                <label className="field"><span>{buying ? "Supplier contact email (optional)" : "Buyer contact email (optional)"}<HelpHint text="Optional. If you add it, OpenLC also emails the confirmation link there when email sending is set up. The other company still confirms from its own wallet." /></span><Input aria-label={buying ? "Supplier contact email (optional)" : "Buyer contact email (optional)"} type="email" autoComplete="email" value={counterpartyEmail} onChange={(event) => setCounterpartyEmail(event.target.value)} placeholder={buying ? "orders@supplier.com" : "purchasing@buyer.com"} aria-invalid={emailInvalid} /></label>
+              </div>
             </fieldset>
 
             <fieldset className="form-section">
@@ -236,7 +212,7 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
                     <Input aria-label={`Product ${index + 1}`} placeholder="Product or description" value={item.description} onChange={(event) => updateLine(item.id, "description", event.target.value)} />
                     <Input aria-label={`Quantity ${index + 1}`} type="number" min={1} value={item.quantity} onChange={(event) => updateLine(item.id, "quantity", Number(event.target.value))} />
                     <Input aria-label={`Unit ${index + 1}`} value={item.unit} onChange={(event) => updateLine(item.id, "unit", event.target.value)} placeholder="cartons" />
-                    <Input aria-label={`Unit price ${index + 1}`} type="number" min={0} step="0.01" value={item.unitPrice} onChange={(event) => updateLine(item.id, "unitPrice", Number(event.target.value))} />
+                    <Input aria-label={`Unit price ${index + 1}`} type="number" min={0} step="any" value={item.unitPrice} onChange={(event) => updateLine(item.id, "unitPrice", Number(event.target.value))} />
                     <strong>{money(item.quantity * item.unitPrice)}</strong>
                     <button type="button" className="icon-button" aria-label={`Remove line item ${index + 1}`} onClick={() => removeLine(item.id)} disabled={items.length === 1}><Trash2 size={14} /></button>
                   </div>
@@ -286,16 +262,12 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
                   </div>
                 </div>
                 {deliveryPercent < 20 && <Notice tone="warning">Only {deliveryPercent}% remains protected for delivery issues. Earlier releases are final and reduce the maximum refund available through OpenLC.</Notice>}
-                {usingDemoSupplier ? (
-                  <Notice tone="info">Nothing is released until you accept delivery. If the demo supplier never ships, you can reclaim the full amount after the delivery date.</Notice>
-                ) : depositPercent === 0 && dispatchPercent === 0 ? (
-                  <Notice tone="info">This is a single-release order: the full order value stays secured until delivery is accepted.</Notice>
-                ) : null}
+                {depositPercent === 0 && dispatchPercent === 0 && <Notice tone="info">This is a single-release order: the full order value stays secured until delivery is accepted.</Notice>}
               </fieldset>
 
             <AgreementBlock company={company} accepted={accepted} onChange={setAccepted}
               clauses={[
-                `${company} issues this purchase order as ${buying ? "buyer" : "supplier"} and is bound by the shared terms once ${usingDemoSupplier ? "the OpenLC demo supplier" : (counterpartyName.trim() || `the ${otherRole}`)} confirms them.`,
+                `${company} issues this purchase order as ${buying ? "buyer" : "supplier"} and is bound by the shared terms once ${counterpartyName.trim() || `the ${otherRole}`} confirms them.`,
                 `${depositPercent}% is released when the confirmed order is funded, ${dispatchPercent}% when the supplier signs shipment with evidence, and ${deliveryPercent}% remains for delivery.`,
                 "Released amounts are final. A refund or dispute can apply only to the delivery balance still held in escrow.",
               ]} />
