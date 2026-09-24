@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createApp, type TokenVerifier } from "../src/api/app.js";
-import { DemoAwareTokenVerifier, issueDemoGoogleSession } from "../src/api/demo-auth.js";
 import { DisputeService } from "../src/service/dispute-service.js";
 import { OrganizationService } from "../src/service/organization-service.js";
-import { TradeService, type DemoSupplier } from "../src/service/trade-service.js";
+import { TradeService } from "../src/service/trade-service.js";
 import { MemoryDisputeStore } from "../src/store/store.js";
 import { MemoryOrganizationStore } from "../src/store/organization-store.js";
 import { MemoryTradeStore } from "../src/store/trade-store.js";
@@ -22,24 +21,17 @@ describe("trade lifecycle API", () => {
     await expect(trades.createOrder({ ...base, reference: "PLAN-2", releasePlan: { depositUnits: "20000", dispatchUnits: "40000", deliveryUnits: "39999" } }, buyer))
       .rejects.toMatchObject({ code: "INVALID_RELEASE_PLAN", status: 400 });
   });
-  it("issues a demo Google session and completes invite, funding, and dispute transitions", async () => {
+  it("completes invite, funding, and dispute transitions over the HTTP API", async () => {
     const control = controlledContext();
-    // Funding is a wallet-gated action (task 7 fix round 1), so the identities actually used to
-    // fund/accept below are wallet-carrying, even though the demo Google login endpoint itself
-    // (checked first) is unaffected and still issues a usable, walletless session.
     const buyerWallet = `0x${"a".repeat(40)}`;
     const supplierWallet = `0x${"b".repeat(40)}`;
     const arbitratorWallet = `0x${"c".repeat(40)}`;
-    const fallback: TokenVerifier = { verify: async (token) => JSON.parse(token) };
-    const verifier = new DemoAwareTokenVerifier(fallback, true);
+    const verifier: TokenVerifier = { verify: async (token) => JSON.parse(token) };
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx, "http://localhost:3000/workspace");
-    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades, true);
+    const app = createApp(disputes, verifier, undefined, undefined, trades);
 
-    const login = await app.request("/auth/demo/google", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "buyer@example.com", name: "Buyer Example" }) });
-    expect(login.status).toBe(200);
-    const buyerSession = await login.json() as { accessToken: string; user: { id: string } };
-    const buyerHeaders = auth(JSON.stringify({ id: buyerSession.user.id, email: "buyer@example.com", name: "Buyer Example", walletAddress: buyerWallet }));
+    const buyerHeaders = auth(JSON.stringify({ id: BUYER, email: "buyer@example.com", name: "Buyer Example", walletAddress: buyerWallet }));
 
     const created = await app.request("/v1/orders", { method: "POST", headers: buyerHeaders, body: JSON.stringify({
       reference: "PO-100", supplierEmail: "supplier@example.com", supplierName: "Supplier Example", arbitratorId: ARBITRATOR,
@@ -104,36 +96,30 @@ describe("trade lifecycle API", () => {
 
   it("does not allow invite reuse by a different account", async () => {
     const control = controlledContext();
-    // `first` must actually complete the accept below, which now always binds a wallet, so it
-    // authenticates as a wallet session (via this JSON-token fallback); `other` never gets that
-    // far (rejected as a duplicate accept before any wallet check), so a plain demo Google
-    // session is enough for it.
-    const fallback: TokenVerifier = { verify: async (token) => JSON.parse(token) };
-    const verifier = new DemoAwareTokenVerifier(fallback, true);
+    const verifier: TokenVerifier = { verify: async (token) => JSON.parse(token) };
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades, true);
-    const buyer = issueDemoGoogleSession("buyer2@example.com", "Buyer Two");
-    const created = await app.request("/v1/orders", { method: "POST", headers: auth(buyer.accessToken), body: JSON.stringify({ reference: "PO-101", supplierEmail: "supplier2@example.com", supplierName: "Supplier Two", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "1", description: "A sample item", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "1", description: "Sample", quantity: "1", unit: "unit", unitPriceUnits: "1" }] }) });
+    const app = createApp(disputes, verifier, undefined, undefined, trades);
+    const buyerToken = JSON.stringify({ id: BUYER, email: "buyer2@example.com", name: "Buyer Two" });
+    const created = await app.request("/v1/orders", { method: "POST", headers: auth(buyerToken), body: JSON.stringify({ reference: "PO-101", supplierEmail: "supplier2@example.com", supplierName: "Supplier Two", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "1", description: "A sample item", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "1", description: "Sample", quantity: "1", unit: "unit", unitPriceUnits: "1" }] }) });
     const order = await created.json() as any;
-    const invite = await (await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth(buyer.accessToken) })).json() as any;
+    const invite = await (await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth(buyerToken) })).json() as any;
     const firstToken = JSON.stringify({ id: SUPPLIER, email: "supplier2@example.com", name: "Supplier Two", walletAddress: `0x${"2".repeat(40)}` });
     expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(firstToken), body: "{}" })).status).toBe(200);
-    const other = issueDemoGoogleSession("other@example.com", "Other");
-    expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(other.accessToken), body: "{}" })).status).toBe(409);
+    const otherToken = JSON.stringify({ id: "55555555-5555-4555-8555-555555555555", email: "other@example.com", name: "Other" });
+    expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(otherToken), body: "{}" })).status).toBe(409);
   });
 
   it("accepts the exact body a wallet session sends, whose email is an empty string", async () => {
     const control = controlledContext();
-    const fallback: TokenVerifier = { verify: async (token) => JSON.parse(token) };
-    const verifier = new DemoAwareTokenVerifier(fallback, true);
+    const verifier: TokenVerifier = { verify: async (token) => JSON.parse(token) };
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades, true);
-    const buyer = issueDemoGoogleSession("buyer2@example.com", "Buyer Two");
-    const created = await app.request("/v1/orders", { method: "POST", headers: auth(buyer.accessToken), body: JSON.stringify({ reference: "PO-102", supplierEmail: "supplier3@example.com", supplierName: "Supplier Two", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "1", description: "A sample item", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "1", description: "Sample", quantity: "1", unit: "unit", unitPriceUnits: "1" }] }) });
+    const app = createApp(disputes, verifier, undefined, undefined, trades);
+    const buyerToken = JSON.stringify({ id: BUYER, email: "buyer2@example.com", name: "Buyer Two" });
+    const created = await app.request("/v1/orders", { method: "POST", headers: auth(buyerToken), body: JSON.stringify({ reference: "PO-102", supplierEmail: "supplier3@example.com", supplierName: "Supplier Two", arbitratorId: ARBITRATOR, assetType: "USDC", amountUnits: "1", description: "A sample item", deliveryDate: "2026-09-04", deliveryLocation: "PJ", lineItems: [{ id: "1", description: "Sample", quantity: "1", unit: "unit", unitPriceUnits: "1" }] }) });
     const order = await created.json() as any;
-    const invite = await (await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth(buyer.accessToken) })).json() as any;
+    const invite = await (await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth(buyerToken) })).json() as any;
     // web/lib/auth.ts always builds wallet sessions with email: "", and web/lib/live-orders.ts
     // sends that straight through to accept - "" must count as absent, not an invalid email.
     const wallet = `0x${"3".repeat(40)}`;
@@ -289,7 +275,7 @@ describe("trade lifecycle API", () => {
     expect(confirmed.status).toBe("supplier_confirmed");
     expect(confirmed.buyerId).toBe(BUYER);
     expect(confirmed.buyerEmail).toBe(buyer.email);
-    expect(confirmed.confirmation).toMatchObject({ confirmedBy: BUYER, confirmedRole: "buyer", termsVersion: "1.2", orderVersion: 1 });
+    expect(confirmed.confirmation).toMatchObject({ confirmedBy: BUYER, confirmedRole: "buyer", termsVersion: "1.3", orderVersion: 1 });
     expect(await trades.listInvitations(buyer)).toEqual([]);
 
     const funded = await trades.recordFunding(order.id, buyer, {
@@ -316,7 +302,7 @@ describe("trade lifecycle API", () => {
     }, buyer);
     await trades.createInvite(order.id, buyer);
     const confirmed = await trades.acceptInvitation(order.id, supplier);
-    expect(confirmed.confirmation).toMatchObject({ confirmedBy: SUPPLIER, confirmedRole: "supplier", email: supplier.email, termsVersion: "1.2" });
+    expect(confirmed.confirmation).toMatchObject({ confirmedBy: SUPPLIER, confirmedRole: "supplier", email: supplier.email, termsVersion: "1.3" });
   });
 
   it("settles a fully accepted delivery against the release transaction", async () => {
@@ -506,7 +492,7 @@ describe("trade lifecycle API", () => {
     };
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades);
+    const app = createApp(disputes, verifier, undefined, undefined, trades);
 
     // Step 2: account A creates a purchase order naming no email and no supplier wallet at all.
     const created = await app.request("/v1/orders", { method: "POST", headers: auth("wallet-a"), body: JSON.stringify({
@@ -656,89 +642,4 @@ describe("trade lifecycle API", () => {
     expect((await trades.previewInvite(invited.inviteToken!, named)).id).toBe(order.id);
   });
 
-  // --- Task 12: the demo supplier confirms in the same request that creates its invite, so a
-  // lone judge completes create -> fund with one wallet. ---
-
-  const DEMO_SUPPLIER_ADDRESS = `0x${"d".repeat(40)}`;
-  const DEMO_SUPPLIER_ACCOUNT_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
-  const fakeDemoSupplier: DemoSupplier = { address: DEMO_SUPPLIER_ADDRESS, name: "OpenLC Demo Supplier", accountId: async () => DEMO_SUPPLIER_ACCOUNT_ID };
-  const tradesWithDemoSupplier = (demoSupplier?: DemoSupplier) => {
-    const control = controlledContext();
-    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
-    // Wired with a real OrganizationService (not undefined) so these tests exercise the same
-    // membership-lookup path production runs, not a shortcut that skips it.
-    const organizations = new OrganizationService(new MemoryOrganizationStore());
-    return new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, organizations, undefined, undefined, demoSupplier);
-  };
-
-  it("a demo-supplier order reaches supplier_confirmed as soon as its invite is created, with no second session", async () => {
-    const trades = tradesWithDemoSupplier(fakeDemoSupplier);
-    const buyer = { id: BUYER, name: "Judge", walletAddress: `0x${"1".repeat(40)}` };
-    const order = await trades.createOrder({
-      reference: "PO-DEMO-1", useDemoSupplier: true, arbitratorId: ARBITRATOR, arbitratorWalletAddress: `0x${"e".repeat(40)}`,
-      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
-      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
-    }, buyer);
-    // Named at creation, but not yet accepted - createInvite is what confirms it.
-    expect(order.supplierWalletAddress).toBe(DEMO_SUPPLIER_ADDRESS);
-    expect(order.supplierId).toBeUndefined();
-    expect(order.status).toBe("awaiting_supplier");
-
-    const invited = await trades.createInvite(order.id, buyer);
-    expect(invited.status).toBe("supplier_confirmed");
-    expect(invited.supplierWalletAddress).toBe(DEMO_SUPPLIER_ADDRESS);
-    expect(invited.supplierId).toBe(DEMO_SUPPLIER_ACCOUNT_ID);
-    // The demo persona's name must win over the demo wallet's own (real) workspace name, both on
-    // the returned order and on the stored copy.
-    expect(invited.supplierName).toBe("OpenLC Demo Supplier");
-    expect(invited.confirmation?.organizationName).toBe("OpenLC Demo Supplier");
-    const stored = await trades.getOrder(order.id, buyer);
-    expect(stored.status).toBe("supplier_confirmed");
-    expect(stored.supplierName).toBe("OpenLC Demo Supplier");
-    expect(stored.confirmation?.organizationName).toBe("OpenLC Demo Supplier");
-  });
-
-  it("recordFunding's supplier-wallet guard passes for the demo address and refuses a different one", async () => {
-    const trades = tradesWithDemoSupplier(fakeDemoSupplier);
-    const buyerWallet = `0x${"1".repeat(40)}`;
-    const arbitratorWallet = `0x${"e".repeat(40)}`;
-    const buyer = { id: BUYER, name: "Judge", walletAddress: buyerWallet };
-    const order = await trades.createOrder({
-      reference: "PO-DEMO-2", useDemoSupplier: true, arbitratorId: ARBITRATOR, arbitratorWalletAddress: arbitratorWallet,
-      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
-      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
-    }, buyer);
-    await trades.createInvite(order.id, buyer);
-
-    await expect(trades.recordFunding(order.id, buyer, {
-      packageId: `0x${"9".repeat(40)}`, escrowObjectId: "1", transactionDigest: `0x${"a".repeat(64)}`,
-      buyerAddress: buyerWallet, supplierAddress: `0x${"7".repeat(40)}`, arbitratorAddress: arbitratorWallet,
-    })).rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 409 });
-
-    const funded = await trades.recordFunding(order.id, buyer, {
-      packageId: `0x${"9".repeat(40)}`, escrowObjectId: "1", transactionDigest: `0x${"a".repeat(64)}`,
-      buyerAddress: buyerWallet, supplierAddress: DEMO_SUPPLIER_ADDRESS, arbitratorAddress: arbitratorWallet,
-    });
-    expect(funded.status).toBe("funded");
-  });
-
-  it("rejects useDemoSupplier when the buyer's own wallet is the configured demo address", async () => {
-    const trades = tradesWithDemoSupplier(fakeDemoSupplier);
-    const buyer = { id: BUYER, name: "Self Dealer", walletAddress: DEMO_SUPPLIER_ADDRESS };
-    await expect(trades.createOrder({
-      reference: "PO-DEMO-3", useDemoSupplier: true, arbitratorId: ARBITRATOR,
-      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
-      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
-    }, buyer)).rejects.toMatchObject({ code: "INVALID_PARTIES", status: 400 });
-  });
-
-  it("refuses useDemoSupplier when this deployment has no demo supplier configured", async () => {
-    const trades = tradesWithDemoSupplier(undefined);
-    const buyer = { id: BUYER, name: "Judge", walletAddress: `0x${"1".repeat(40)}` };
-    await expect(trades.createOrder({
-      reference: "PO-DEMO-4", useDemoSupplier: true, arbitratorId: ARBITRATOR,
-      assetType: "BOT", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
-      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
-    }, buyer)).rejects.toMatchObject({ code: "DEMO_SUPPLIER_NOT_CONFIGURED", status: 503 });
-  });
 });

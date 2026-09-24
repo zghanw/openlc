@@ -2,12 +2,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { z } from "zod";
 import type { MediationOrchestrator } from "../ai/mediation.js";
-import { type DemoCommand, type DemoOrderService } from "../demo/demo-service.js";
 import { DomainError, type Actor } from "../domain/types.js";
 import type { DisputeService } from "../service/dispute-service.js";
 import type { TradeService } from "../service/trade-service.js";
 import type { EscrowSettlementVerifier } from "../integrations/evm-escrow.js";
-import { issueDemoGoogleSession } from "./demo-auth.js";
 import type { IdentityService } from "../service/identity-service.js";
 import type { OrganizationService } from "../service/organization-service.js";
 
@@ -50,9 +48,6 @@ const tradeOrderSchema = z.object({
   deliveryDate: z.string().min(1).max(128), deliveryLocation: z.string().min(1).max(500), lineItems: z.array(lineItemSchema).min(1).max(100),
   releasePlan: z.object({ depositUnits: amount, dispatchUnits: amount, deliveryUnits: amount }).optional(),
   buyerOrganizationId: uuid.optional(), supplierOrganizationId: uuid.optional(),
-  // The demo supplier's address is never trusted from the client: the server resolves it from
-  // its own config, so a buyer can only ask for it, never name it.
-  useDemoSupplier: z.boolean().optional(),
 });
 const inspectionSchema = z.object({
   lines: z.array(z.object({ lineId: z.string().min(1).max(128), accepted: amount, missing: amount, damaged: amount })).min(1).max(100),
@@ -101,10 +96,8 @@ export function createApp(
   service: DisputeService,
   verifier: TokenVerifier,
   mediator?: MediationOrchestrator,
-  demo?: DemoOrderService,
   settlementVerifier?: EscrowSettlementVerifier,
   trades?: TradeService,
-  demoAuthEnabled = false,
   identity?: IdentityService,
   organizations?: OrganizationService,
 ) {
@@ -125,11 +118,6 @@ export function createApp(
     return c.json({ error: "INTERNAL_ERROR" }, 500);
   });
   app.get("/health", (c) => c.json({ ok: true, service: "openlc-api" }));
-  app.post("/auth/demo/google", async (c) => {
-    if (!demoAuthEnabled) throw new DomainError("DEMO_AUTH_DISABLED", "Demo Google authentication is disabled", 404);
-    const body = z.object({ email: z.string().email(), name: z.string().min(1).max(256) }).parse(await c.req.json());
-    return c.json(issueDemoGoogleSession(body.email, body.name));
-  });
   if (identity) {
     app.post("/auth/wallet/challenge", async (c) => {
       const body = z.object({ address: evmAddress }).parse(await c.req.json());
@@ -319,28 +307,6 @@ export function createApp(
     const result = await service.confirmSettlement(dispute.id, verified);
     if (trades) await trades.syncDispute(result.id);
     return c.json(result);
-  });
-  app.get("/v1/demo/orders", (c) => {
-    if (!demo) throw new DomainError("DEMO_DISABLED", "Demo controls are disabled", 404);
-    return c.json({ disclosure: "Demo controls explicitly label simulated, seeded, live-AI, and external-BOT-Chain steps.", orders: demo.list() });
-  });
-  app.post("/v1/demo/orders/reset", (c) => {
-    if (!demo) throw new DomainError("DEMO_DISABLED", "Demo controls are disabled", 404);
-    return c.json({ orders: demo.reset() });
-  });
-  app.post("/v1/demo/orders/:id/advance", async (c) => {
-    if (!demo) throw new DomainError("DEMO_DISABLED", "Demo controls are disabled", 404);
-    const body = z.object({
-      command: z.enum([
-        "confirm_order", "record_escrow_funding", "skip_fulfilment_wait", "seed_buyer_claim",
-        "seed_supplier_counter", "attach_live_mediation", "buyer_accepts", "supplier_accepts", "record_sui_settlement",
-      ]),
-      reference: z.object({
-        transactionDigest: z.string().min(1).max(256).optional(), objectId: z.string().min(1).max(256).optional(),
-        receiptObjectId: z.string().min(1).max(256).optional(), mediationRunId: z.string().min(1).max(256).optional(), proposalId: z.string().min(1).max(256).optional(),
-      }).optional(),
-    }).parse(await c.req.json());
-    return c.json(demo.advance(c.req.param("id"), { command: body.command as DemoCommand, reference: body.reference }));
   });
   return app;
 }

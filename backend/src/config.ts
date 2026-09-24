@@ -32,14 +32,10 @@ export const config = {
   store: process.env.BACKEND_STORE ?? "memory",
   documentsBucket: process.env.OPENLC_DOCUMENTS_BUCKET ?? "openlc-documents",
   port: Number(process.env.PORT ?? 8787),
-  demoMode: process.env.OPENLC_DEMO_MODE === "true",
   escrowVerifierEnabled: process.env.ESCROW_VERIFIER_ENABLED === "true",
   botchainRpcUrl: process.env.BOTCHAIN_RPC_URL ?? "https://rpc.bohr.life",
   escrowAddress: () => optional("OPENLC_ESCROW_ADDRESS"),
   escrowDeployBlock: Number(process.env.OPENLC_ESCROW_DEPLOY_BLOCK ?? 0),
-  /** The wallet that plays the supplier in the one-wallet judge path. It never ships, and the
-   *  server holds no private key for it - only its public address, to bind orders and verify funding. */
-  demoSupplierAddress: () => optional("OPENLC_DEMO_SUPPLIER_ADDRESS"),
   resendApiKey: () => optional("RESEND_API_KEY"),
   brevoApiKey: () => optional("BREVO_API_KEY"),
   invitationEmailFrom: () => optional("INVITATION_EMAIL_FROM"),

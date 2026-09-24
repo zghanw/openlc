@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { createApp, type TokenVerifier } from "../src/api/app.js";
-import { DemoOrderService } from "../src/demo/demo-service.js";
 import { DisputeService } from "../src/service/dispute-service.js";
 import { TradeService } from "../src/service/trade-service.js";
 import { MemoryDisputeStore } from "../src/store/store.js";
@@ -51,7 +50,7 @@ describe("HTTP API", () => {
       sessionSecret: "test-only-session-secret-that-is-at-least-thirty-two-bytes",
       chainId: 968,
     });
-    const enabled = createApp(service, verifier, undefined, undefined, undefined, undefined, false, identity);
+    const enabled = createApp(service, verifier, undefined, undefined, undefined, identity);
     const previousOrigin = process.env.FRONTEND_ORIGIN;
     process.env.FRONTEND_ORIGIN = "https://openlc.xyz";
     try {
@@ -79,7 +78,7 @@ describe("HTTP API", () => {
       sessionSecret: "test-only-session-secret-that-is-at-least-thirty-two-bytes",
       chainId: 968,
     });
-    const app = createApp(service, verifier, undefined, undefined, undefined, undefined, false, identity);
+    const app = createApp(service, verifier, undefined, undefined, undefined, identity);
     const previousOrigin = process.env.FRONTEND_ORIGIN;
     process.env.FRONTEND_ORIGIN = "https://openlc.xyz";
     try {
@@ -115,18 +114,6 @@ describe("HTTP API", () => {
     expect(response.status).toBe(403);
   });
 
-  it("exposes demo controls only when explicitly enabled", async () => {
-    const control = controlledContext();
-    const verifier: TokenVerifier = { verify: async (token) => ({ id: token }) };
-    const service = new DisputeService(new MemoryDisputeStore(), control.ctx);
-    const disabled = createApp(service, verifier);
-    expect((await disabled.request("/v1/demo/orders", { headers: { authorization: `Bearer ${BUYER}` } })).status).toBe(404);
-    const enabled = createApp(service, verifier, undefined, new DemoOrderService(control.ctx));
-    const response = await enabled.request("/v1/demo/orders", { headers: { authorization: `Bearer ${BUYER}` } });
-    expect(response.status).toBe(200);
-    expect((await response.json() as any).disclosure).toContain("explicitly label");
-  });
-
   it("requires a trusted Sui verifier before marking an agreement settled", async () => {
     const control = controlledContext();
     const verifier: TokenVerifier = { verify: async (token) => ({ id: token }) };
@@ -140,7 +127,7 @@ describe("HTTP API", () => {
       method: "POST", headers: { authorization: `Bearer ${BUYER}`, "content-type": "application/json" }, body: JSON.stringify(proof),
     })).status).toBe(503);
     const suiVerifier = { verify: async () => ({ ...proof, checkpoint: "42" }) };
-    const enabled = createApp(service, verifier, undefined, undefined, suiVerifier);
+    const enabled = createApp(service, verifier, undefined, suiVerifier);
     const response = await enabled.request(`/v1/disputes/${agreed.id}/settlement-execution`, {
       method: "POST", headers: { authorization: `Bearer ${BUYER}`, "content-type": "application/json" }, body: JSON.stringify(proof),
     });
@@ -153,7 +140,7 @@ describe("HTTP API", () => {
     const verifier: TokenVerifier = { verify: async (token) => ({ id: token, walletAddress: `0x${"1".repeat(40)}` }) };
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
     const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
-    const app = createApp(disputes, verifier, undefined, undefined, undefined, trades);
+    const app = createApp(disputes, verifier, undefined, undefined, trades);
     const response = await app.request("/v1/orders", {
       method: "POST", headers: { authorization: `Bearer ${BUYER}`, "content-type": "application/json" },
       body: JSON.stringify({

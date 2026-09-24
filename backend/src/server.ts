@@ -3,10 +3,8 @@ import { MediationOrchestrator } from "./ai/mediation.js";
 import { loadPolicyCorpus } from "./policy/policy-corpus.js";
 import { createApp, type TokenVerifier } from "./api/app.js";
 import { WalletSessionVerifier } from "./api/identity-auth.js";
-import { DemoAwareTokenVerifier } from "./api/demo-auth.js";
 import { config } from "./config.js";
 import { DomainError } from "./domain/types.js";
-import { DemoOrderService } from "./demo/demo-service.js";
 import { MemoryDocumentStore, SupabaseDocumentStore } from "./store/document-store.js";
 import { GeminiEmbedder, GeminiJsonModel } from "./integrations/gemini.js";
 import { QdrantLegalIndex } from "./integrations/qdrant.js";
@@ -16,7 +14,7 @@ import { MemoryDisputeStore } from "./store/store.js";
 import { SupabaseDisputeStore } from "./store/supabase-store.js";
 import { MemoryTradeStore } from "./store/trade-store.js";
 import { SupabaseTradeStore } from "./store/supabase-trade-store.js";
-import { TradeService, type DemoSupplier } from "./service/trade-service.js";
+import { TradeService } from "./service/trade-service.js";
 import { IdentityService } from "./service/identity-service.js";
 import { SupabaseIdentityStore } from "./store/supabase-identity-store.js";
 import { OrganizationService } from "./service/organization-service.js";
@@ -40,8 +38,7 @@ const identity = sessionSecret
 const noWalletAuth: TokenVerifier = {
   verify: async () => { throw new DomainError("UNAUTHORIZED", "Invalid or expired user token", 401); },
 };
-const productionVerifier: TokenVerifier = identity ? new WalletSessionVerifier(identity) : noWalletAuth;
-const verifier = new DemoAwareTokenVerifier(productionVerifier, config.demoMode);
+const verifier: TokenVerifier = identity ? new WalletSessionVerifier(identity) : noWalletAuth;
 let mediator: MediationOrchestrator | undefined;
 if (process.env.GEMINI_API_KEY) {
   // Statute and case law are retrieved for the human arbitration package only, so Qdrant (and the
@@ -58,7 +55,6 @@ if (process.env.GEMINI_API_KEY) {
     new GeminiJsonModel(config.geminiApiKey(), config.geminiModel), policy, systemContext, undefined, candidateAuthorities,
   );
 }
-const demo = config.demoMode ? new DemoOrderService(systemContext) : undefined;
 const tradeStore = config.store === "supabase"
   ? new SupabaseTradeStore(config.supabaseUrl(), config.supabaseSecretKey())
   : new MemoryTradeStore();
@@ -101,16 +97,6 @@ if (config.escrowVerifierEnabled) {
 const documentStore = config.store === "supabase"
   ? new SupabaseDocumentStore(config.supabaseUrl(), config.supabaseSecretKey(), config.documentsBucket)
   : new MemoryDocumentStore();
-// The demo supplier needs both a configured address and wallet sign-in (to find-or-create its
-// account), so it is only built when both are available - never a required part of the deployment.
-const demoSupplierAddress = config.demoSupplierAddress();
-const demoSupplier: DemoSupplier | undefined = demoSupplierAddress && identity
-  ? {
-      address: demoSupplierAddress,
-      name: "OpenLC Demo Supplier",
-      accountId: async () => (await identity.findOrCreateWalletAccount(demoSupplierAddress)).id,
-    }
-  : undefined;
-const trades = new TradeService(tradeStore, service, systemContext, process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders", fundingVerifier, organizations, invitationEmail, documentStore, demoSupplier);
-const app = createApp(service, verifier, mediator, demo, settlementVerifier, trades, config.demoMode, identity, organizations);
+const trades = new TradeService(tradeStore, service, systemContext, process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders", fundingVerifier, organizations, invitationEmail, documentStore);
+const app = createApp(service, verifier, mediator, settlementVerifier, trades, identity, organizations);
 serve({ fetch: app.fetch, port: config.port }, ({ port }) => console.log(`OpenLC API listening on port ${port}`));

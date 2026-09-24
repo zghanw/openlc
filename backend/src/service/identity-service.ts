@@ -32,15 +32,6 @@ export class IdentityService {
     return this.store.findAccountById(id);
   }
 
-  /** Find-or-create for a wallet address with no signature step, for a system account (the demo
-   *  supplier) rather than a session login. Reuses the same store calls wallet sign-in uses. */
-  async findOrCreateWalletAccount(address: string): Promise<PayProofAccount> {
-    const normalized = this.normalizeAddress(address);
-    const existing = await this.store.findAccountByAddress(normalized);
-    if (existing) return existing;
-    return this.store.createWalletAccount(normalized);
-  }
-
   /** Checksums the address (EIP-55) and rejects anything that is not a valid EVM address. */
   private normalizeAddress(address: string): string {
     try {

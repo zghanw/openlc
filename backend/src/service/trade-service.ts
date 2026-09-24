@@ -26,7 +26,7 @@ import type { OrganizationService } from "./organization-service.js";
 import { DisabledInvitationEmailSender, type InvitationEmailSender } from "../integrations/invitation-email.js";
 
 /** Version of the platform terms a party accepts when confirming an order. */
-export const TERMS_VERSION = "1.2";
+export const TERMS_VERSION = "1.3";
 
 export interface CreateTradeOrderInput {
   reference: string;
@@ -48,9 +48,6 @@ export interface CreateTradeOrderInput {
   lineItems: TradeLineItem[];
   releasePlan?: TradeReleasePlan;
   buyerOrganizationId?: string;
-  /** Buyer-initiated only. The server resolves the actual address from its own config - the
-   *  client can ask for the demo supplier but never name one. */
-  useDemoSupplier?: boolean;
 }
 
 export interface AttachDocumentInput {
@@ -171,10 +168,6 @@ function allowed(order: TradeOrder, actor: Actor): boolean {
   return order.buyerId === actor.id || order.supplierId === actor.id || order.arbitratorId === actor.id;
 }
 
-/** A system account that stands in for a real supplier so a lone judge can complete the order
- *  lifecycle with one wallet. The server holds no private key for it - only the public address. */
-export type DemoSupplier = { address: string; name: string; accountId(): Promise<string> };
-
 export class TradeService {
   constructor(
     private readonly store: TradeStore,
@@ -185,7 +178,6 @@ export class TradeService {
     private readonly organizations?: OrganizationService,
     private readonly invitationEmail: InvitationEmailSender = new DisabledInvitationEmailSender(),
     private readonly documents: DocumentStore = new MemoryDocumentStore(),
-    private readonly demoSupplier?: DemoSupplier,
   ) {}
 
   /** Attach a file to the order. Either party (or the invited party) can attach; both can read. */
@@ -310,17 +302,12 @@ export class TradeService {
       const buyerMembership = this.organizations
         ? await this.organizations.requireCapability(actor, "buy", input.buyerOrganizationId)
         : undefined;
-      // The demo supplier's address never comes from the client: it is resolved here, from the
-      // server's own config, so createOrder cannot be asked to bind an arbitrary "demo" wallet.
-      const demoSupplier = input.useDemoSupplier ? this.demoSupplier : undefined;
-      if (input.useDemoSupplier && !demoSupplier) throw new DomainError("DEMO_SUPPLIER_NOT_CONFIGURED", "The demo supplier is not configured for this deployment", 503);
-      const supplierEmail = demoSupplier ? undefined : (input.supplierEmail?.trim() ? ensureEmail(input.supplierEmail) : undefined);
+      const supplierEmail = input.supplierEmail?.trim() ? ensureEmail(input.supplierEmail) : undefined;
       if (supplierEmail && actor.email && supplierEmail === actor.email.trim().toLowerCase()) throw new DomainError("INVALID_PARTIES", "The supplier email must belong to another company", 400);
-      const supplierWalletAddress = demoSupplier ? demoSupplier.address : input.supplierWalletAddress?.trim();
+      const supplierWalletAddress = input.supplierWalletAddress?.trim();
       // A buyer naming their own wallet as the supplier would make the order impossible to
       // accept (the initiator can never confirm their own order) and, if it somehow reached
       // funding, would pay the buyer itself - so it is refused up front like the email case.
-      // This also catches a buyer whose own wallet happens to be the demo supplier's address.
       if (supplierWalletAddress && actor.walletAddress && sameAddress(supplierWalletAddress, actor.walletAddress)) throw new DomainError("INVALID_PARTIES", "The supplier wallet must belong to another company", 400);
       if (shared.arbitratorWalletAddress && actor.walletAddress && sameAddress(shared.arbitratorWalletAddress, actor.walletAddress)) throw new DomainError("INVALID_PARTIES", "The arbitrator wallet must be different from the buyer and supplier wallets", 400);
       if (shared.arbitratorWalletAddress && supplierWalletAddress && sameAddress(shared.arbitratorWalletAddress, supplierWalletAddress)) throw new DomainError("INVALID_PARTIES", "The arbitrator wallet must be different from the buyer and supplier wallets", 400);
@@ -328,7 +315,7 @@ export class TradeService {
         ...shared, status: "awaiting_supplier",
         buyerId: actor.id, buyerOrganizationId: buyerMembership?.organizationId,
         buyerEmail: actor.email, buyerName: buyerMembership?.organizationName ?? actor.name,
-        supplierEmail, supplierName: demoSupplier ? demoSupplier.name : (input.supplierName?.trim() || supplierEmail || "the invited supplier"),
+        supplierEmail, supplierName: input.supplierName?.trim() || supplierEmail || "the invited supplier",
         supplierWalletAddress,
       };
     }
@@ -426,17 +413,6 @@ export class TradeService {
     invite = { ...invite, deliveryStatus: delivery.status, deliveryMessageId: delivery.messageId, deliveryAttemptedAt: delivery.attemptedAt };
     await this.store.saveInvite(invite);
     result.inviteDelivery = delivery;
-    // The demo supplier confirms the moment its invite exists, so a lone judge never needs a
-    // second session: reuse the exact accept path a real supplier's wallet would take, rather
-    // than duplicating the supplier_confirmed transition here.
-    if (this.demoSupplier && pendingSide(updated) === "supplier" && sameAddress(updated.supplierWalletAddress, this.demoSupplier.address)) {
-      const accepted = await this.acceptWithInvite(invite, { id: await this.demoSupplier.accountId(), walletAddress: this.demoSupplier.address }, {}, true, this.demoSupplier.name);
-      const withInvite = structuredClone(accepted) as TradeOrderWithInvite;
-      withInvite.inviteToken = rawToken;
-      withInvite.inviteUrl = result.inviteUrl;
-      withInvite.inviteDelivery = delivery;
-      return withInvite;
-    }
     return result;
   }
 
@@ -471,7 +447,7 @@ export class TradeService {
     return structuredClone(updated);
   }
 
-  private async acceptWithInvite(invite: TradeInvite, actor: Actor, input: AcceptInvitationInput, tokenPresented: boolean, displayName?: string): Promise<TradeOrder> {
+  private async acceptWithInvite(invite: TradeInvite, actor: Actor, input: AcceptInvitationInput, tokenPresented: boolean): Promise<TradeOrder> {
     if (new Date(invite.expiresAt).getTime() <= this.ctx.now().getTime()) throw new DomainError("INVITE_EXPIRED", "This invitation has expired", 410);
     const order = await this.store.getOrder(invite.orderId);
     if (!order) throw new DomainError("NOT_FOUND", "The invited order no longer exists", 404);
@@ -522,10 +498,8 @@ export class TradeService {
       : undefined;
     const now = this.ctx.now().toISOString();
     const resolvedEmail = verifiedEmail ?? submittedEmail;
-    // displayName (the demo persona) outranks the actor's own workspace name: the demo wallet is
-    // a real account with its own business name, which must never leak onto a demo order.
     const confirmation = {
-      confirmedBy: actor.id, confirmedRole: side, email: resolvedEmail, organizationName: displayName ?? membership?.organizationName ?? input.name ?? actor.name,
+      confirmedBy: actor.id, confirmedRole: side, email: resolvedEmail, organizationName: membership?.organizationName ?? input.name ?? actor.name,
       orderVersion: order.version, termsVersion: TERMS_VERSION, confirmedAt: now,
     };
     let updated: TradeOrder;
@@ -533,14 +507,14 @@ export class TradeService {
       updated = {
         ...order, buyerId: actor.id, buyerOrganizationId: membership?.organizationId,
         buyerEmail: resolvedEmail ? ensureEmail(resolvedEmail, "buyer") : order.buyerEmail,
-        buyerName: (displayName ?? membership?.organizationName ?? input.name ?? actor.name ?? order.buyerName ?? "Buyer").trim(),
+        buyerName: (membership?.organizationName ?? input.name ?? actor.name ?? order.buyerName ?? "Buyer").trim(),
         status: "supplier_confirmed", confirmation, updatedAt: now, version: order.version + 1,
       };
     } else {
       updated = {
         ...order, supplierId: actor.id, supplierOrganizationId: membership?.organizationId,
         supplierEmail: resolvedEmail ? ensureEmail(resolvedEmail) : order.supplierEmail,
-        supplierName: (displayName ?? membership?.organizationName ?? input.name ?? actor.name ?? order.supplierName).trim(),
+        supplierName: (membership?.organizationName ?? input.name ?? actor.name ?? order.supplierName).trim(),
         supplierWalletAddress: boundWalletAddress ?? order.supplierWalletAddress,
         status: "supplier_confirmed", confirmation, updatedAt: now, version: order.version + 1,
       };

@@ -38,9 +38,6 @@ A client-supplied hash alone is never accepted as proof that something happened 
   `POST /v1/disputes/:id/mediate`, `POST /v1/disputes/:id/early-position`,
   `POST /v1/disputes/:id/arbitrator-decision`, `GET /v1/disputes/:id/arbitration-package`,
   `POST /v1/disputes/:id/settlement-execution`, `POST /v1/disputes/:id/enforce-deadline`
-- **Demo controls** (demo-only, disabled by default — only enabled when `OPENLC_DEMO_MODE=true`):
-  `POST /auth/demo/google`, `GET /v1/demo/orders`, `POST /v1/demo/orders/reset`,
-  `POST /v1/demo/orders/:id/advance`
 
 ## Configuration
 
@@ -63,16 +60,10 @@ variable name — never commit real values). The names that matter here:
 Without both Qdrant variables, mediation still runs; it just has no statute/case-law citations for
 the human arbitration package.
 
-**Optional — the one-wallet demo supplier:** `OPENLC_DEMO_SUPPLIER_ADDRESS`. Without it, the
-"Use the OpenLC demo supplier" option fails closed with `503 DEMO_SUPPLIER_NOT_CONFIGURED`. The
-server holds no private key for this wallet, only its public address.
-
 **Optional — invitation email:** `BREVO_API_KEY`, `RESEND_API_KEY`, `SMTP_HOST`/`SMTP_PORT`/
 `SMTP_SECURE`/`SMTP_USER`/`SMTP_PASS`, `INVITATION_EMAIL_FROM`. Brevo is tried first, then SMTP,
 then Resend. Without any of them, invitations still work as copy-paste links; the API just
 reports that no email was sent.
-
-**Optional — demo/debug:** `OPENLC_DEMO_MODE` (exposes the `/v1/demo/*` routes).
 
 ## Run and test
 
@@ -80,7 +71,7 @@ reports that no email was sent.
 cd backend
 npm ci
 npm run dev      # or: npm start
-npm test         # vitest — 144 passing
+npm test         # vitest — 139 passing
 npm run build    # tsc
 ```
 
