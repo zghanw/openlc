@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "test:e2e": "playwright test"
+    "start": "next start"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
