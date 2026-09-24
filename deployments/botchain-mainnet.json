@@ -1,0 +1,11 @@
+{
+  "network": "botchainMainnet",
+  "chainId": 677,
+  "contract": "OpenLCEscrow",
+  "address": "0xd35bbde52618F716597cb097Fab3E52D3605A7c6",
+  "deployBlock": 24383220,
+  "txHash": "0x0f80fbd027c4fa8e48921f649afe42649ce944f71c7f903d9e76e2fa8857f7a7",
+  "deployer": "0x1221C500Dfd0D3E477ed741a849edEa303d689Ca",
+  "deployedAt": "2026-09-24T17:43:45.052Z",
+  "explorer": "https://scan.botchain.ai/address/0xd35bbde52618F716597cb097Fab3E52D3605A7c6"
+}
