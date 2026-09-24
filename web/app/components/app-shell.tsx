@@ -9,7 +9,7 @@ import { STATUS, TERMS, statusLabel, statusTone } from "@/lib/order-status";
 import { MotionShell } from "@/app/components/motion";
 import { BuiltOnBotChain } from "@/app/components/built-on-botchain";
 import { SignInGate } from "@/app/components/sign-in-gate";
-import { clearSession, signOutSession, updateWorkspaceName, useSession, type DemoSession } from "@/lib/openlc-api";
+import { signOutToLanding, updateWorkspaceName, useSession, type DemoSession } from "@/lib/openlc-api";
 import { BOTCHAIN } from "@/lib/chain";
 import { isWalletMismatch, shortAddress, useWallet } from "@/lib/wallet";
 
@@ -93,10 +93,9 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
     document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
   }, [open]);
-  // Clearing the session re-renders every signed-in page as the sign-in gate, on the same URL.
-  const signOut = async () => {
+  const signOut = () => {
     setOpen(false);
-    try { await signOutSession(); } catch { clearSession(); }
+    void signOutToLanding();
   };
   const beginEdit = () => {
     setDraft(company);
@@ -136,7 +135,7 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
             {session && <a role="menuitem" href="/trust">Trust profile</a>}
             <a role="menuitem" href="/legal/terms">Terms of Service</a>
             <a role="menuitem" href="/legal/dispute-policy">Dispute Resolution Policy</a>
-            {session && <button type="button" role="menuitem" onClick={() => void signOut()}><LogOut size={14} aria-hidden="true" />Sign out</button>}
+            {session && <button type="button" role="menuitem" onClick={signOut}><LogOut size={14} aria-hidden="true" />Sign out</button>}
           </div>
         )}
       </div>

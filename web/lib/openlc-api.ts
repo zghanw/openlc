@@ -354,14 +354,24 @@ export function useSession(): DemoSession | null {
   return session;
 }
 
-export async function signOutSession(): Promise<void> {
-  clearSession();
-  if (!hasSupabaseConfig()) return;
-  const { createClient } = await import("@supabase/supabase-js");
-  const client = createClient(SUPABASE_URL!, SUPABASE_KEY!, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  });
-  await client.auth.signOut();
+/**
+ * Signing out ends on the landing. Storage is cleared without the in-page session event, so the page
+ * being left never flashes the sign-in gate on its way out (other tabs still get the storage event).
+ */
+export async function signOutToLanding(): Promise<void> {
+  window.localStorage.removeItem(STORAGE_KEY);
+  if (hasSupabaseConfig()) {
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const client = createClient(SUPABASE_URL!, SUPABASE_KEY!, {
+        auth: { persistSession: true, autoRefreshToken: true },
+      });
+      await client.auth.signOut();
+    } catch {
+      // The OpenLC session is already gone; a failed Supabase sign-out must not keep anyone here.
+    }
+  }
+  window.location.assign("/");
 }
 
 export async function apiRequest<T>(

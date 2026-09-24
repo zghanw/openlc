@@ -219,6 +219,11 @@ body:has(.lp) {
   transform: translateY(2px);
 }
 
+/* A ghost pill that moves you forward (the close section's demo pill) nudges its arrow forward. */
+.lp-entry .lp-pill--ghost:hover svg {
+  transform: translateX(3px);
+}
+
 .lp-pill--outline {
   background: rgba(0, 0, 0, 0.2);
   border-color: rgba(255, 255, 255, 0.24);

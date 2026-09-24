@@ -48,7 +48,7 @@ function Brand() {
 function Consent() {
   return (
     <p className="lp-consent">
-      By continuing you agree to the <a href="/legal/terms">Terms of Service</a> and the{" "}
+      By signing in you agree to the <a href="/legal/terms">Terms of Service</a> and the{" "}
       <a href="/legal/dispute-policy">Dispute Resolution Policy</a>.
     </p>
   );
@@ -73,8 +73,8 @@ function Header() {
           <a href="#try">Try it</a>
           <a href="#truths">Security</a>
         </nav>
-        <WalletEntry destination="/workspace" variant="header">
-          Open workspace
+        <WalletEntry destination="/workspace" variant="header" signedInLabel="Open workspace">
+          Sign in
         </WalletEntry>
       </div>
     </header>
@@ -112,7 +112,7 @@ function Hero() {
             delivery are proven, and holds only the disputed part.
           </p>
           <div className="lp-actions">
-            <WalletEntry destination={TRY_DESTINATION}>Try it with one wallet</WalletEntry>
+            <WalletEntry destination="/workspace" signedInLabel="Open workspace">Sign in with MetaMask</WalletEntry>
             <a className="lp-pill lp-pill--ghost" href="#timeline">
               See how it works <ArrowDown size={16} aria-hidden="true" />
             </a>
@@ -509,10 +509,8 @@ function Close() {
           <span className="lp-display-line">Ship on proof.</span>
         </h2>
         <div className="lp-actions">
-          <WalletEntry destination={TRY_DESTINATION}>Try it with one wallet</WalletEntry>
-          <a className="lp-pill lp-pill--ghost" href="#timeline">
-            See how it works <ArrowDown size={16} aria-hidden="true" />
-          </a>
+          <WalletEntry destination="/workspace" signedInLabel="Open workspace">Sign in with MetaMask</WalletEntry>
+          <WalletEntry destination={TRY_DESTINATION} variant="ghost">Try it with one wallet</WalletEntry>
         </div>
         <Consent />
       </motion.div>

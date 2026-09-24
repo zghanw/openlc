@@ -4,7 +4,7 @@ import { Fragment, type ReactNode } from "react";
 import { ArrowRight, Clock, LoaderCircle, LogOut, PenLine, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWalletSignIn } from "@/lib/auth";
-import { clearSession, signOutSession, useSession } from "@/lib/openlc-api";
+import { signOutToLanding, useSession } from "@/lib/openlc-api";
 import { TERMS } from "@/lib/order-status";
 import { shortAddress, useWallet } from "@/lib/wallet";
 
@@ -29,7 +29,6 @@ export function SignInGate({ signedInAs }: { signedInAs?: string }) {
   const { phase, error, noWallet, start } = useWalletSignIn();
   const busy = phase !== "idle";
   const switching = Boolean(signedInAs && wallet.account);
-  const signOut = () => { signOutSession().catch(clearSession); };
 
   return (
     <section className="signin-gate" aria-labelledby="signin-gate-title">
@@ -56,7 +55,7 @@ export function SignInGate({ signedInAs }: { signedInAs?: string }) {
             {busy ? PROGRESS[phase] : switching ? `Sign in as ${shortAddress(wallet.account!)}` : "Sign in with MetaMask"}
             {busy ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : <ArrowRight size={15} aria-hidden="true" />}
           </Button>
-          {switching && <Button variant="outline" disabled={busy} onClick={signOut}><LogOut size={15} aria-hidden="true" />Sign out</Button>}
+          {switching && <Button variant="outline" disabled={busy} onClick={() => void signOutToLanding()}><LogOut size={15} aria-hidden="true" />Sign out</Button>}
         </div>
         {!switching && wallet.account && !busy && <p className="signin-note">MetaMask is on <code>{shortAddress(wallet.account)}</code>.</p>}
         {noWallet && (

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { useWalletSignIn, type SignInPhase } from "@/lib/auth";
-import { loadSession } from "@/lib/openlc-api";
+import { loadSession, useSession } from "@/lib/openlc-api";
 
 const PROGRESS: Record<Exclude<SignInPhase, "idle">, string> = {
   connecting: "Connecting…",
@@ -35,32 +35,38 @@ function useWalletEntry(destination: string) {
   return { phase, error: signIn.error, noWallet: signIn.noWallet, start };
 }
 
+const PILL = {
+  primary: "lp-pill lp-pill--solid",
+  ghost: "lp-pill lp-pill--ghost",
+  header: "lp-pill lp-pill--outline lp-pill--small",
+} as const;
+
+/** A landing pill into the app. Each pill runs its own sign-in, so only the clicked one shows progress.
+ *  `signedInLabel` replaces the label while a valid session exists (the click then goes straight through). */
 export function WalletEntry({
   destination,
   children,
+  signedInLabel,
   variant = "primary",
 }: {
   destination: string;
   children: ReactNode;
-  variant?: "primary" | "header";
+  signedInLabel?: ReactNode;
+  variant?: keyof typeof PILL;
 }) {
   const { phase, error, noWallet, start } = useWalletEntry(destination);
+  const session = useSession();
   const busy = phase !== "idle";
+  const iconSize = variant === "header" ? 14 : 17;
 
   return (
     <div className={`lp-entry lp-entry--${variant}`}>
-      <button
-        type="button"
-        className={variant === "primary" ? "lp-pill lp-pill--solid" : "lp-pill lp-pill--outline lp-pill--small"}
-        onClick={start}
-        disabled={busy}
-        aria-busy={busy}
-      >
-        <span>{busy ? PROGRESS[phase] : children}</span>
+      <button type="button" className={PILL[variant]} onClick={start} disabled={busy} aria-busy={busy}>
+        <span>{busy ? PROGRESS[phase] : session && signedInLabel ? signedInLabel : children}</span>
         {busy ? (
-          <LoaderCircle className="lp-spin" size={variant === "primary" ? 17 : 14} aria-hidden="true" />
+          <LoaderCircle className="lp-spin" size={iconSize} aria-hidden="true" />
         ) : (
-          <ArrowRight size={variant === "primary" ? 17 : 14} aria-hidden="true" />
+          <ArrowRight size={iconSize} aria-hidden="true" />
         )}
       </button>
       {(noWallet || error) && (
