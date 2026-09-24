@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-24T07:33:53.512Z",
+  "generatedAt": "2026-09-24T14:03:00.510Z",
   "title": "Design System: OpenLC",
   "extensions": {
     "colorMeta": {
@@ -182,7 +182,8 @@
           "oklch(0.7 0 0)",
           "oklch(0.82 0 0)",
           "oklch(0.95 0 0)"
-        ]
+        ],
+        "group": "No-Hue Landing"
       },
       "landing-card": {
         "role": "neutral",
@@ -197,7 +198,8 @@
           "oklch(0.7 0.003 286)",
           "oklch(0.82 0.003 286)",
           "oklch(0.95 0.003 286)"
-        ]
+        ],
+        "group": "No-Hue Landing"
       },
       "landing-ink": {
         "role": "neutral",
@@ -212,7 +214,8 @@
           "oklch(0.7 0.003 286)",
           "oklch(0.82 0.003 286)",
           "oklch(0.95 0.003 286)"
-        ]
+        ],
+        "group": "No-Hue Landing"
       },
       "landing-soft": {
         "role": "neutral",
@@ -227,7 +230,8 @@
           "oklch(0.7 0.005 286)",
           "oklch(0.82 0.005 286)",
           "oklch(0.95 0.005 286)"
-        ]
+        ],
+        "group": "No-Hue Landing"
       },
       "landing-muted": {
         "role": "neutral",
@@ -242,7 +246,8 @@
           "oklch(0.7 0.013 286)",
           "oklch(0.82 0.013 286)",
           "oklch(0.95 0.013 286)"
-        ]
+        ],
+        "group": "No-Hue Landing"
       },
       "landing-pill-ink": {
         "role": "neutral",
@@ -257,7 +262,163 @@
           "oklch(0.7 0.005 286)",
           "oklch(0.82 0.005 286)",
           "oklch(0.95 0.005 286)"
-        ]
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-light": {
+        "role": "neutral",
+        "displayName": "White Light",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.59 0 0)",
+          "oklch(0.7 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.95 0 0)"
+        ],
+        "group": "No-Hue Landing",
+        "alphaSteps": {
+          "hairline": 0.08,
+          "staff": 0.1,
+          "segment-edge": 0.13,
+          "hairline-strong": 0.14,
+          "dashed-outline": 0.16,
+          "pill-ring": 0.45,
+          "lit-edge": 0.7,
+          "signature-stroke": 0.85
+        },
+        "purpose": "The only landing colour, used as light at graded alphas; unlisted alphas are stops inside glows and gradients."
+      },
+      "landing-hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "rgba(255, 255, 255, 0.08)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.59 0 0)",
+          "oklch(0.7 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.95 0 0)"
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-hairline-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "rgba(255, 255, 255, 0.14)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.59 0 0)",
+          "oklch(0.7 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.95 0 0)"
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-pill-base": {
+        "role": "neutral",
+        "displayName": "Pill Silver",
+        "canonical": "#e4e4e7",
+        "tonalRamp": [
+          "oklch(0.15 0.005 286)",
+          "oklch(0.26 0.005 286)",
+          "oklch(0.37 0.005 286)",
+          "oklch(0.48 0.005 286)",
+          "oklch(0.59 0.005 286)",
+          "oklch(0.7 0.005 286)",
+          "oklch(0.82 0.005 286)",
+          "oklch(0.95 0.005 286)"
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-card-base": {
+        "role": "neutral",
+        "displayName": "Gloss Base",
+        "canonical": "#08080a",
+        "tonalRamp": [
+          "oklch(0.15 0.003 286)",
+          "oklch(0.26 0.003 286)",
+          "oklch(0.37 0.003 286)",
+          "oklch(0.48 0.003 286)",
+          "oklch(0.59 0.003 286)",
+          "oklch(0.7 0.003 286)",
+          "oklch(0.82 0.003 286)",
+          "oklch(0.95 0.003 286)"
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-mock-top": {
+        "role": "neutral",
+        "displayName": "Mock Card Top",
+        "canonical": "#1b1b1e",
+        "tonalRamp": [
+          "oklch(0.15 0.005 286)",
+          "oklch(0.26 0.005 286)",
+          "oklch(0.37 0.005 286)",
+          "oklch(0.48 0.005 286)",
+          "oklch(0.59 0.005 286)",
+          "oklch(0.7 0.005 286)",
+          "oklch(0.82 0.005 286)",
+          "oklch(0.95 0.005 286)"
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-mock-base": {
+        "role": "neutral",
+        "displayName": "Mock Card Base",
+        "canonical": "#111113",
+        "tonalRamp": [
+          "oklch(0.15 0.004 286)",
+          "oklch(0.26 0.004 286)",
+          "oklch(0.37 0.004 286)",
+          "oklch(0.48 0.004 286)",
+          "oklch(0.59 0.004 286)",
+          "oklch(0.7 0.004 286)",
+          "oklch(0.82 0.004 286)",
+          "oklch(0.95 0.004 286)"
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-segment-top": {
+        "role": "neutral",
+        "displayName": "Segment Graphite",
+        "canonical": "#2c2c30",
+        "tonalRamp": [
+          "oklch(0.15 0.007 286)",
+          "oklch(0.26 0.007 286)",
+          "oklch(0.37 0.007 286)",
+          "oklch(0.48 0.007 286)",
+          "oklch(0.59 0.007 286)",
+          "oklch(0.7 0.007 286)",
+          "oklch(0.82 0.007 286)",
+          "oklch(0.95 0.007 286)"
+        ],
+        "group": "No-Hue Landing"
+      },
+      "landing-segment-base": {
+        "role": "neutral",
+        "displayName": "Segment Base",
+        "canonical": "#151517",
+        "tonalRamp": [
+          "oklch(0.15 0.004 286)",
+          "oklch(0.26 0.004 286)",
+          "oklch(0.37 0.004 286)",
+          "oklch(0.48 0.004 286)",
+          "oklch(0.59 0.004 286)",
+          "oklch(0.7 0.004 286)",
+          "oklch(0.82 0.004 286)",
+          "oklch(0.95 0.004 286)"
+        ],
+        "group": "No-Hue Landing"
       }
     },
     "typographyMeta": {
@@ -300,6 +461,50 @@
       "mono": {
         "displayName": "Mono",
         "purpose": "Hashes and addresses in the workspace."
+      },
+      "landing-contract-title": {
+        "displayName": "Contract Title",
+        "purpose": "The bento contract tile head; Bricolage."
+      },
+      "landing-card-title": {
+        "displayName": "Landing Card Title",
+        "purpose": "Bento tile heads."
+      },
+      "landing-figure": {
+        "displayName": "Landing Figure",
+        "purpose": "Split-legend amounts."
+      },
+      "landing-entry-title": {
+        "displayName": "Entry Title",
+        "purpose": "Timeline entry titles."
+      },
+      "landing-spec-value": {
+        "displayName": "Spec Value",
+        "purpose": "Contract spec row values."
+      },
+      "landing-wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "The OpenLC wordmark in the landing header."
+      },
+      "landing-action": {
+        "displayName": "Landing Action",
+        "purpose": "Pills and lane heads."
+      },
+      "landing-card-body": {
+        "displayName": "Landing Card Body",
+        "purpose": "Card and entry body text."
+      },
+      "landing-caption": {
+        "displayName": "Landing Caption",
+        "purpose": "Captions, citations, consent and notes."
+      },
+      "landing-mock": {
+        "displayName": "Mock UI",
+        "purpose": "Text inside the Try-it mock cards only."
+      },
+      "landing-mock-small": {
+        "displayName": "Mock UI Small",
+        "purpose": "Secondary text inside the Try-it mock cards only."
       }
     },
     "shadows": [

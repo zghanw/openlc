@@ -13,12 +13,22 @@ colors:
   ops-rule: "oklch(0.3 0.005 260)"
   ops-ink: "oklch(0.95 0 0)"
   ops-muted: "oklch(0.65 0 0)"
+  # No-Hue Landing: white light, zinc greys and near-black gloss; no hue.
   landing-black: "#000000"
   landing-card: "#0d0d0f"
   landing-ink: "#f4f4f5"
   landing-soft: "#d4d4d8"
   landing-muted: "#a1a1aa"
   landing-pill-ink: "#09090b"
+  landing-light: "#ffffff"
+  landing-hairline: "rgba(255, 255, 255, 0.08)"
+  landing-hairline-strong: "rgba(255, 255, 255, 0.14)"
+  landing-pill-base: "#e4e4e7"
+  landing-card-base: "#08080a"
+  landing-mock-top: "#1b1b1e"
+  landing-mock-base: "#111113"
+  landing-segment-top: "#2c2c30"
+  landing-segment-base: "#151517"
 typography:
   display:
     fontFamily: "Bricolage Grotesque, Mona Sans, ui-sans-serif, system-ui, sans-serif"
@@ -44,6 +54,64 @@ typography:
     fontSize: "clamp(1rem, 0.95rem + 0.25vw, 1.125rem)"
     fontWeight: 400
     lineHeight: 1.6
+  landing-contract-title:
+    fontFamily: "Bricolage Grotesque, Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(1.75rem, 1.25rem + 1.6vw, 2.75rem)"
+    fontWeight: 600
+    lineHeight: 1.06
+    letterSpacing: "-0.026em"
+    fontVariation: "\"opsz\" 96"
+  landing-card-title:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem)"
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: "-0.02em"
+  landing-figure:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(1.125rem, 1rem + 0.5vw, 1.375rem)"
+    fontWeight: 620
+    letterSpacing: "-0.015em"
+  landing-entry-title:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(1.0625rem, 1rem + 0.3vw, 1.25rem)"
+    fontWeight: 560
+    lineHeight: 1.35
+    letterSpacing: "-0.012em"
+  landing-spec-value:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 600
+    letterSpacing: "-0.015em"
+  landing-wordmark:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "17px"
+    fontWeight: 640
+    letterSpacing: "-0.02em"
+  landing-action:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "15.5px"
+    fontWeight: 600
+  landing-card-body:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "15px"
+    fontWeight: 400
+    lineHeight: 1.6
+  landing-caption:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.55
+  landing-mock:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 400
+    lineHeight: 1.4
+  landing-mock-small:
+    fontFamily: "Mona Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "10.5px"
+    fontWeight: 400
+    lineHeight: 1.35
   title:
     fontFamily: "Mona Sans, system-ui, sans-serif"
     fontSize: "26px"
@@ -81,8 +149,13 @@ rounded:
   sm: "6px"
   md: "8px"
   lg: "12px"
-  landing-card: "18px"
   full: "999px"
+  # No-Hue Landing
+  landing-tick: "3px"
+  landing-bar: "14px"
+  landing-card: "18px"
+  landing-mark-face: "29px"
+  landing-mark: "30px"
 spacing:
   xs: "4px"
   sm: "8px"
@@ -203,12 +276,19 @@ All three state hues also appear as a *soft* fill mixed at 14% into transparent 
 - **Rule Grey** (ops-rule): stronger borders for table header rules, outline buttons, dashed sample tags and file drops.
 - **Paper White** (ops-ink): workspace text, and also the primary button fill (the primary action is near-white on black, not green).
 - **Helper Grey** (ops-muted): helper text under a value, captions and table headers. Labels people read as controls use Paper White instead.
-- **Landing Black** (landing-black): the landing ground, graded down to #060606 at the foot.
-- **Gloss Black** (landing-card): the top of the glossy card gradient (to #08080a).
-- **Silver White** (landing-ink): landing headlines and primary text.
+### No-Hue Landing
+The landing's colours are a separate group from the workspace tokens above. They use no hue at all.
+- **Landing Black** (landing-black): the landing ground, graded down to #060606 at the foot. Black at partial alpha is the scrolled header (74%), the hero scrim and the drop shadows.
+- **White Light** (landing-light): the landing's only colour, used as light at graded alphas. The reused steps are: 0.08 for the hairline, 0.1 for the timeline staff and mock-card edges, 0.13-0.16 for segment edges, the strong hairline and dashed credit outlines, 0.45 for the pill ring and the credit swatch, and 0.7-0.85 for lit edges, glow cores and signature strokes. The other alphas are stops inside glows and gradients (pillar, mark, beam). Solid white is the focus ring, the lit dots and the top of the solid pill.
+- **Hairline** (landing-hairline) and **Strong Hairline** (landing-hairline-strong): the card border and divider, and the pill-ghost, state-pill and field border.
+- **Silver White** (landing-ink): landing headlines and primary text, and the fill of lit day and state pills.
 - **Soft Silver** (landing-soft): the fact strip and secondary values.
 - **Quiet Silver** (landing-muted): landing body and ledes (7.8:1 on black).
 - **Pill Ink** (landing-pill-ink): text on white pills and lit day markers.
+- **Pill Silver** (landing-pill-base): the bottom stop of the solid pill's white-to-silver gradient.
+- **Gloss Black** (landing-card) to **Gloss Base** (landing-card-base): the glossy card gradient.
+- **Mock Card** (landing-mock-top to landing-mock-base): the raised gradient of the mock wallet and form cards in "Try it".
+- **Segment Graphite** (landing-segment-top to landing-segment-base): the unsplit escrow bar in the partial-claim demonstration.
 
 ### Named Rules
 **The One Accent Rule.** Green appears in the workspace only for active and success states. If a green element does not mean "you are here", "this is focused" or "this is done", it is wrong.
@@ -229,6 +309,8 @@ All three state hues also appear as a *soft* fill mixed at 14% into transparent 
 - **Display** (620, fluid up to 5.5rem, 1.04): the landing hero and close headline. Each sentence holds one line at every width, and the close never outranks the hero.
 - **Headline** (600, clamp 2rem-3.5rem, 1.06): landing section heads and the contract tile title.
 - **Landing lede** (400, 1-1.125rem, 1.6, max 60ch): the paragraph under a landing head, in Quiet Silver.
+- **Landing card titles** (Mona Sans, 600, at 104% width): bento tile heads (clamp 1.25-1.5rem), timeline entry titles (clamp 1.0625-1.25rem), split-legend figures (clamp 1.125-1.375rem) and spec values (1.25rem). The contract tile title uses Bricolage at clamp 1.75-2.75rem.
+- **Landing text steps**: 15.5px for actions and lane heads, 15px for card body, 14px for nav and meta, 13px for captions, citations and notes, and 17px for the wordmark. Mock UI inside the "Try it" illustrations uses 11px and 10.5px; those sizes stay inside the mocks.
 - **Title** (700, 26px, 1.16): the workspace page and order titles (order header 28px). Normal width, opsz 36.
 - **Section** (700, 15.5px): panel and card headings. List card heads are 1rem/600 and action heads 19px.
 - **Metric** (650, 1.875rem, 1.1): money tile values, with the unit in a 0.875rem muted `small`. On mobile it drops to 1.375rem.
@@ -269,7 +351,7 @@ The workspace is flat and tonally layered: ground, sidebar, card and raised grey
 
 ## Shapes
 
-The workspace uses gently rounded rectangles: 8px (`--radius`) for buttons, inputs, nav rows and avatars; 12px (`--radius-lg`) for cards, tiles, panels and dialogs; 6px for pills, role tags and sample tags; full rounds only for status dots, count badges and the network pill. Borders are 1px throughout; dashed borders mark something provisional (sample tags, file drops, add-line buttons). The landing is softer and more luminous: 18px glossy cards, 12px inner mock cards, a 30px squircle for the mark, full pills for every action and day marker, and 14px ends on the split bar. A dashed outline on the landing means an unsecured invoice (credit); a solid silver fill means locked money (escrow).
+The workspace uses gently rounded rectangles: 8px (`--radius`) for buttons, inputs, nav rows and avatars; 12px (`--radius-lg`) for cards, tiles, panels and dialogs; 6px for pills, role tags and sample tags; full rounds only for status dots, count badges and the network pill. Borders are 1px throughout; dashed borders mark something provisional (sample tags, file drops, add-line buttons). The landing is softer and more luminous: 18px glossy cards, 12px inner mock cards, a 30px squircle for the mark (29px on its inner face), full pills for every action and day marker, 14px ends on the split bar, and 3px ticks on swatches and progress segments. A dashed outline on the landing means an unsecured invoice (credit); a solid silver fill means locked money (escrow).
 
 ## Components
 
