@@ -28,11 +28,24 @@ async function requestOnce(fetcher: typeof fetch, url: string, init: RequestInit
   return fetcher(url, { ...init, signal: AbortSignal.timeout(30_000) });
 }
 
+/** Thrown for a response whose JSON answer was cut off - most often because Gemini 3's thinking
+ *  tokens ate the whole maxOutputTokens budget before any answer text was written. Handled like a
+ *  transient failure: the caller falls back to the next configured model, if there is one. */
+class GeminiTruncatedResponseError extends Error {}
+
 async function parseGeneratedJson<T>(response: Response): Promise<T> {
-  const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-  const text = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("");
-  if (!text) throw new Error("Gemini returned no JSON content");
-  return JSON.parse(text) as T;
+  const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }> };
+  const candidate = body.candidates?.[0];
+  const text = candidate?.content?.parts?.map((part) => part.text ?? "").join("");
+  if (!text || candidate?.finishReason === "MAX_TOKENS") {
+    throw new GeminiTruncatedResponseError("Gemini response was cut off (MAX_TOKENS)");
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // Some other truncation or malformed answer; same recovery as an explicit MAX_TOKENS finish.
+    throw new GeminiTruncatedResponseError("Gemini response was cut off (MAX_TOKENS)");
+  }
 }
 
 export class GeminiJsonModel implements JsonModel {
@@ -59,7 +72,9 @@ export class GeminiJsonModel implements JsonModel {
           responseMimeType: "application/json",
           responseJsonSchema: jsonSchema,
           temperature: 0.2,
-          maxOutputTokens: 2048,
+          // Gemini 3's thinking tokens count against this cap before any answer text is written,
+          // so a small cap can burn the whole budget on thinking and cut the JSON answer off mid-string.
+          maxOutputTokens: 16384,
         },
       }),
     };
@@ -76,7 +91,14 @@ export class GeminiJsonModel implements JsonModel {
         if (!isLastModel) { lastError = error; continue; }
         throw error;
       }
-      if (response.ok) return parseGeneratedJson<T>(response);
+      if (response.ok) {
+        try {
+          return await parseGeneratedJson<T>(response);
+        } catch (error) {
+          if (!isLastModel && error instanceof GeminiTruncatedResponseError) { lastError = error; continue; }
+          throw error;
+        }
+      }
       if (!isLastModel && FALLBACK_STATUSES.has(response.status)) {
         lastError = new Error(`Gemini request failed (${response.status}): ${await response.text()}`);
         continue;

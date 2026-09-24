@@ -68,6 +68,38 @@ describe("GeminiJsonModel model fallback", () => {
     }
   });
 
+  it("falls back to the next model when the first response is cut off by MAX_TOKENS", async () => {
+    const calls: string[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.includes("/models/model-a:")) {
+        // Thinking tokens ate the whole budget: finishReason is MAX_TOKENS and the answer is empty/cut off.
+        return json({ candidates: [{ content: { parts: [{ text: '{"buyerRefundUnits": "1' }] }, finishReason: "MAX_TOKENS" }] });
+      }
+      return ok({ hello: "world" });
+    };
+    const model = new GeminiJsonModel("key", "model-a,model-b", fetcher);
+    const result = await model.generateJson("system", "input");
+    expect(result).toEqual({ hello: "world" });
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toContain("/models/model-a:");
+    expect(calls[1]).toContain("/models/model-b:");
+  });
+
+  it("throws a clear cut-off error, never the raw JSON parser text, when the last model's answer is truncated", async () => {
+    const fetcher: typeof fetch = async () =>
+      json({ candidates: [{ content: { parts: [{ text: '{"buyerRefundUnits": "1' }] }, finishReason: "MAX_TOKENS" }] });
+    const model = new GeminiJsonModel("key", "model-a,model-b", fetcher);
+    await expect(model.generateJson("system", "input")).rejects.toThrow("Gemini response was cut off (MAX_TOKENS)");
+  });
+
+  it("also falls back on malformed JSON with no MAX_TOKENS finish reason, and still throws the clear error on the last model", async () => {
+    const fetcher: typeof fetch = async () => json({ candidates: [{ content: { parts: [{ text: "not valid json" }] } }] });
+    const model = new GeminiJsonModel("key", "gemini-solo", fetcher);
+    await expect(model.generateJson("system", "input")).rejects.toThrow("Gemini response was cut off (MAX_TOKENS)");
+  });
+
   it("a single-model string behaves as today: retries a transient status before succeeding", async () => {
     vi.useFakeTimers();
     try {
