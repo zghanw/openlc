@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Box, Building2, Check, ClipboardCopy, Link2, Plus, ScanSearch, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,7 +16,7 @@ import { loadSession, type InvitationDelivery, type WorkspaceProfile } from "@/l
 type DraftLine = { id: number; description: string; quantity: number; unit: string; unitPrice: number };
 const blankLine = (id: number): DraftLine => ({ id, description: "", quantity: 1, unit: "units", unitPrice: 0 });
 
-export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, company }: { open: boolean; onOpenChange: (open: boolean) => void; onCreate: (order: DemoOrder) => void; profile?: WorkspaceProfile; company: string }) {
+export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, company, initialDemoSupplier = false }: { open: boolean; onOpenChange: (open: boolean) => void; onCreate: (order: DemoOrder) => void; profile?: WorkspaceProfile; company: string; initialDemoSupplier?: boolean }) {
   const [page, setPage] = useState<1 | 2>(1);
   const [role, setRole] = useState<"buyer" | "supplier">("buyer");
   const [counterpartyName, setCounterpartyName] = useState("");
@@ -55,6 +55,12 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
     setUseDemoSupplier(checked);
     if (checked) { setDepositPercent(0); setDispatchPercent(0); }
   };
+
+  // Opened from the one-wallet link (/orders?action=create&demo=1): start with the demo supplier ticked,
+  // through the same toggle the checkbox uses, so every validation and the release plan still apply.
+  useEffect(() => {
+    if (open && initialDemoSupplier) toggleDemoSupplier(true);
+  }, [open, initialDemoSupplier]);
 
   const reset = () => {
     setRole("buyer"); setCounterpartyName(""); setCounterpartyEmail(""); setReference(""); setDelivery(""); setLocation("");

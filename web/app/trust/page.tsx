@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Copy, ExternalLink } from "lucide-react";
-import { AppShell, Notice, PageTitle, Skeleton } from "@/app/components/app-shell";
+import { AppShell, Notice, Skeleton } from "@/app/components/app-shell";
 import { TrustProfileView } from "@/app/components/trust-profile";
 import { Button } from "@/components/ui/button";
 import { loadTrustProfile, setTrustProfilePublished, type OrganizationTrustProfile } from "@/lib/openlc-api";
@@ -27,10 +27,9 @@ export default function TrustSettingsPage() {
   };
   const publicUrl = profile && typeof window !== "undefined" ? `${window.location.origin}/companies/${profile.slug}` : "";
   return (
-    <AppShell active="none" company={workspace.company}>
-      <PageTitle title="Trust profile" description="Publish verified company activity without exposing commercial records." actions={profile && (
+    <AppShell active="none" title="Trust profile" pageHeading={false} company={workspace.company} description="Publish verified company activity without exposing commercial records." actions={profile && (
         <Button className={profile.published ? "" : "btn-primary"} variant={profile.published ? "outline" : "default"} disabled={saving} onClick={() => void update(!profile.published)}>{saving ? "Saving" : profile.published ? "Unpublish profile" : "Publish profile"}</Button>
-      )} />
+      )}>
       {error && <Notice tone="error">{error}</Notice>}
       {!profile ? <section className="panel"><Skeleton lines={5} /></section> : <>
         <section className="panel trust-publish">

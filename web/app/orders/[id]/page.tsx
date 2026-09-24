@@ -10,7 +10,7 @@ import { ActionPanel } from "@/app/components/order-actions";
 import { DocumentsPanel } from "@/app/components/order-documents";
 import { ReleasePlanBar, releaseProgress } from "@/app/components/release-plan";
 import { OrderStepper, OrderTimeline } from "@/app/components/order-stepper";
-import { AnimatedAmount, LiftCard, StageSwitch } from "@/app/components/motion";
+import { StageSwitch } from "@/app/components/motion";
 import { type DemoOrder, formatDate, formatDateTime, formatOrderMoney as money, totalQuantity } from "@/lib/demo-orders";
 import { loadClaim } from "@/lib/dispute-actions";
 import { getLiveOrder, previewLiveInvite } from "@/lib/live-orders";
@@ -86,7 +86,7 @@ export default function OrderPage() {
 
   if (!ready) {
     return (
-      <AppShell active="orders" company={workspace.company}>
+      <AppShell active="orders" title="Orders" company={workspace.company}>
         <div className="panel"><Skeleton lines={2} /></div>
         <div className="panel"><Skeleton lines={4} /></div>
       </AppShell>
@@ -95,7 +95,7 @@ export default function OrderPage() {
   if (!order && inviteToken && inviteAuthRequired) return <InviteGate error={loadError} />;
   if (!order) {
     return (
-      <AppShell active="orders" company={workspace.company}>
+      <AppShell active="orders" title="Orders" pageHeading={false} company={workspace.company}>
         <div className="empty-state">
           <FileText size={26} aria-hidden="true" />
           <h1>Order not available</h1>
@@ -121,16 +121,16 @@ export default function OrderPage() {
   };
 
   return (
-    <AppShell active="orders" company={workspace.company}>
+    <AppShell active="orders" title="Orders" pageHeading={false} company={workspace.company}>
       <a className="back-link" href="/orders"><ArrowLeft size={14} aria-hidden="true" />All orders</a>
-      <LiftCard as="header" className={`order-header order-header-${roleKey} reveal`} tilt={1.5} lift={2}>
+      <header className={`order-header order-header-${roleKey} reveal`}>
         <div className="order-header-top">
           <div>
             <div className="order-head-tags"><StatusPill status={order.status} /><RoleTag role={order.role} compact />{order.source === "sample" && <SampleTag label={order.guidedDemo ? "Guided demo" : undefined} />}</div>
             <h1>{order.reference}</h1>
             <p>{order.item}. {money(quantity)} units across {order.items.length} {order.items.length === 1 ? "line" : "lines"}. {meta.summary}</p>
           </div>
-          <div className="order-head-total"><span>Order value</span><strong><AnimatedAmount value={order.value} /> <small>{order.currency}</small></strong></div>
+          <div className="order-head-total"><span>Order value</span><strong>{money(order.value)} <small>{order.currency}</small></strong></div>
         </div>
         <dl className="fact-strip">
           <div><dt>Buyer</dt><dd><strong>{order.buyer}</strong>{order.raw?.buyerEmail && <small>{order.raw.buyerEmail}</small>}</dd></div>
@@ -139,7 +139,7 @@ export default function OrderPage() {
           <div><dt>Delivery location</dt><dd><strong>{order.deliveryLocation}</strong></dd></div>
           <div><dt>Escrow<HelpHint text="Funds are held in escrow on BOT Chain, not by OpenLC, and are released according to the inspection result and the Dispute Resolution Policy." /></dt><dd><strong>{escrowState}</strong>{order.funding && <><small className="escrow-object-id" title={order.funding.escrowObjectId}>#{order.funding.escrowObjectId}</small><span className="escrow-object-actions"><button type="button" className="escrow-copy-button" onClick={() => void copyEscrowObject()} aria-label="Copy escrow ID">{escrowCopied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}{escrowCopied ? "Copied" : "Copy"}</button>{order.source === "backend" && order.funding.verificationStatus === "verified_on_chain" && <a className="link" href={explorerTxUrl(order.funding.transactionDigest)} target="_blank" rel="noreferrer">View on {BOTCHAIN.chainName} Explorer<ExternalLink size={11} aria-hidden="true" /></a>}</span></>}</dd></div>
         </dl>
-      </LiftCard>
+      </header>
       {order.source === "sample" && <Notice tone="info">This is a sample order for demonstration. Every action changes only this sample. Nothing is sent to the backend or to BOT Chain.</Notice>}
       {claimError && <Notice tone="error">{claimError}</Notice>}
       {order.guidedDemo && (

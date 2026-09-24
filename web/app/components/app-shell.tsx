@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { AlertCircle, AlertTriangle, Box, Building2, Check, CheckCircle2, ChevronDown, CircleHelp, Info, LogOut, Pencil, Upload, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Box, Building2, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FileText, Info, LayoutDashboard, LogOut, Menu, Pencil, Plus, Upload, WalletCards, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,7 +35,7 @@ export function HelpHint({ text, label = "More information" }: { text: string; l
 /** Status pills stay still. Pass live only for a process running in front of the user, such as mediation. */
 export function StatusPill({ status, className = "", live = false }: { status: string; className?: string; live?: boolean }) {
   const active = live;
-  return <span className={`pill pill-${statusTone(status)} ${active ? "pill-live" : ""} ${className}`} title={STATUS[status as keyof typeof STATUS]?.summary}>{active && <i aria-hidden="true" />}{statusLabel(status)}</span>;
+  return <span className={`pill pill-${statusTone(status)} pill-status-${status} ${active ? "pill-live" : ""} ${className}`} title={STATUS[status as keyof typeof STATUS]?.summary}>{active && <i aria-hidden="true" />}{statusLabel(status)}</span>;
 }
 
 export function RoleTag({ role, compact = false, label }: { role: "BUYER" | "SUPPLIER"; compact?: boolean; label?: string }) {
@@ -62,18 +62,6 @@ export function Notice({ tone = "info", children, onDismiss }: { tone?: "info" |
   );
 }
 
-export function PageTitle({ title, help, description, actions }: { title: string; help?: string; description?: ReactNode; actions?: ReactNode }) {
-  return (
-    <section className="page-title">
-      <div>
-        <h1>{title}{help && <HelpHint text={help} />}</h1>
-        {description && <p>{description}</p>}
-      </div>
-      {actions && <div className="page-title-actions">{actions}</div>}
-    </section>
-  );
-}
-
 export function Skeleton({ lines = 3, className = "" }: { lines?: number; className?: string }) {
   return <div className={`skeleton ${className}`} aria-hidden="true">{Array.from({ length: lines }, (_, index) => <span key={index} style={{ width: `${88 - (index % 3) * 18}%` }} />)}</div>;
 }
@@ -82,10 +70,10 @@ export function Skeleton({ lines = 3, className = "" }: { lines?: number; classN
 export function EmptyArt({ kind }: { kind: "inbox" | "documents" | "activity" }) {
   return (
     <svg className="empty-art" viewBox="0 0 120 72" width="120" height="72" aria-hidden="true">
-      <rect x="10" y="12" width="100" height="50" rx="6" fill="var(--surface-2)" stroke="var(--rule-strong)" />
-      {kind === "inbox" && <><path d="M10 40h28l6 8h32l6-8h28" fill="none" stroke="var(--rule-strong)" /><rect x="34" y="22" width="52" height="4" rx="2" fill="var(--blue-soft)" /><rect x="34" y="30" width="36" height="4" rx="2" fill="var(--blue-soft)" /></>}
-      {kind === "documents" && <><rect x="26" y="4" width="34" height="44" rx="4" fill="#fff" stroke="var(--rule-strong)" /><rect x="32" y="14" width="22" height="3" rx="1.5" fill="var(--blue-soft)" /><rect x="32" y="22" width="18" height="3" rx="1.5" fill="var(--blue-soft)" /><rect x="32" y="30" width="20" height="3" rx="1.5" fill="var(--blue-soft)" /><rect x="66" y="26" width="30" height="8" rx="2" fill="var(--yellow-soft)" /></>}
-      {kind === "activity" && <><path d="M20 48l18-12 14 8 16-18 14 6 18-10" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="68" cy="26" r="3" fill="var(--blue)" /></>}
+      <rect x="10" y="12" width="100" height="50" rx="6" fill="var(--secondary)" stroke="var(--border-strong)" />
+      {kind === "inbox" && <><path d="M10 40h28l6 8h32l6-8h28" fill="none" stroke="var(--border-strong)" /><rect x="34" y="22" width="52" height="4" rx="2" fill="var(--border-strong)" /><rect x="34" y="30" width="36" height="4" rx="2" fill="var(--border-strong)" /></>}
+      {kind === "documents" && <><rect x="26" y="4" width="34" height="44" rx="4" fill="var(--card)" stroke="var(--border-strong)" /><rect x="32" y="14" width="22" height="3" rx="1.5" fill="var(--border-strong)" /><rect x="32" y="22" width="18" height="3" rx="1.5" fill="var(--border-strong)" /><rect x="32" y="30" width="20" height="3" rx="1.5" fill="var(--border-strong)" /><rect x="66" y="26" width="30" height="8" rx="2" fill="var(--muted-foreground)" /></>}
+      {kind === "activity" && <><path d="M20 48l18-12 14 8 16-18 14 6 18-10" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="68" cy="26" r="3" fill="var(--muted-foreground)" /></>}
     </svg>
   );
 }
@@ -135,7 +123,7 @@ function UserMenu({ company, email }: { company: string; email?: string }) {
   return (
     <>
       <div className="user-menu" ref={ref}>
-        <button type="button" className="user-menu-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <button type="button" className="user-menu-button" aria-haspopup="menu" aria-expanded={open} aria-label={`Account menu, ${company}`} onClick={() => setOpen((value) => !value)}>
           <span className="user-menu-avatar" aria-hidden="true">{initials}</span>
           <span className="user-menu-text"><strong>{company}</strong><small>{email ?? "Not signed in"}</small></span>
           <ChevronDown size={14} aria-hidden="true" />
@@ -177,7 +165,23 @@ function UserMenu({ company, email }: { company: string; email?: string }) {
   );
 }
 
-export function AppShell({ active, company, children, actionCount = 0 }: { active: "overview" | "orders" | "wallet" | "none"; company: string; children: ReactNode; actionCount?: number }) {
+const NAV = [
+  { key: "overview", href: "/workspace", label: "Overview", icon: LayoutDashboard },
+  { key: "orders", href: "/orders", label: "Orders", icon: FileText },
+  { key: "wallet", href: "/wallet", label: "Wallet", icon: WalletCards },
+] as const;
+
+const SIDEBAR_KEY = "openlc.sidebar.collapsed";
+
+/**
+ * The signed-in frame: a fixed left sidebar (collapsible on desktop, an off-canvas drawer below
+ * 768px), a sticky header with the page title, the network state and "New order", then the page.
+ * `title` is the page's h1 unless the page renders its own (`pageHeading={false}`).
+ */
+export function AppShell({ active, company, title, description, actions, pageHeading = true, onNewOrder, children, actionCount = 0 }: {
+  active: "overview" | "orders" | "wallet" | "none"; company: string; title: string; description?: ReactNode; actions?: ReactNode;
+  pageHeading?: boolean; onNewOrder?: () => void; children: ReactNode; actionCount?: number;
+}) {
   const [email, setEmail] = useState<string>();
   const [sessionAddress, setSessionAddress] = useState<string>();
   useEffect(() => {
@@ -202,41 +206,140 @@ export function AppShell({ active, company, children, actionCount = 0 }: { activ
       setResigning(false);
     }
   };
+
+  // The app renders client-only (providers load with ssr: false), so storage can be read on first render.
+  const [collapsed, setCollapsed] = useState(() => { try { return window.localStorage.getItem(SIDEBAR_KEY) === "1"; } catch { return false; } });
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try { window.localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0"); } catch { /* storage blocked: the choice lasts this visit */ }
+  };
+
+  // Mobile drawer: focus moves in on open and stays inside; Escape and the backdrop close it and focus returns to the menu button.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeDrawer = () => { setDrawerOpen(false); menuButtonRef.current?.focus(); };
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const focusable = () => Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []).filter((element) => element.offsetParent !== null);
+    focusable()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setDrawerOpen(false); menuButtonRef.current?.focus(); return; }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    // Leaving the mobile width with the drawer open would strand it open behind the desktop sidebar.
+    const wide = window.matchMedia("(min-width: 768px)");
+    const onWide = () => { if (wide.matches) setDrawerOpen(false); };
+    document.addEventListener("keydown", onKey);
+    wide.addEventListener("change", onWide);
+    return () => { document.removeEventListener("keydown", onKey); wide.removeEventListener("change", onWide); };
+  }, [drawerOpen]);
+
+  const address = wallet.account ?? sessionAddress;
+  const walletState = !wallet.account ? "idle" : wrongNetwork ? "warn" : "ok";
+  const walletStateLabel = walletState === "ok" ? BOTCHAIN.chainName : walletState === "warn" ? "Wrong network" : "Wallet not connected";
+  const initials = company.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "PP";
+  const Heading = pageHeading ? "h1" : "p";
+
   return (
     <MotionShell>
-    <div className="shell">
-      <header className="shell-header">
-        <Logo />
-        <nav aria-label="Main">
-          <a className={active === "overview" ? "nav-current" : ""} href="/workspace" aria-current={active === "overview" ? "page" : undefined}>
-            Overview{actionCount > 0 && <span className="nav-count" aria-label={`${actionCount} actions needed`}>{actionCount}</span>}
+    <div className={`shell${collapsed ? " shell-collapsed" : ""}${drawerOpen ? " shell-drawer-open" : ""}`}>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <aside ref={sidebarRef} id="app-sidebar" className="sidebar" aria-label="Workspace">
+        <div className="sidebar-brand">
+          <a className="sidebar-logo" href="/workspace" title={collapsed ? "OpenLC" : undefined}>
+            <span className="sidebar-mark" aria-hidden="true"><img src="/favicon.png" alt="" width="36" height="36" /></span>
+            <span className="sidebar-text">OpenLC</span>
           </a>
-          <a className={active === "orders" ? "nav-current" : ""} href="/orders" aria-current={active === "orders" ? "page" : undefined}>Orders</a>
-          <a className={active === "wallet" ? "nav-current" : ""} href="/wallet" aria-current={active === "wallet" ? "page" : undefined}>Wallet</a>
+          <button type="button" className="sidebar-close" aria-label="Close menu" onClick={closeDrawer}><X size={18} aria-hidden="true" /></button>
+        </div>
+        <nav className="sidebar-nav" aria-label="Main">
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            const current = active === item.key;
+            const count = item.key === "orders" ? actionCount : 0;
+            return (
+              <a key={item.key} className={`sidebar-link${current ? " sidebar-link-active" : ""}`} href={item.href} aria-current={current ? "page" : undefined}
+                title={collapsed ? item.label : undefined} onClick={() => setDrawerOpen(false)}>
+                <span className="sidebar-indicator" aria-hidden="true" />
+                <Icon size={20} aria-hidden="true" />
+                <span className="sidebar-text">{item.label}</span>
+                {count > 0 && <span className="nav-count" aria-label={`${count} ${count === 1 ? "order needs" : "orders need"} your action`}>{count}</span>}
+              </a>
+            );
+          })}
         </nav>
-        <UserMenu company={company} email={email} />
-      </header>
-      {walletMismatch && (
-        <Notice tone="warning">
-          <span>You switched wallets. Sign in again as <strong>{shortAddress(wallet.account!)}</strong> to continue. Chain actions are disabled until it matches your session.{resignError && <> {resignError}</>}</span>
-          <Button size="sm" variant="outline" disabled={resigning} onClick={() => void resignIn()}>
-            {resigning ? "Signing in…" : "Sign in again"}
-          </Button>
-        </Notice>
-      )}
-      {!walletMismatch && wrongNetwork && (
-        <Notice tone="warning">
-          <span>Your wallet is connected to the wrong network. This app needs <strong>{BOTCHAIN.chainName}</strong>.</span>
-          <Button size="sm" variant="outline" disabled={wallet.switchingNetwork} onClick={() => void wallet.ensureBotChain()}>
-            {wallet.switchingNetwork ? "Switching…" : `Switch to ${BOTCHAIN.chainName}`}
-          </Button>
-        </Notice>
-      )}
-      <main className="shell-main">{children}</main>
-      <footer className="shell-footer">
-        <BuiltOnBotChain />
-        <span><a href="/legal/terms">Terms of Service</a><a href="/legal/dispute-policy">Dispute Resolution Policy</a></span>
-      </footer>
+        <div className="sidebar-foot">
+          <div className="sidebar-account" title={collapsed ? company : undefined}>
+            <span className="sidebar-avatar" aria-hidden="true">{initials}</span>
+            <span className="sidebar-text"><strong>{company}</strong><small>Workspace</small></span>
+          </div>
+          <div className={`wallet-chip wallet-chip-${walletState}`} title={collapsed ? `${address ? shortAddress(address) : "No wallet"}, ${walletStateLabel}` : undefined}>
+            <span className="status-dot" aria-hidden="true" />
+            <span className="sidebar-text"><strong>{address ? shortAddress(address) : "No wallet"}</strong><small>{walletStateLabel}</small></span>
+          </div>
+          <button type="button" className="sidebar-collapse" aria-pressed={collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={toggleCollapsed}>
+            {collapsed ? <ChevronRight size={18} aria-hidden="true" /> : <><ChevronLeft size={18} aria-hidden="true" /><span>Collapse</span></>}
+          </button>
+        </div>
+      </aside>
+      {drawerOpen && <div className="drawer-backdrop" aria-hidden="true" onClick={closeDrawer} />}
+
+      <div className="shell-body">
+        <header className="shell-header">
+          <button ref={menuButtonRef} type="button" className="menu-button" aria-label="Open menu" aria-controls="app-sidebar" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
+            <Menu size={20} aria-hidden="true" />
+          </button>
+          <Heading className="shell-title">{title}</Heading>
+          <div className="shell-header-actions">
+            {wrongNetwork ? (
+              <button type="button" className="network-pill network-pill-warn" disabled={wallet.switchingNetwork} onClick={() => void wallet.ensureBotChain()}>
+                <span className="status-dot" aria-hidden="true" /><span className="network-pill-text">{wallet.switchingNetwork ? "Switching…" : "Switch network"}</span>
+              </button>
+            ) : (
+              <span className="network-pill" title={BOTCHAIN.chainName}><span className="status-dot" aria-hidden="true" /><span className="network-pill-text">{BOTCHAIN.chainName}</span></span>
+            )}
+            {onNewOrder
+              ? <button type="button" className="btn btn-primary header-new-order" onClick={onNewOrder}><Plus size={16} aria-hidden="true" /><span>New order</span></button>
+              : <a className="btn btn-primary header-new-order" href="/orders?action=create"><Plus size={16} aria-hidden="true" /><span>New order</span></a>}
+            <UserMenu company={company} email={email} />
+          </div>
+        </header>
+        {walletMismatch && (
+          <Notice tone="warning">
+            <span>You switched wallets. Sign in again as <strong>{shortAddress(wallet.account!)}</strong> to continue. Chain actions are disabled until it matches your session.{resignError && <> {resignError}</>}</span>
+            <Button size="sm" variant="outline" disabled={resigning} onClick={() => void resignIn()}>
+              {resigning ? "Signing in…" : "Sign in again"}
+            </Button>
+          </Notice>
+        )}
+        {!walletMismatch && wrongNetwork && (
+          <Notice tone="warning">
+            <span>Your wallet is connected to the wrong network. This app needs <strong>{BOTCHAIN.chainName}</strong>.</span>
+            <Button size="sm" variant="outline" disabled={wallet.switchingNetwork} onClick={() => void wallet.ensureBotChain()}>
+              {wallet.switchingNetwork ? "Switching…" : `Switch to ${BOTCHAIN.chainName}`}
+            </Button>
+          </Notice>
+        )}
+        <main id="main" className="shell-main" tabIndex={-1}>
+          {(description || actions) && (
+            <div className="page-intro">
+              {description && <p>{description}</p>}
+              {actions && <div className="page-intro-actions">{actions}</div>}
+            </div>
+          )}
+          {children}
+        </main>
+        <footer className="shell-footer">
+          <BuiltOnBotChain />
+          <span><a href="/legal/terms">Terms of Service</a><a href="/legal/dispute-policy">Dispute Resolution Policy</a></span>
+        </footer>
+      </div>
     </div>
     </MotionShell>
   );

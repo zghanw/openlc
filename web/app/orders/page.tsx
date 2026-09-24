@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { AppShell, EmptyArt, HelpHint, Notice, PageTitle, SampleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
+import { AppShell, EmptyArt, HelpHint, Notice, SampleTag, Skeleton, StatusPill } from "@/app/components/app-shell";
 import { CreateOrderDialog } from "@/app/components/create-order-dialog";
 import { OrderPreviewSheet } from "@/app/components/order-preview-sheet";
 import { type DemoOrder, claimOwner, formatDate, formatOrderMoney as money } from "@/lib/demo-orders";
@@ -27,6 +26,8 @@ export default function OrdersPage() {
   const [phase, setPhase] = useState<PhaseFilter>("all");
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  // ?action=create&demo=1 opens the dialog with the OpenLC demo supplier already ticked (the one-wallet path).
+  const [createWithDemo, setCreateWithDemo] = useState(false);
   const [notice, setNotice] = useState("");
   const [created, setCreated] = useState<DemoOrder[]>([]);
   const [selected, setSelected] = useState<DemoOrder | null>(null);
@@ -35,7 +36,7 @@ export default function OrdersPage() {
     const params = new URLSearchParams(window.location.search);
     const wanted = params.get("role");
     if (wanted === "buyer" || wanted === "supplier") setRole(wanted);
-    if (params.get("action") === "create") setCreateOpen(true);
+    if (params.get("action") === "create") { setCreateOpen(true); setCreateWithDemo(params.get("demo") === "1"); }
     const status = params.get("status");
     if (status === "action" || PHASES.some((entry) => entry.id === status)) setPhase(status as PhaseFilter);
   }, []);
@@ -76,13 +77,17 @@ export default function OrdersPage() {
   };
 
   return (
-    <AppShell active="orders" company={workspace.company} actionCount={counts.action}>
-      <PageTitle title="Orders" description={`${counts.all} purchase ${counts.all === 1 ? "order" : "orders"} where ${workspace.company} is the buyer or the supplier.`}
-        actions={<Button className="btn-primary" onClick={() => setCreateOpen(true)}><Plus size={15} aria-hidden="true" />New purchase order</Button>} />
+    <AppShell active="orders" title="Orders" company={workspace.company} actionCount={counts.action} onNewOrder={() => { setCreateWithDemo(false); setCreateOpen(true); }}>
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
       {workspace.error && <Notice tone="error">{workspace.error}</Notice>}
 
-      <section className="panel table-panel" aria-label="Order register">
+      <section className="panel table-panel" aria-labelledby="register-title">
+        <div className="list-card-head">
+          <div>
+            <h2 id="register-title">Purchase orders</h2>
+            <p>{counts.all} purchase {counts.all === 1 ? "order" : "orders"} where {workspace.company} is the buyer or the supplier.</p>
+          </div>
+        </div>
         <div className="phase-tabs" role="tablist" aria-label="Filter by stage">
           {([{ id: "all", label: "All" }, { id: "action", label: "Needs action" }, ...PHASES] as Array<{ id: PhaseFilter; label: string }>).map((tab) => (
             <button key={tab.id} role="tab" type="button" aria-selected={phase === tab.id} className={phase === tab.id ? "phase-tab phase-tab-active" : "phase-tab"} onClick={() => setPhase(tab.id)}>
@@ -152,7 +157,7 @@ export default function OrdersPage() {
         <div className="table-foot"><span>{visible.length} of {all.length} orders shown</span></div>
       </section>
 
-      <CreateOrderDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={addOrder} profile={workspace.profile} company={workspace.company} />
+      <CreateOrderDialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) setCreateWithDemo(false); }} initialDemoSupplier={createWithDemo} onCreate={addOrder} profile={workspace.profile} company={workspace.company} />
       <OrderPreviewSheet order={selected} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }} />
     </AppShell>
   );

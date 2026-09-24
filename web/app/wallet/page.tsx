@@ -5,7 +5,7 @@ import { ArrowDownLeft, ArrowRight, ArrowUpRight, Check, ClipboardCopy, External
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { AppShell, HelpHint, Notice, PageTitle } from "@/app/components/app-shell";
+import { AppShell, HelpHint, Notice } from "@/app/components/app-shell";
 import { type DemoOrder, formatOrderMoney as money } from "@/lib/demo-orders";
 import { describeEscrowError, requireBotChainSigner, useEscrowActions } from "@/lib/escrow-actions";
 import { type ReleaseStageKey, releaseProgress } from "@/app/components/release-plan";
@@ -14,8 +14,6 @@ import { useWallet } from "@/lib/wallet";
 import { useWorkspace } from "@/lib/use-workspace";
 import ESCROW_ABI from "@/lib/openlc-escrow.abi.json";
 import { Contract, JsonRpcProvider } from "ethers";
-
-import { AnimatedAmount, LiftCard } from "@/app/components/motion";
 
 /** "in" and "out" change the wallet balance. "escrow" moves money the contract holds, so it
  *  is shown without a sign: the buyer already paid it in when the order was funded. */
@@ -157,8 +155,7 @@ export default function WalletPage() {
     .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")), [ledgerOrders]);
 
   return (
-    <AppShell active="wallet" company={workspace.company}>
-      <PageTitle title="Wallet" description="Money you can spend or withdraw, kept separate from funds secured inside purchase orders." />
+    <AppShell active="wallet" title="Wallet" company={workspace.company} description="Money you can spend or withdraw, kept separate from funds secured inside purchase orders.">
       {notice && <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice>}
       {owed > 0n && (
         <Notice tone="warning">
@@ -174,7 +171,7 @@ export default function WalletPage() {
       {withdrawError && <Notice tone="error" onDismiss={() => setWithdrawError("")}>{withdrawError}</Notice>}
 
       <section className="wallet-grid">
-        <LiftCard as="article" className="wallet-card" tilt={2} lift={2}>
+        <article className="wallet-card" aria-label="Available balance">
           <div className="wallet-card-head">
             <span>Available balance<HelpHint text={`BOT held at your wallet address on ${BOTCHAIN.chainName}. Escrowed funds are not included: the escrow contract holds them, not your address.`} /></span>
             <span className="wallet-network"><i aria-hidden="true" />{BOTCHAIN.chainName}</span>
@@ -182,7 +179,7 @@ export default function WalletPage() {
           {balances === null ? (
             <strong className="wallet-amount"><span className="wallet-amount-text">Not connected</span></strong>
           ) : (
-            <strong className="wallet-amount"><AnimatedAmount value={balances.bot} decimals={2} /> <small>BOT</small></strong>
+            <strong className="wallet-amount">{balances.bot.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <small>BOT</small></strong>
           )}
           {balances !== null && balances.bot === 0 && <p className="wallet-note">New orders are priced in BOT. <a className="link-light" href={BOTCHAIN.getBotUrl} target="_blank" rel="noreferrer">{BOTCHAIN.getBotLabel}</a> and it appears here.</p>}
           <p className="wallet-address">{address ? <><code>{address.slice(0, 10)}...{address.slice(-8)}</code><button type="button" className="text-button text-button-light" onClick={() => void navigator.clipboard.writeText(address)}><ClipboardCopy size={12} aria-hidden="true" />Copy address</button></> : balanceNote}</p>
@@ -192,7 +189,7 @@ export default function WalletPage() {
             {address && <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer" className="wallet-action-button"><span><ExternalLink size={17} aria-hidden="true" /></span><strong>View on explorer</strong><small>{BOTCHAIN.chainName} Explorer</small></a>}
             <button type="button" className="wallet-action-button" onClick={() => void navigator.clipboard.writeText(address)}><span><ClipboardCopy size={17} aria-hidden="true" /></span><strong>Copy address</strong><small>{address.slice(0, 6)}...{address.slice(-4)}</small></button>
           </div>
-        </LiftCard>
+        </article>
 
         <article className="panel money-ledger" aria-labelledby="position-title">
           <div className="panel-head"><h2 id="position-title">Where your money is</h2></div>
