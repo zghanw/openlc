@@ -213,7 +213,7 @@ def build_doc(path, story):
 
 def build_purchase_order_pdf(s):
     story = [
-        header(s, "OpenLC", TAGLINE, "PURCHASE ORDER", "Purchase Order"),
+        header(s, "OpenLC", TAGLINE, REFERENCE, "Purchase Order"),
         Spacer(1, 10 * mm),
         field_grid(s, [
             ("REFERENCE", REFERENCE),
@@ -234,7 +234,7 @@ def build_purchase_order_pdf(s):
         Spacer(1, 6 * mm),
         parties_block(
             s, "SUPPLIER", [SUPPLIER],
-            "SUPPLIER PAYOUT", [SUPPLIER_PAYOUT_NOTE],
+            "SUPPLIER PAYOUT", ["The wallet that accepts this order on OpenLC"],
         ),
         Spacer(1, 8 * mm),
         line_items_table(s, "Quantity", "Order total"),
