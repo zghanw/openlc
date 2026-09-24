@@ -45,7 +45,7 @@ Then both sides sign the split on chain. If they can't agree, an AI mediator rea
 
 *[Scroll to "Try it in four steps".]*
 
-If you're a judge with just one wallet, you can try this yourself right now. Sign in with MetaMask, grab some test BOT from the faucet, and create an order with the OpenLC demo supplier. It confirms instantly, so you can lock BOT on chain in about a minute.
+If you only have one wallet, you can try this yourself right now. Sign in with MetaMask, grab some test BOT from the faucet, and create an order with the OpenLC demo supplier. It confirms instantly, so you can lock BOT on chain in about a minute.
 
 *[Scroll to "What stays true".]*
 
