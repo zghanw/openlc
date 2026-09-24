@@ -49,8 +49,8 @@ export class ResendInvitationEmailSender implements InvitationEmailSender {
           from: this.from,
           to: [input.to],
           subject: `${input.buyerName} invited you to review ${input.orderReference}`,
-          text: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in PayProof. Sign in with ${input.to} to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
-          html: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in PayProof.</p><p>Sign in with <strong>${escapeHtml(input.to)}</strong> to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
+          text: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in OpenLC. Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
+          html: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in OpenLC.</p><p>Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
         }),
         signal: AbortSignal.timeout(10_000),
       });
@@ -91,9 +91,9 @@ export class BrevoInvitationEmailSender implements InvitationEmailSender {
           sender: splitAddress(this.from),
           to: [{ email: input.to, name: input.supplierName }],
           subject: `${input.buyerName} invited you to review ${input.orderReference}`,
-          textContent: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in PayProof. Sign in with ${input.to} to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
-          htmlContent: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in PayProof.</p><p>Sign in with <strong>${escapeHtml(input.to)}</strong> to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
-          headers: { "X-PayProof-Invitation-ID": input.invitationId },
+          textContent: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in OpenLC. Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
+          htmlContent: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in OpenLC.</p><p>Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
+          headers: { "X-OpenLC-Invitation-ID": input.invitationId },
         }),
         signal: AbortSignal.timeout(10_000),
       });
@@ -147,9 +147,9 @@ export class SmtpInvitationEmailSender implements InvitationEmailSender {
         from: this.config.from,
         to: input.to,
         subject: `${input.buyerName} invited you to review ${input.orderReference}`,
-        text: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in PayProof. Sign in with ${input.to} to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
-        html: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in PayProof.</p><p>Sign in with <strong>${escapeHtml(input.to)}</strong> to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
-        headers: { "X-PayProof-Invitation-ID": input.invitationId },
+        text: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in OpenLC. Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
+        html: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in OpenLC.</p><p>Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
+        headers: { "X-OpenLC-Invitation-ID": input.invitationId },
       });
       return { status: "sent", messageId: result.messageId || input.invitationId, attemptedAt };
     } catch (error) {

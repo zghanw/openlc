@@ -46,7 +46,7 @@ describe("invitation email delivery", () => {
     const message = sendMail.mock.calls[0]?.[0];
     expect(message.to).toBe("supplier@example.com");
     expect(message.subject).toContain("PO-42");
-    expect(message.headers["X-PayProof-Invitation-ID"]).toBe("invite-1");
+    expect(message.headers["X-OpenLC-Invitation-ID"]).toBe("invite-1");
     expect(message.text).not.toContain("Premium cooking oils");
   });
 

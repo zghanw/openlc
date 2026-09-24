@@ -621,6 +621,28 @@ body:has(.lp) {
   color: var(--lp-muted);
 }
 
+.lp-facts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.22);
+  text-underline-offset: 4px;
+  transition: text-decoration-color 0.3s ease, color 0.3s ease;
+}
+
+.lp-facts a:hover {
+  color: var(--lp-text);
+  text-decoration-color: rgba(255, 255, 255, 0.6);
+}
+
+/* The BOT Chain mark keeps its own colour: partner branding is the one exception to the no-hue landing. */
+.lp-fact-logo {
+  flex: none;
+  border-radius: 4px;
+}
+
 @media (max-width: 519px) {
   .lp-facts {
     display: grid;
@@ -1975,6 +1997,14 @@ body:has(.lp) {
 
 .lp-footer-chain a:hover {
   text-decoration-color: #fff;
+}
+
+.lp-footer-chain .lp-footer-contract {
+  display: flex;
+  width: fit-content;
+  margin: 16px auto 0;
+  color: var(--lp-text);
+  text-decoration: none;
 }
 
 .lp-footer-chain svg {

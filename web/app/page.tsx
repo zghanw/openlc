@@ -7,7 +7,6 @@ import {
   ArrowDown,
   ArrowUpRight,
   BadgeCheck,
-  Blocks,
   Check,
   FlaskConical,
   KeyRound,
@@ -29,9 +28,11 @@ const CREATE_ORDER = "/orders?action=create";
 const CONTRACT = "0xd35bbde52618F716597cb097Fab3E52D3605A7c6";
 const GITHUB = "https://github.com/zghanw/openlc";
 
+const CONTRACT_CODE_URL = `${NETWORKS[677].explorerBase}/address/${CONTRACT}#code`;
+
 const FACTS = [
-  { icon: Blocks, label: "Built on BOT Chain" },
-  { icon: BadgeCheck, label: "Source-verified contract" },
+  { icon: null, label: "Built on BOT Chain", href: "https://botchain.ai" },
+  { icon: BadgeCheck, label: "Source-verified contract", href: CONTRACT_CODE_URL },
   { icon: KeyRound, label: "No owner or admin keys" },
   { icon: FlaskConical, label: "41 contract tests" },
   { icon: RefreshCcw, label: "Every step re-verified on chain" },
@@ -73,6 +74,7 @@ function Header() {
           <a href="#timeline">How it works</a>
           <a href="#try">Try it</a>
           <a href="#truths">Security</a>
+          <a href="/launch">Launch</a>
         </nav>
         <WalletEntry destination="/workspace" variant="header" signedInLabel="Open workspace">
           Sign in
@@ -152,12 +154,19 @@ function Hero() {
           animate={{ opacity: 1 }}
           transition={{ duration: 1.2, delay: 1.1, ease: EASE }}
         >
-          {FACTS.map(({ icon: Icon, label }) => (
-            <li key={label}>
-              <Icon size={16} aria-hidden="true" />
-              {label}
-            </li>
-          ))}
+          {FACTS.map(({ icon: Icon, label, href }) => {
+            const content = (
+              <>
+                {Icon ? <Icon size={16} aria-hidden="true" /> : <img className="lp-fact-logo" src="/botchain-logo.webp" alt="" width={18} height={18} />}
+                {label}
+              </>
+            );
+            return (
+              <li key={label}>
+                {href ? <a href={href} target="_blank" rel="noreferrer">{content}</a> : content}
+              </li>
+            );
+          })}
         </motion.ul>
       </div>
     </section>
@@ -532,6 +541,7 @@ function Footer() {
             <p>The open letter of credit.</p>
           </div>
           <nav aria-label="Legal and source">
+            <a href="/launch">Mainnet launch</a>
             <a href="/legal/terms">Terms of Service</a>
             <a href="/legal/dispute-policy">Dispute Resolution Policy</a>
             <a href={GITHUB} target="_blank" rel="noreferrer">
@@ -541,6 +551,9 @@ function Footer() {
         </div>
         <div className="lp-footer-chain">
           <BuiltOnBotChain />
+          <a className="lp-pill lp-pill--outline lp-pill--small lp-footer-contract" href={CONTRACT_CODE_URL} target="_blank" rel="noreferrer">
+            View the contract on BOT Chain Explorer <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
         </div>
       </div>
     </footer>

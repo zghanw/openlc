@@ -6,6 +6,7 @@ export function BuiltOnBotChain() {
     <span className="built-on-botchain">
       Built on{" "}
       <a href="https://botchain.ai" target="_blank" rel="noreferrer">
+        <img className="botchain-logo" src="/botchain-logo.webp" alt="" width={16} height={16} />
         BOT Chain <ExternalLink size={12} aria-hidden="true" />
       </a>
       {" · "}

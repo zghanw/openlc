@@ -444,3 +444,4 @@
 
 /* BOT Chain footer mark: one line of inline links wherever it sits. */
 .built-on-botchain svg{display:inline-block;vertical-align:-2px;margin-left:3px}
+.built-on-botchain .botchain-logo{display:inline-block;width:16px;height:16px;margin-right:5px;border-radius:3px;vertical-align:-3px}
