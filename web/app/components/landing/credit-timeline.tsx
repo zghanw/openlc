@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { ArrowUpRight, Check, Clock3 } from "lucide-react";
+import { explorerTxUrl } from "@/lib/chain";
 
-// The real order's transactions live on BOT Chain testnet whatever network this deployment targets.
-const TESTNET_TX = "https://scan.bohr.life/tx/";
 const ATRADIUS =
   "https://group.atradius.com/dam/jcr:de5379ba-2ad5-415f-9c77-6e6c2669d13e/payment-practices-barometer-asia-2025-en.pdf";
 
@@ -22,10 +21,10 @@ const STEPS: Step[] = [
     day: "Day 0",
     credit: { title: "Goods ship.", body: "The supplier is now lending to a stranger." },
     escrow: {
-      title: "The buyer locks 3 BOT before anything ships.",
-      body: "The 0.3 BOT deposit pays the supplier in the same transaction.",
-      paid: "0.3 of 3 BOT paid",
-      tx: "0x846ea2b8874fa2bfdfa2c36ef42b0801b65504a8127014fe9de49b257da6c46f",
+      title: "The buyer locks 0.005 BOT before anything ships.",
+      body: "The 0.0005 BOT deposit pays the supplier in the same transaction.",
+      paid: "0.0005 of 0.005 BOT paid",
+      tx: "0xc7fa38a1e989b272612ea609502e10fabe652cbab0e156028d6beadacc1f9e65",
       txLabel: "Fund",
     },
   },
@@ -34,9 +33,9 @@ const STEPS: Step[] = [
     waiting: "No payment yet.",
     escrow: {
       title: "The supplier ships with a dispatch photo.",
-      body: "Its fingerprint goes on chain and 0.6 BOT releases.",
-      paid: "0.9 of 3 BOT paid",
-      tx: "0x2098aacdbe5ff33d5d971b906e55ff5798cd3a092ada5a11d1099b072bd29005",
+      body: "Its fingerprint goes on chain and 0.001 BOT releases.",
+      paid: "0.0015 of 0.005 BOT paid",
+      tx: "0x1b3d40c8894ad1b5ae51f81d810c7fbe0ec17217714d986ce0637c2f6e29cdee",
       txLabel: "Ship",
     },
   },
@@ -44,11 +43,11 @@ const STEPS: Step[] = [
     day: "Day 3",
     waiting: "Still no payment.",
     escrow: {
-      title: "The buyer accepts. Paid in full.",
-      body: "The remaining 2.1 BOT releases to the supplier.",
-      paid: "3 of 3 BOT paid",
-      tx: "0x793669d83aa0a3e0ca5a78ec8c6c8d0aa495ed40bed455328f0c3584bada57ed",
-      txLabel: "Accept",
+      title: "Part of it arrives damaged. Only that part is held.",
+      body: "One claim transaction pays the undisputed 0.0025 BOT to the supplier and holds 0.001 BOT for the damage.",
+      paid: "0.004 of 0.005 BOT paid",
+      tx: "0xc745bfad13f06f90b18d5b8e46c3eed66389f9bd020f27c7ca22f607ef418699",
+      txLabel: "Claim",
     },
   },
   {
@@ -123,10 +122,10 @@ export function CreditTimeline() {
           <span className="lp-state" data-on={settled || undefined}>
             {settled ? (
               <>
-                <Check size={13} aria-hidden="true" /> Paid in full on Day 3
+                <Check size={13} aria-hidden="true" /> 0.004 BOT paid by Day 3
               </>
             ) : (
-              "PO-90758439 · 3 BOT"
+              "OLC-LAUNCH-001 · 0.005 BOT"
             )}
           </span>
         </div>
@@ -174,7 +173,7 @@ export function CreditTimeline() {
                     <p className="lp-cell-body">{step.escrow.body}</p>
                     <div className="lp-entry-foot">
                       <span className="lp-paid">{step.escrow.paid}</span>
-                      <a className="lp-tx" href={`${TESTNET_TX}${step.escrow.tx}`} target="_blank" rel="noreferrer">
+                      <a className="lp-tx" href={explorerTxUrl(step.escrow.tx)} target="_blank" rel="noreferrer">
                         {step.escrow.txLabel} on chain <span>{shortHash(step.escrow.tx)}</span>
                         <ArrowUpRight size={13} aria-hidden="true" />
                       </a>
@@ -185,7 +184,7 @@ export function CreditTimeline() {
                   <div className="lp-entry-settled">
                     <span className="lp-cell-lane">OpenLC</span>
                     <p>
-                      <Check size={15} aria-hidden="true" /> Settled on Day 3. Nothing owed, nothing to chase.
+                      <Check size={15} aria-hidden="true" /> Settled. Both parties signed one split for the held 0.001 BOT. Nothing owed, nothing to chase.
                     </p>
                   </div>
                 )}

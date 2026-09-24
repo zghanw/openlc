@@ -39,10 +39,10 @@ const NETWORKS: Record<number, BotChainNetwork> = {
   },
 };
 
-const configuredChainId = Number(process.env.NEXT_PUBLIC_BOTCHAIN_CHAIN_ID ?? "968");
+const configuredChainId = Number(process.env.NEXT_PUBLIC_BOTCHAIN_CHAIN_ID ?? "677");
 
-/** The network this deployment targets. Defaults to testnet (968) on any unset or unknown value. */
-export const BOTCHAIN: BotChainNetwork = NETWORKS[configuredChainId] ?? NETWORKS[968];
+/** The network this deployment targets. Defaults to BOT Chain mainnet (677) on any unset or unknown value. */
+export const BOTCHAIN: BotChainNetwork = NETWORKS[configuredChainId] ?? NETWORKS[677];
 
 /** The exact object MetaMask's `wallet_addEthereumChain` expects for this network. */
 export const BOTCHAIN_ADD_CHAIN_PARAMS = {

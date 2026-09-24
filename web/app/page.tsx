@@ -11,6 +11,7 @@ import {
   Check,
   FlaskConical,
   KeyRound,
+  Link2,
   RefreshCcw,
   Scale,
 } from "lucide-react";
@@ -20,12 +21,12 @@ import { TunnelCanvas } from "@/app/components/landing/tunnel-canvas";
 import { WalletEntry } from "@/app/components/landing/wallet-entry";
 import { CreditTimeline } from "@/app/components/landing/credit-timeline";
 import { PartialClaim } from "@/app/components/landing/partial-claim";
-import { BOTCHAIN } from "@/lib/chain";
+import { BOTCHAIN, explorerAddressUrl } from "@/lib/chain";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const ONCE = { once: true, amount: 0.3 } as const;
-const TRY_DESTINATION = "/orders?action=create&demo=1";
-const CONTRACT = "0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5";
+const CREATE_ORDER = "/orders?action=create";
+const CONTRACT = "0xd35bbde52618F716597cb097Fab3E52D3605A7c6";
 const GITHUB = "https://github.com/zghanw/openlc";
 
 const FACTS = [
@@ -178,8 +179,9 @@ function TimelineSection() {
             Sixty days of credit, or paid on proof.
           </h2>
           <p className="lp-lede">
-            The same 3 BOT sale, two ways. On the right are the real transactions of order{" "}
-            <span className="lp-nowrap">PO-90758439</span> on BOT Chain testnet, set on the days a shipment takes.
+            The same 0.005 BOT sale, two ways. On the right are the real transactions of{" "}
+            <span className="lp-nowrap">OLC-LAUNCH-001</span>, our own first order on BOT Chain mainnet, run between two
+            of our own wallets and set on the days a shipment takes.
           </p>
         </motion.div>
         <CreditTimeline />
@@ -203,8 +205,9 @@ function ClaimSection() {
             When part of it goes wrong, only that part waits.
           </h2>
           <p className="lp-lede">
-            Order <span className="lp-nowrap">PO-97139111</span> was for 1 BOT. The 0.1 BOT deposit and the 0.2 BOT dispatch payment had already reached
-            the supplier, leaving 0.7 BOT held for delivery. A carton arrived damaged, so the buyer claimed 0.15 BOT.
+            Our launch order <span className="lp-nowrap">OLC-LAUNCH-001</span> was for 0.005 BOT. The 0.0005 BOT deposit and the 0.001 BOT
+            dispatch payment had already reached the supplier, leaving 0.0035 BOT held for delivery. Part of the goods arrived
+            damaged, so the buyer claimed 0.001 BOT.
           </p>
           <p className="lp-mediator">
             <Scale size={18} aria-hidden="true" />
@@ -245,9 +248,9 @@ const TRY_STEPS = [
     ),
   },
   {
-    title: "Get test BOT",
-    body: "Claim free test BOT from the BOT Chain faucet to pay for gas and the order.",
-    link: { href: "https://faucet.botchain.ai/basic", label: "Open the faucet" },
+    title: "Get BOT",
+    body: "You pay for the order and the gas in BOT. At 20 gwei, funding costs about 0.0067 BOT in gas and each later step 0.001 to 0.0021 BOT.",
+    link: { href: BOTCHAIN.getBotUrl, label: BOTCHAIN.getBotLabel },
     visual: (
       <div className="lp-bal">
         <span className="lp-bal-top">
@@ -261,33 +264,33 @@ const TRY_STEPS = [
           </span>
         </span>
         <span className="lp-bal-gas">
-          <span>Gas per step</span>
-          <span>0.002–0.004 BOT</span>
+          <span>Gas to fund</span>
+          <span>0.0067 BOT</span>
         </span>
       </div>
     ),
   },
   {
-    title: "Create an order with the OpenLC demo supplier",
-    body: "Tick the demo supplier and it confirms your order straight away.",
+    title: "Create the order and send the link",
+    body: "Your supplier opens the confirmation link and confirms the terms from its own wallet.",
     visual: (
       <div className="lp-form">
         <span className="lp-field">
-          <small>Supplier</small>
-          <span>OpenLC demo supplier</span>
+          <small>Confirmation link</small>
+          <span>openlc.online/orders/…</span>
         </span>
         <span className="lp-check">
           <span className="lp-box">
-            <Check size={12} strokeWidth={3} aria-hidden="true" />
+            <Link2 size={12} strokeWidth={3} aria-hidden="true" />
           </span>
-          Use the OpenLC demo supplier
+          Link copied for your supplier
         </span>
       </div>
     ),
   },
   {
-    title: "Lock it on BOT Chain",
-    body: "One signature moves your BOT into the escrow contract.",
+    title: "Fund the escrow",
+    body: "One signature locks the order value in the escrow contract. The deposit pays your supplier at once.",
     visual: (
       <div className="lp-chain">
         <span className="lp-chain-head">
@@ -295,16 +298,16 @@ const TRY_STEPS = [
         </span>
         <dl>
           <div>
-            <dt>Status</dt>
-            <dd>Open</dd>
-          </div>
-          <div>
-            <dt>Locked</dt>
+            <dt>Funded</dt>
             <dd>1 BOT</dd>
           </div>
           <div>
-            <dt>Escrow</dt>
-            <dd>#3</dd>
+            <dt>Deposit paid</dt>
+            <dd>0.2 BOT</dd>
+          </div>
+          <div>
+            <dt>Still held</dt>
+            <dd>0.8 BOT</dd>
           </div>
         </dl>
       </div>
@@ -326,7 +329,7 @@ function TrySection() {
           <h2 id="lp-try-title" className="lp-h2">
             Try it in four steps
           </h2>
-          <p className="lp-lede">One MetaMask wallet is all you need. It runs on BOT Chain testnet.</p>
+          <p className="lp-lede">You and your supplier each need a MetaMask wallet on BOT Chain. Every amount is real BOT.</p>
         </motion.div>
         <ol className="lp-try-grid">
           {TRY_STEPS.map((step, index) => (
@@ -360,10 +363,10 @@ function TrySection() {
           transition={{ duration: 1, delay: 0.2, ease: EASE }}
         >
           <p>
-            The demo supplier confirms instantly and never ships, so you can reclaim the full amount after the
-            delivery date.
+            If your supplier never ships, you take back everything not yet released once the delivery date has
+            passed. No one else has to sign.
           </p>
-          <WalletEntry destination={TRY_DESTINATION}>Try it with one wallet</WalletEntry>
+          <WalletEntry destination={CREATE_ORDER}>Create an order</WalletEntry>
         </motion.div>
       </div>
     </section>
@@ -442,7 +445,7 @@ function TruthsSection() {
             <div className="lp-tile-foot">
               <a
                 className="lp-inline-link"
-                href={`https://scan.bohr.life/address/${CONTRACT}`}
+                href={explorerAddressUrl(CONTRACT)}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -510,7 +513,7 @@ function Close() {
         </h2>
         <div className="lp-actions">
           <WalletEntry destination="/workspace" signedInLabel="Open workspace">Sign in with MetaMask</WalletEntry>
-          <WalletEntry destination={TRY_DESTINATION} variant="ghost">Try it with one wallet</WalletEntry>
+          <WalletEntry destination={CREATE_ORDER} variant="ghost">Create an order</WalletEntry>
         </div>
         <Consent />
       </motion.div>

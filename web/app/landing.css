@@ -219,7 +219,7 @@ body:has(.lp) {
   transform: translateY(2px);
 }
 
-/* A ghost pill that moves you forward (the close section's demo pill) nudges its arrow forward. */
+/* A ghost pill that moves you forward (the close section's Create an order pill) nudges its arrow forward. */
 .lp-entry .lp-pill--ghost:hover svg {
   transform: translateX(3px);
 }
@@ -1196,13 +1196,13 @@ body:has(.lp) {
 }
 
 .lp-seg--held {
-  width: calc((100% - var(--gap)) * 0.2143);
+  width: calc((100% - var(--gap)) * 0.2857);
   border-right: 0;
   border-radius: 14px 0 0 14px;
 }
 
 .lp-seg--paid {
-  width: calc((100% - var(--gap)) * 0.7857);
+  width: calc((100% - var(--gap)) * 0.7143);
   border-left: 0; /* reads as one bar until it splits */
   border-radius: 0 14px 14px 0;
 }
@@ -1252,7 +1252,7 @@ body:has(.lp) {
 
 .lp-split-legend {
   display: grid;
-  grid-template-columns: calc((100% - var(--gap)) * 0.2143) 1fr;
+  grid-template-columns: calc((100% - var(--gap)) * 0.2857) 1fr;
   column-gap: var(--gap);
   margin-top: 16px;
   opacity: 0.4;

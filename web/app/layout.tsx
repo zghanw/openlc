@@ -24,8 +24,8 @@ const DIRECTION_CONTRACT = `<!--
 LANDING
 THESIS: Payment secured before it ships, watched happening; refuses the SaaS hero-plus-feature-grid.
 OWN-WORLD: Owner-pinned monochrome: black ground, silver-white type, glossy near-black cards, luminous wave lines, white pill actions; no hue but white.
-STORY: A judge sees money locked before goods move, watches credit terms lose to escrow on one timeline, sees the real partial claim, and tries it with one wallet.
-FIRST VIEWPORT: Wave-line tunnel converging on the glowing OpenLC mark; centred headline; white pill "Try it with one wallet" plus "See how it works"; fact strip below.
+STORY: A judge sees money locked before goods move, watches credit terms lose to escrow on one timeline, sees the real partial claim, and creates a real order.
+FIRST VIEWPORT: Wave-line tunnel converging on the glowing OpenLC mark; centred headline; white pill "Sign in with MetaMask" plus "See how it works"; fact strip below.
 FORM: Credit versus escrow, candidate 5 of 7, fused with a centre-staff timeline; seed 26fc985a.
 WORKSPACE
 THESIS: Money state and the next action first; refuses a decorated dashboard.
