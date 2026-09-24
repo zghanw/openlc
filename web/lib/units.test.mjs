@@ -6,7 +6,7 @@
 // exercises exactly what the app calls - a regression here would be caught, not masked.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatBot, parseBot, parseBotNumber } from "./units.mjs";
+import { formatBot, formatBotAmount, parseBot, parseBotNumber } from "./units.mjs";
 
 const DECIMALS = 18;
 
@@ -55,4 +55,16 @@ test("parseBotNumber rounds float noise out of a display number before exact par
   // String(5e-7) is "5e-7", which parseUnits rejects outright.
   assert.equal(parseBotNumber(5e-7), 500000000000n);
   assert.equal(parseBotNumber(0), 0n);
+});
+
+test("formatBotAmount shows sub-cent amounts exactly and drops trailing zeros", () => {
+  assert.equal(formatBotAmount(0.001), "0.001");
+  assert.equal(formatBotAmount(0.005), "0.005");
+  assert.equal(formatBotAmount(0.0005), "0.0005");
+  assert.equal(formatBotAmount(3), "3");
+  assert.equal(formatBotAmount(2.1), "2.1");
+  assert.equal(formatBotAmount(1234.5), "1,234.5");
+  // formatBot's exact string form reads the same, including a whole number's ".0".
+  assert.equal(formatBotAmount(formatBot(parseBot("0.0035"))), "0.0035");
+  assert.equal(formatBotAmount(formatBot(parseBot("30000"))), "30,000");
 });

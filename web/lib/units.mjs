@@ -23,3 +23,10 @@ export function parseBotNumber(value) {
   if (!Number.isFinite(value) || value < 0) throw new Error(`Not a BOT amount: ${value}`);
   return parseBot(value.toFixed(9));
 }
+
+/** A BOT amount for display: up to 6 decimals, no trailing zeros, thousands grouped, e.g.
+ *  0.005 -> "0.005", 1234.5 -> "1,234.5". Takes a number, or formatBot's exact decimal string.
+ *  Display only: never parse this back into an amount. */
+export function formatBotAmount(value) {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(value);
+}
