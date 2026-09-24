@@ -402,16 +402,29 @@ export function useEscrowActions() {
 
   async function contract(): Promise<Contract> {
     requireEscrowConfigured();
+    // A wallet mismatch is a session problem, not a network problem, and needs only wallet.account
+    // (no signer) - check it first so that party is told to sign in again instead of being prompted
+    // to switch networks. getSigner() used to be what threw "Connect MetaMask before signing." when
+    // no account is connected; that guard now has to happen explicitly, first, for the same reason.
+    if (!wallet.account) throw new Error("Connect MetaMask before signing.");
+    requireWalletMatchesSession(wallet.account);
     const signer = await requireBotChainSigner(wallet);
-    requireWalletMatchesSession(wallet.account!);
     return new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
   }
 
-  /** Sends one write call, waits for the receipt, and turns a revert into a plain-English message. */
+  /** Sends one write call, waits for the receipt, and turns a revert into a plain-English message.
+   *  Every call also pins BOT Chain's id into its overrides: requireBotChainSigner's checks above
+   *  only run before MetaMask's confirmation popup opens, and ethers' JsonRpcSigner never adds a
+   *  chainId of its own (Contract.populateTransaction only sets to/data/overrides - see
+   *  contract.js's populateTransaction/copyOverrides/copyRequest - and JsonRpcSigner.sendTransaction
+   *  goes through sendUncheckedTransaction, which skips AbstractSigner.populateTransaction
+   *  entirely). Pinning it here means MetaMask itself refuses to sign if the network changed while
+   *  its popup was open, instead of silently signing on whatever chain the wallet ended up on. */
   async function sendTx(method: string, args: unknown[], value?: bigint): Promise<ContractTransactionReceipt> {
     try {
       const c = await contract();
-      const tx = value !== undefined ? await c[method](...args, { value }) : await c[method](...args);
+      const chainId = BigInt(BOTCHAIN.chainIdDec);
+      const tx = value !== undefined ? await c[method](...args, { value, chainId }) : await c[method](...args, { chainId });
       const receipt = await tx.wait();
       if (!receipt) throw new Error("The transaction did not confirm. Check your wallet and try again.");
       return receipt as ContractTransactionReceipt;

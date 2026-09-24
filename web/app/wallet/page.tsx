@@ -124,7 +124,10 @@ export default function WalletPage() {
     try {
       const signer = await requireBotChainSigner(wallet);
       const contract = new Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
-      const tx = await contract.withdraw();
+      // Pinned so MetaMask itself refuses to sign if the network changed while its confirmation
+      // popup was open - see the comment on sendTx in escrow-actions.ts for why this is necessary
+      // even after requireBotChainSigner's own checks.
+      const tx = await contract.withdraw({ chainId: BigInt(BOTCHAIN.chainIdDec) });
       const receipt = await tx.wait();
       setWithdrawnTx(receipt.hash);
       await Promise.all([refreshOwed(), refreshBalances()]);
