@@ -100,18 +100,14 @@ body:has(.lp) {
   font-weight: 600;
   font-stretch: 110%;
   letter-spacing: -0.035em;
-  line-height: 1;
+  line-height: 1.06;
   text-wrap: balance;
 }
 
-/* The one pinned gradient: a subtle silver fall on the display lines. */
+/* Flat near-white, as in the owner's reference: size and weight carry the emphasis. */
 .lp-display-line {
   display: block;
-  padding-bottom: 0.07em;
-  background: linear-gradient(180deg, #fff 12%, #e4e4e7 55%, #a1a1aa 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--lp-text);
 }
 
 .lp-h2 {
@@ -317,9 +313,9 @@ body:has(.lp) {
 
 .lp-inline-link {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 2px 6px;
+  gap: 6px;
+  white-space: nowrap;
   width: fit-content;
   color: var(--lp-text);
   font-size: 14.5px;
@@ -646,18 +642,18 @@ body:has(.lp) {
   grid-template-columns: 1fr var(--day-col) 1fr;
   column-gap: var(--lane-gap);
   padding: 18px 0;
-  background: #020202;
+  background: #000;
 }
 
-/* A soft edge under the sticky lane heads instead of a hard cut. */
+/* Solid black behind the lane heads, then a short fade, so entries scroll away underneath cleanly. */
 .lp-lanes::after {
   content: "";
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  height: 28px;
-  background: linear-gradient(180deg, #020202, transparent);
+  height: 24px;
+  background: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.85) 40%, transparent 100%);
   pointer-events: none;
 }
 
@@ -1293,11 +1289,12 @@ body:has(.lp) {
 .lp-try-card {
   display: flex;
   flex-direction: column;
-  padding: 12px 12px 26px;
+  padding: 0 24px 28px;
+  background: radial-gradient(90% 55% at 50% 0%, rgba(255, 255, 255, 0.045), transparent 72%), var(--lp-card);
 }
 
 .lp-try-card h3 {
-  margin: 22px 12px 0;
+  margin: 8px 0 0;
   font-size: 1.125rem;
   font-weight: 600;
   font-stretch: 104%;
@@ -1307,26 +1304,23 @@ body:has(.lp) {
 }
 
 .lp-try-card p {
-  margin: 8px 12px 0;
+  margin: 8px 0 0;
   color: var(--lp-muted);
   font-size: 14.5px;
   line-height: 1.55;
 }
 
 .lp-try-card .lp-inline-link {
-  margin: 14px 12px 0;
+  margin: 14px 0 0;
 }
 
+/* The illustration sits straight on the card: no frame of its own. */
 .lp-mini {
   position: relative;
   display: grid;
   place-items: center;
-  height: 208px;
-  padding: 34px 16px 14px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  background: radial-gradient(120% 90% at 50% 0%, #17171a 0%, #0a0a0c 70%);
+  height: 216px;
+  padding-top: 40px;
   font-size: 12px;
   line-height: 1.4;
   text-align: left;
@@ -1334,8 +1328,8 @@ body:has(.lp) {
 
 .lp-step-no {
   position: absolute;
-  top: 12px;
-  left: 14px;
+  top: 22px;
+  left: 0;
   color: var(--lp-muted);
   font-size: 12.5px;
   font-weight: 600;
@@ -1635,26 +1629,50 @@ body:has(.lp) {
   line-height: 1.06;
 }
 
+/* One ruled row: label over value, cells divided by hairlines (2 x 2 on narrow screens). */
 .lp-spec {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
   margin-top: auto;
-  padding-top: 12px;
+  border-block: 1px solid var(--lp-hair);
+}
+
+.lp-spec div {
+  padding: 14px 16px;
+}
+
+.lp-spec div:nth-child(odd) {
+  padding-left: 0;
+}
+
+.lp-spec div:nth-child(even) {
+  border-left: 1px solid var(--lp-hair);
+}
+
+.lp-spec div:nth-child(n + 3) {
+  border-top: 1px solid var(--lp-hair);
 }
 
 @media (min-width: 560px) {
   .lp-spec {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .lp-spec div:nth-child(n) {
+    padding-left: 16px;
+    border-top: 0;
+    border-left: 1px solid var(--lp-hair);
+  }
+
+  .lp-spec div:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
 }
 
-.lp-spec div {
-  padding: 14px 14px 12px;
-  border: 1px solid var(--lp-hair);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.lp-spec + .lp-tile-foot {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .lp-spec dt {
@@ -1681,10 +1699,6 @@ body:has(.lp) {
   border-top: 1px solid var(--lp-hair);
   color: var(--lp-muted);
   font-size: 14px;
-}
-
-.lp-nowrap {
-  white-space: nowrap;
 }
 
 .lp-tile-foot .lp-inline-link {

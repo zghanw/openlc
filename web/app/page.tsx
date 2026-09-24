@@ -303,7 +303,7 @@ const TRY_STEPS = [
           </div>
           <div>
             <dt>Escrow</dt>
-            <dd>#…</dd>
+            <dd>#3</dd>
           </div>
         </dl>
       </div>
@@ -445,10 +445,8 @@ function TruthsSection() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Source-verified contract
-                <span className="lp-nowrap">
-                  {CONTRACT.slice(0, 6)}…{CONTRACT.slice(-4)} <ArrowUpRight size={14} aria-hidden="true" />
-                </span>
+                Source-verified contract {CONTRACT.slice(0, 6)}…{CONTRACT.slice(-4)}
+                <ArrowUpRight size={14} aria-hidden="true" />
               </a>
               <span>41 contract tests</span>
             </div>
