@@ -146,8 +146,6 @@ function InvitationControls({ order, busy, run }: StepProps) {
 function ConfirmControls({ order, company, inviteToken, busy, run, onInviteConsumed }: StepProps & { inviteToken?: string; onInviteConsumed?: () => void }) {
   const [reviewed, setReviewed] = useState(false);
   const [accepted, setAccepted] = useState(false);
-  const [changeOpen, setChangeOpen] = useState(false);
-  const [reason, setReason] = useState("");
   const [checkOpen, setCheckOpen] = useState(false);
   const [checkFile, setCheckFile] = useState<File | null>(null);
   const [comparison, setComparison] = useState<OrderDocument | null>(null);
@@ -197,18 +195,8 @@ function ConfirmControls({ order, company, inviteToken, busy, run, onInviteConsu
           "Released amounts are final. Any delivery exception or refund is limited to the balance still held in escrow.",
         ]} />
       <div className="action-buttons">
-        <Button variant="outline" disabled={Boolean(busy)} onClick={() => setChangeOpen(true)}><X size={14} aria-hidden="true" />Request changes</Button>
         <Button className="btn-primary" disabled={!reviewed || !accepted || Boolean(busy)} onClick={() => void confirm()}><Check size={14} aria-hidden="true" />{busy === "confirm" ? "Confirming" : "Confirm and accept terms"}</Button>
       </div>
-      <ConsentDialog open={changeOpen} onOpenChange={setChangeOpen} company={company} title="Request changes" description="Tell the other company what needs to change. The order stays unconfirmed until they send a revised version."
-        clauses={["The order is not confirmed until a revised version is sent and accepted."]}
-        confirmLabel="Send change request" busy={busy === "changes"}
-        onConfirm={async () => {
-          setChangeOpen(false);
-          await run("changes", async () => { throw new Error("Change requests are not available yet. Contact the other company directly and ask them to cancel and reissue the order."); });
-        }}>
-        <label className="field"><span>What should change?</span><Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="For example: unit price for line 2 should be 265" /></label>
-      </ConsentDialog>
       <ConsentDialog open={checkOpen} onOpenChange={setCheckOpen} company={company} title="Compare a purchase order document"
         description="The file is read once to extract line quantities and prices for comparison, and attached to the order with its fingerprint."
         clauses={["The document is genuine and relates to this order.", "You are authorised to share it with the other party."]}
@@ -440,8 +428,12 @@ function InspectionFlow({ order, company, busy, run }: StepProps) {
     }
     return { accepted, held, rejectedUnits };
   }, [lines, order.items]);
+  // A claim can only hold what the escrow still has: deposit and dispatch are already paid and
+  // final, and openDispute reverts InvalidDispute on a disputed amount above the balance.
+  const disputed = Math.min(totals.held, deliveryHeld);
+  const capped = totals.held > deliveryHeld;
   const exceptions = choice === "exceptions";
-  const claimReady = exceptions && totals.rejectedUnits > 0 && note.trim().length >= 10;
+  const claimReady = exceptions && totals.rejectedUnits > 0 && disputed > 0 && note.trim().length >= 10;
   const fullLines = () => order.items.map((item) => ({ lineId: item.id, accepted: item.quantity, missing: 0, damaged: 0 }));
 
   const acceptAll = () => run("accept", async () => {
@@ -458,7 +450,7 @@ function InspectionFlow({ order, company, busy, run }: StepProps) {
       base = evidence.order; files = [evidence.input];
     }
     if (!base.raw) throw new Error("Order data is missing.");
-    const input = { disputedValue: totals.held, requestedValue: totals.held, claim: note.trim(), evidence: `${note.trim()}${file ? ` Evidence file ${file.name} attached.` : ""}`, files, inspection: { lines, note: note.trim() } };
+    const input = { disputedValue: disputed, requestedValue: disputed, claim: note.trim(), evidence: `${note.trim()}${file ? ` Evidence file ${file.name} attached.` : ""}`, files, inspection: { lines, note: note.trim() } };
     const result = await escrow.openClaim(base.raw, input);
     return { ...withExtras(result.order), claim: result.claim };
   }, "Claim opened. The accepted value is released and the disputed amount stays in escrow until the claim is settled.");
@@ -513,10 +505,13 @@ function InspectionFlow({ order, company, busy, run }: StepProps) {
             </tbody>
           </table>
           <div className="inspection-summary">
-            <div><span>Released to supplier now</span><strong>{money(Math.max(0, deliveryHeld - totals.held))} {order.currency}</strong></div>
-            <div><span>Held for claim</span><strong>{money(totals.held)} {order.currency}</strong></div>
+            <div><span>Released to supplier now</span><strong>{money(deliveryHeld - disputed)} {order.currency}</strong></div>
+            <div><span>Held for claim</span><strong>{money(disputed)} {order.currency}</strong></div>
             <div><span>Rejected</span><strong>{totals.rejectedUnits} units</strong></div>
           </div>
+          <p className="action-note">{capped
+            ? `The rejected lines are worth ${money(totals.held)} ${order.currency}, but only ${money(deliveryHeld)} ${order.currency} is still in escrow, so the claim holds ${money(disputed)} ${order.currency}. Amounts already released are final.`
+            : `Amounts already released for the deposit and dispatch are final. A claim holds only what is still in escrow, ${money(deliveryHeld)} ${order.currency}.`}</p>
           {totals.rejectedUnits === 0 && <p className="action-note">Enter the missing or damaged quantity on at least one line, or choose "Yes, everything intact".</p>}
           {totals.rejectedUnits > 0 && (
             <>
@@ -526,7 +521,7 @@ function InspectionFlow({ order, company, busy, run }: StepProps) {
               <FileField label="Attach evidence" hint="Signed delivery order or photos. The file is read into text for the mediator. Its fingerprint is anchored to the escrow on BOT Chain and kept with the order." accept=".pdf,.png,.jpg,.jpeg,.webp,.txt" onFile={setFile} file={file} />
               {note.trim().length < 10 && <p className="action-note">Describe what was wrong in at least 10 characters before you can open the claim. You have written {note.trim().length}.</p>}
               <div className="action-buttons">
-                <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || !escrowConfigured || escrow.sessionMismatch} onClick={() => setConfirmOpen(true)}>Open claim for {money(totals.held)} {order.currency}</Button>
+                <Button className="btn-primary" disabled={!claimReady || Boolean(busy) || !escrowConfigured || escrow.sessionMismatch} onClick={() => setConfirmOpen(true)}>Open claim for {money(disputed)} {order.currency}</Button>
               </div>
             </>
           )}
@@ -537,7 +532,7 @@ function InspectionFlow({ order, company, busy, run }: StepProps) {
         title={choice === "intact" ? "Accept the delivery in full" : "Open a claim"}
         description={choice === "intact"
           ? `The ${money(deliveryHeld)} ${order.currency} still held for delivery is released to ${order.supplier} from the escrow contract. You sign one BOT Chain transaction. This cannot be reversed.`
-          : `${money(Math.max(0, deliveryHeld - totals.held))} ${order.currency} still held for delivery is released to ${order.supplier} now. ${money(totals.held)} ${order.currency} stays in escrow until the claim is settled. You sign one BOT Chain transaction.`}
+          : `${money(deliveryHeld - disputed)} ${order.currency} still held for delivery is released to ${order.supplier} now. ${money(disputed)} ${order.currency} stays in escrow until the claim is settled. You sign one BOT Chain transaction.`}
         clauses={choice === "intact"
           ? ["The quantities received match the order in full.", "The release is final and settles this order."]
           : ["The quantities entered are what your company actually received, and any evidence attached is genuine and unaltered.", "The accepted value is released to the supplier now. Only the held amount is disputed.", "The claim follows the Dispute Resolution Policy: supplier response, negotiation with optional AI mediation, then arbitration if no agreement is reached."]}

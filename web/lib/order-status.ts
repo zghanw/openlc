@@ -102,12 +102,12 @@ export function nextAction(status: OrderStatus, role: OrderRole, options: { invi
     case "awaiting_supplier":
       if (buyer) return { owner: "counterparty", title: "Waiting for supplier confirmation", detail: "You can resend or cancel the invitation while you wait." };
       return invited
-        ? { owner: "you", title: "Review and confirm the order", detail: "Check every line and the delivery terms, then confirm or request changes." }
+        ? { owner: "you", title: "Review and confirm the order", detail: "Check every line and the delivery terms, then confirm. If something is wrong, ask the other company to cancel and reissue the order." }
         : { owner: "counterparty", title: "Confirmation pending", detail: "The invited supplier account confirms this order." };
     case "awaiting_buyer":
       if (!buyer) return { owner: "counterparty", title: "Waiting for buyer confirmation", detail: "You can resend or cancel the invitation while you wait." };
       return invited
-        ? { owner: "you", title: "Review and confirm the order", detail: "Check every line and the delivery terms, then confirm or request changes." }
+        ? { owner: "you", title: "Review and confirm the order", detail: "Check every line and the delivery terms, then confirm. If something is wrong, ask the other company to cancel and reissue the order." }
         : { owner: "counterparty", title: "Confirmation pending", detail: "The invited buyer account confirms this order." };
     case "changes_requested":
       return buyer
