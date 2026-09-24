@@ -1,111 +1,108 @@
-# Handoff: OpenLC build, written Wed 23 Sep 2026 ~19:30 MYT
+# Handoff: OpenLC build, written Fri 25 Sep 2026 01:20 MYT
 
-Start here, then read `docs/hackathon-build/progress.md` (the authoritative ledger) and `HACKATHON.md`
-(rubric, phase plan, submission checklist, scope-cut list). `docs/hackathon-build/spec.md` and
-`plan.md` hold the architecture and the 22-task plan.
+Start here, then `docs/hackathon-build/progress.md` (the authoritative ledger), `HACKATHON.md` (rubric,
+submission checklist, scope cuts), `web/PRODUCT.md` (product truth) and `web/DESIGN.md` (the design system).
 
-**Deadline:** Thu 24 Sep 2026, 23:59 GMT+7 (Fri 25 Sep 00:59 MYT) on the earlier reading the
-organizers have not yet confirmed. Roughly 29 hours left when this was written. Hao Wen submits
-around Thu 20:00 MYT.
+**Deadline:** Fri 25 Sep 2026, 23:59 GMT+7 (Sat 26 Sep 00:59 MYT). Confirm with Hao Wen that this later reading is
+the one the organizers use; if it is the earlier one, submission is already overdue and only the essentials matter.
 
 ## How Hao Wen wants this run (non-negotiable)
 
-- Every plan task goes through the hackathon-build loop: implementer subagent at the tier `plan.md`
-  assigns → independent sonnet reviewer → fix round (resume the same implementer with SendMessage;
-  a fresh one at sonnet tier if its transcript is gone) → haiku re-review → a ledger line in
-  `progress.md`.
-- After each completed task: push to `origin main` and STOP until Hao Wen says go. Never chain into
-  the next task.
-- Before every push: run `.hackathon-build/tools/history-secret-check.sh` (it prints variable names
-  and match counts only, never values) and confirm no `.env` or `sources/` path is in history.
-- Never read, print or commit the root `.env`. Never ask Hao Wen to paste a secret in chat.
-- `sources/ProofPay/` is the read-only Sui original: reference only, never published.
-- No `Co-Authored-By` or any other commit trailer. Never `git add -A` or `git add -f`.
-- Write an acceptance gate script before dispatching a sweep-style task; a haiku implementer will
-  otherwise report success it has not achieved. See `.hackathon-build/plan/task-1*-check.sh`.
+- Every task goes through the loop: implementer subagent → independent reviewer → fix round → re-review → a ledger
+  line in `progress.md`. After each completed task: push to `origin main` and STOP until Hao Wen says go.
+- Before every push: `bash .hackathon-build/tools/history-secret-check.sh` (it prints variable names and counts only).
+- Never read, print or commit the root `.env`, `web/.env*` or `backend/.env`. Never ask Hao Wen to paste a secret.
+- `sources/ProofPay/` is read-only reference, never published. No `Co-Authored-By` or other trailer. Never
+  `git add -A` / `-f`.
+- **Mainnet BOT has real value.** Hao Wen runs every command or MetaMask action that spends or transfers mainnet
+  BOT himself (the deploy, funding wallets, the real order). Claude prepares, explains, and verifies on chain.
+- Write an acceptance gate script before any sweep-style task (see `.hackathon-build/plan/task-*-check.sh`).
 
-## What is live right now
+## What is live (testnet)
 
 | Piece | Where |
 |---|---|
 | Web | https://openlc.vercel.app (Vercel, root `web/`, auto-deploys on push to main) |
-| API | https://openlc-api.onrender.com (Render, root `backend/`, `/health` → `{"ok":true,"service":"openlc-api"}`) |
-| Contract | `0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5`, BOT Chain testnet (968), source-verified |
-| Database | Supabase `ysxjtlajqyunlqspktuv`, 12 migrations applied, `openlc-documents` bucket |
-| Keep-alive | GitHub Actions "Keep API warm" every 10 min on repo variable `API_HEALTH_URL` |
-| Repo | github.com/zghanw/openlc (public), branch `main` |
+| API | https://openlc-api.onrender.com (Render, root `backend/`) |
+| Contract | testnet `0x20C3b91B78D6F86b27C01e12692d2e56C0bcA5C5` (chain 968), source-verified, 41 tests |
+| Database | Supabase `ysxjtlajqyunlqspktuv` (holds all testnet orders and disputes today) |
+| Keep-alive | GitHub Actions "Keep API warm", repo variable `API_HEALTH_URL` |
+| Domain | **openlc.online** bought by Hao Wen on 25 Sep; not connected to anything yet |
 
-Wallets: buyer `0x112CCDa2939B24b865a10C0c958c20299695e604`, supplier / demo supplier
-`0x73e709f27a9f1AB7588F0a619a7B0d09eAeCc8e0`, deployer + arbitrator
-`0x1221C500Dfd0D3E477ed741a849edEa303d689Ca`. The contract rejects an escrow unless buyer, supplier
-and arbitrator are three distinct addresses.
+Wallets: deployer and arbitrator `0x1221C500Dfd0D3E477ed741a849edEa303d689Ca`; buyer
+`0x112CCDa2939B24b865a10C0c958c20299695e604`; supplier and demo supplier `0x73e709f27a9f1AB7588F0a619a7B0d09eAeCc8e0`.
+Buyer, supplier and arbitrator must be three different addresses.
 
-**Tasks 1-12 are complete.** Feature Zero passed on the deployed preview with real MetaMask: two
-orders ran end to end, including the partial claim (one transaction held 0.15 BOT and paid the
-supplier the undisputed 0.55) and a mutual settlement. Every transaction hash is in `progress.md`.
-The one-wallet judge path (task 12) was verified against the live API after
-`OPENLC_DEMO_SUPPLIER_ADDRESS` was set on Render: create → invite → `supplier_confirmed`.
+Done: tasks 1-14, 16 (workspace redesign), 17's landing part, 21's README and video scripts (`PITCH.md`; both videos
+recorded, and video 1 is posted), plus the sign-in gate, the landing sign-in wording, the BOT Chain signing guard, and
+the busy-mediator message. Task 13's DoD run happened on camera in the demo recording. Task 15 is cut.
 
-## Fix this first (10 minutes, judge-visible)
+## Mainnet BOT: where it is (checked 01:19 MYT)
 
-On the live demo path the order shows its supplier as **"My OpenLC workspace"**, not "OpenLC Demo
-Supplier". `createInvite`'s auto-accept (backend/src/service/trade-service.ts, the demo branch that
-calls `acceptWithInvite`) lets the accepting account's auto-provisioned organization name overwrite
-`supplierName`. A judge sees a supplier named like their own workspace. Restore
-`supplierName = demoSupplier.name` after the accept (or give the demo account's organization that
-name when it is created), add a test asserting the supplier name on a demo order, and re-run
-`.hackathon-build/tools/check-demo-supplier.mjs` against the live API after deploying.
+Hao Wen received 0.6 mainnet BOT from the organizers, but it is **not in any of the three wallets above**: deployer
+0.0651, buyer 0, supplier 0.0038. Ask him which address received it. Budget: the deploy costs about 0.06 BOT (the
+deployer should hold ≥ 0.08 first); one real full order cycle needs about 0.1-0.15 BOT for the order plus gas for the
+buyer (fund, accept) and the supplier (ship), about 0.02 each. Keep a reserve.
 
-## Remaining tasks, in the order I would do them
+## Remaining work, in order
 
-1. **13 — dispute settlement + AI mediation.** Known gap: the API does not record the settlement
-   execution. On order PO-97139111 the chain shows `SettlementExecuted`
-   (`0xb57dc85208eee87e171db06dbcecc370ad310d382c9af0101ae014d6fe220e61`) but the dispute is still
-   `settlement_pending` / `pending_on_chain`. The web does POST
-   `/v1/disputes/:id/settlement-execution`; reproduce, find the failure (Hao Wen saw an error
-   message; ask for its text), fix, and wire Gemini for mediation. **Careful:** setting
-   `GEMINI_API_KEY` on Render also makes `QDRANT_URL`/`QDRANT_API_KEY` required at boot
-   (backend/src/server.ts), so the API will not start without them. Make Qdrant optional first.
-2. **18 — `openlc.xyz` + production hosting.** Blocked on Hao Wen buying the domain.
-3. **20 — mainnet deploy + one real order cycle.** Blocked on the organizers' mainnet BOT
-   allocation. Deploy costs ~0.06 BOT; the deployer holds 0.0051. `scripts/deploy.js` refuses
-   mainnet without `CONFIRM_MAINNET=yes` and refuses to overwrite a deployment record without
-   `ALLOW_REDEPLOY=yes`.
-4. **21 — README (Deployment section with BOTH addresses), demo video script, X launch post.**
-5. **17 — `/launch` article** stating OpenLC is officially launched on BOT Chain Mainnet.
-6. **19 — QA pass**, then **22 — mainnet dry run** with a fresh wallet and browser profile.
-7. Cut unless time appears: **14** (deadline paths + chain-truth page), **15** (rename sweep),
-   **16** (design system beyond the brand mark, which is done).
+1. **Task 20: mainnet deploy + one real order cycle.**
+   - `CONFIRM_MAINNET=yes npm run deploy:mainnet` (Hao Wen runs it). It writes `deployments/botchain-mainnet.json`
+     and refuses to overwrite an existing record.
+   - Verify the source on https://scan.botchain.ai (hardhat.config.js already has the Blockscout chainDescriptors
+     for 677), then run `npm run check-abi`.
+   - One real order on mainnet: fund → ship → accept, at least; a partial claim too if the budget allows. Record every
+     hash.
+2. **Task 18: openlc.online + production config.**
+   - DNS: ask where the domain was bought. In Vercel → Domains, add `openlc.online` and `www.openlc.online`; Vercel
+     shows the exact records (usually an A record for the apex and a CNAME for www). Optionally `api.openlc.online`
+     → Render as a custom domain.
+   - Render env: `BOTCHAIN_RPC_URL=https://rpc.botchain.ai`, `BOTCHAIN_CHAIN_ID=677`, the mainnet
+     `OPENLC_ESCROW_ADDRESS` and `OPENLC_ESCROW_DEPLOY_BLOCK`, `FRONTEND_ORIGIN=https://openlc.online` (CORS AND the
+     sign-in message's origin use it, so a mismatch breaks sign-in), `INVITE_BASE_URL=https://openlc.online/orders`.
+   - Vercel env: `NEXT_PUBLIC_BOTCHAIN_CHAIN_ID=677`, the mainnet escrow address and deploy block, the arbitrator
+     address, the backend URL.
+   - Update the keep-alive `API_HEALTH_URL` if the API URL changes.
+   - Check every env name against `.env.example` and `web/.env.example`.
+3. **Production-ready: no demo or hardcoded data** (Hao Wen's request). Candidates, confirm each with him:
+   - the sample orders (`web/lib/sample-orders.ts`, `demo-orders.ts`, the "Show sample orders" toggle, "Sample"
+     tags, "Sample orders are not counted" on Overview);
+   - the "Skip to {status}" buttons on live orders;
+   - backend demo mode (`OPENLC_DEMO_MODE`, `/v1/demo/*`, `/auth/demo/google`, `DemoOrderService`, demo-auth);
+   - the unlinked legacy `/buyer` and `/supplier` routes;
+   - testnet copy on the landing ("runs on BOT Chain testnet", faucet → DEX, the testnet transaction links; swap in
+     the mainnet order's hashes after task 20);
+   - the terms and policy "pilot on testnet" wording.
+   Known small bugs to fix on the way: "Accept delivery and release {full value}" quotes the full order value, not
+   the remaining balance; the supplier contact email is required though identity is wallet-only (make it optional and
+   omit it when blank).
+   **Decisions to ask first:**
+   - Does the OpenLC demo supplier stay on mainnet? It is the lone-judge path (30% of the score); on mainnet a
+     judge's BOT stays locked until the delivery date, min 24h, then is reclaimable.
+   - Do the testnet orders in Supabase get archived or cleared before mainnet? That is destructive: export first and
+     get explicit approval.
+   - Does testnet stay reachable anywhere?
+4. **Gemini:** the free tier allows 20 requests/day per Flash model, and one mediation uses up to 8. Recommend billing
+   (the same key; negligible cost), or set `GEMINI_MODEL` on Render to models with quota left, e.g.
+   `gemini-3.5-flash-lite,gemini-3.6-flash,gemini-3.1-flash-lite`. The web PO import (`/api/extract-po`) needs
+   `GEMINI_API_KEY` and a single `GEMINI_MODEL` on Vercel; it is not configured there yet.
+5. **Task 17:** the `/launch` article on the site, stating OpenLC is "officially launched on BOT Chain Mainnet", with
+   the mainnet address and the real order's hashes.
+6. **README:** fill in the mainnet Deployment row and add the mainnet on-chain activity. **Task 21's rest:** the X
+   launch post tagging @BOTChain_ai (at least 5 valid posts from @OpenLCdev in total).
+7. **Task 19 QA + task 22 dry run** on openlc.online with a fresh wallet and a fresh browser profile.
 
-## Waiting on Hao Wen
+## Traps
 
-- Mainnet BOT from the organizers to `0x1221C500Dfd0D3E477ed741a849edEa303d689Ca`; also confirm the
-  deadline date and whether Vercel is acceptable.
-- Buy `openlc.xyz` (keep the receipt, it is reimbursed).
-- Post from @OpenLCdev: 5 valid posts are required before submitting, plus the launch post tagging
-  @BOTChain_ai. Ready-to-post drafts: https://claude.ai/artifact/HjPUvQURrCyRbeEcmL8yuy
+- The live API accepts only the configured FRONTEND_ORIGIN: test sign-in on the real domain, never localhost.
+- Vercel once silently missed a push. Verify a deploy by commit status AND a marker string unique to the new build.
+- The testnet RPC sometimes returns 503 for minutes; mainnet is untested at load. Retry before assuming a bug.
+- Money in the browser: every conversion goes through `toUnits` → `parseBotNumber`. Never float wei maths.
+- Every signed transaction goes through `requireBotChainSigner` (switches and pins the chain id). Keep it that way.
+- A claim can't exceed the balance still held (the contract reverts); the form doesn't check this.
 
-## Open items and traps
+## Local tools (git-ignored)
 
-- `docs/terms-of-service.md` and `docs/dispute-policy.md` still say ProofPay/Sui/zkLogin, and every
-  footer links to them. Task 13 owns them because the mediation engine reads them.
-- `web/tests/e2e/*` still target the removed Google/zkLogin sign-in; they will fail. Task 19.
-- Backend leftovers for task 15: `/auth/demo/google`, `payproof_organizations` tables and
-  functions, `restoreSupabaseSession` in `web/lib/openlc-api.ts` (dead), transitional field names
-  (`packageId`, `escrowObjectId`, `transactionDigest`, `checkpoint`).
-- The testnet RPC `https://rpc.bohr.life` went 503 for several minutes during the run-through.
-  Retry rather than assume a bug.
-- Vercel silently missed one push (no deployment, no commit status). Verify a deploy by its commit
-  status AND a marker string unique to the new build; an empty commit re-triggers it.
-- Money in the browser is JS floats; every conversion goes through `toUnits` → `parseBotNumber`,
-  which rounds to 9 decimals before `parseUnits`. Do not reintroduce float wei maths.
-- Sessions are wallet-only: `actor.email` is always undefined. Never gate anything on an email.
-
-## Local tools (git-ignored, on this machine)
-
-- `.hackathon-build/tools/history-secret-check.sh` — the pre-push gate.
-- `.hackathon-build/tools/watch-escrow.mjs [minutes]` — prints the next escrow events with their
-  transaction hashes; retries through RPC outages.
-- `.hackathon-build/tools/check-demo-supplier.mjs` — proves the one-wallet judge path on the live API.
-- `.hackathon-build/tools/await-web-fix.mjs "marker"` — polls the live bundle for a string.
-- `.hackathon-build/plan/` — per-task briefs, implementer reports, review packages, gate scripts.
+`.hackathon-build/tools/`: `history-secret-check.sh`, `watch-escrow.mjs`, `check-demo-supplier.mjs`,
+`await-web-fix.mjs "marker"` (polls the live bundle for a string). Briefs, gates and review diffs are in
+`.hackathon-build/plan/`. `.claude/launch.json` runs the web dev server on port 3107.
