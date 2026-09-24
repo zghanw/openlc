@@ -1,20 +1,17 @@
 # OpenLC Platform Terms of Service
 
-**Version 1.2 · Effective 23 September 2026 · Governing law: Malaysia**
+**Version 1.3 · Effective 25 September 2026 · Governing law: Malaysia**
 
 ---
 
-## Pilot notice — read this first
+## Notice — read this first
 
-OpenLC — the open letter of credit — is currently operating as a **pilot on BOT Chain testnet** (chain id 968).
+OpenLC — the open letter of credit — is launched on **BOT Chain mainnet** (chain id 677).
 
-- Every amount you see is denominated in **test BOT with no monetary value**. No real money is held, transferred, or at risk.
-- Testnet data, including escrow transactions and settlement receipts, may be reset, pruned, or lost at any time.
-- Features described in these Terms as operating "on settlement" or "on funding" run against testnet infrastructure and have not been audited for production use.
-- Nothing in this pilot creates a payment service, a money-services business, or a regulated financial product.
-- At launch, OpenLC moves to **BOT Chain mainnet** (chain id 677), where amounts are real BOT. The software remains a pilot: use small amounts, and clauses 10 and 11 continue to apply.
-
-Where a clause below describes commercial behaviour (fees, liability, custody), it states how OpenLC is designed to work. During the pilot, clauses 10 and 11 apply in full and limit that behaviour further.
+- Amounts are **real BOT**. What you lock in an escrow is real money.
+- The OpenLCEscrow contract, `0xd35bbde52618F716597cb097Fab3E52D3605A7c6`, is source-verified on the BOT Chain Explorer. It **has not had an independent security audit**.
+- OpenLC charges no fee. Every transaction's network fee (gas) is paid in BOT by the wallet that signs it.
+- Use amounts you can afford to lose. Clauses 10 and 11 apply in full.
 
 ---
 
@@ -52,7 +49,7 @@ Where a clause below describes commercial behaviour (fees, liability, custody), 
 
 **3.5** The order as confirmed — its line items, quantities, prices, delivery terms, and any terms and conditions attached to it — is the **agreement between the parties** for the purposes of these Terms and the Dispute Policy.
 
-**3.6** The **OpenLC Demo Supplier** exists so one person can try the product: it confirms an order instantly and never ships. A buyer who funds an order against it can reclaim the whole unreleased amount after the delivery date, through the same contract deadline path available on any order. It is for trying the product, not for trade.
+**3.6** (Withdrawn in version 1.3.)
 
 ## 4. Your agreement with your counterparty
 
@@ -78,7 +75,7 @@ Where a clause below describes commercial behaviour (fees, liability, custody), 
 
 **5.4** When a buyer opens a claim, the contract holds only the disputed amount and pays the undisputed remainder of the delivery balance to the supplier, in the same transaction.
 
-**5.5** OpenLC appoints the arbitrator for every order during the pilot — a platform arbitrator wallet, holding the signing key described in 5.2(e). This is a real power over the disputed amount, bounded by 5.3. Nominating your own arbitrator is not available during the pilot.
+**5.5** OpenLC appoints the arbitrator for every order — a platform arbitrator wallet, holding the signing key described in 5.2(e). This is a real power over the disputed amount, bounded by 5.3. Nominating your own arbitrator is not available yet.
 
 **5.6** Settlement produces an immutable on-chain receipt recording the allocation, the order hash, and the hash of the settled proposal.
 
@@ -92,7 +89,7 @@ Where a clause below describes commercial behaviour (fees, liability, custody), 
 
 **6.2** OpenLC provides AI-assisted analysis that may propose a settlement. Any proposal is **non-binding**: it takes effect only if both parties accept it and sign that acceptance on chain. See clause 7.
 
-**6.3** If the parties do not reach agreement within the periods set by the Policy, the case escalates to an arbitrator appointed by OpenLC for every order during the pilot. Nominating your own arbitrator is not available during the pilot.
+**6.3** If the parties do not reach agreement within the periods set by the Policy, the case escalates to an arbitrator appointed by OpenLC for every order. Nominating your own arbitrator is not available yet.
 
 **6.4** Nothing in these Terms or the Policy prevents you from pursuing any legal remedy available to you, or requires you to treat a platform outcome as a final determination of your legal rights.
 
@@ -132,13 +129,13 @@ Where a clause below describes commercial behaviour (fees, liability, custody), 
 
 ## 10. Fees
 
-**10.1** The pilot contract charges no platform fee. Every transaction's network fee (gas) is paid in BOT by the wallet that signs it.
+**10.1** The contract charges no platform fee. Every transaction's network fee (gas) is paid in BOT by the wallet that signs it.
 
 **10.2** Any future platform fee will be published before it takes effect and will never be deducted from an escrow balance without the express approval required by clause 5.2.
 
 ## 11. Liability
 
-**11.1** On the BOT Chain testnet pilot, all amounts are test BOT with no monetary value. At launch, on BOT Chain mainnet, amounts are real BOT and the software remains a pilot: use small amounts. In both cases, OpenLC accepts **no liability for any loss** arising from your use of the platform, except as set out in 11.5.
+**11.1** On BOT Chain mainnet, amounts are real BOT, and the limits in this clause 11 apply in full. OpenLC accepts **no liability for any loss** arising from your use of the platform, except as set out in 11.5.
 
 **11.2** OpenLC is not liable for the performance of your counterparty, the quality or conformity of goods, delivery outcomes, or the commercial merits of any dispute.
 
@@ -152,7 +149,7 @@ Where a clause below describes commercial behaviour (fees, liability, custody), 
 
 **12.1** You may stop using OpenLC at any time. Orders already funded remain governed by clause 5 until settled.
 
-**12.2** OpenLC may withdraw the pilot, in whole or in part, on notice. Where it does, parties will be given a reasonable opportunity to settle open escrows first.
+**12.2** OpenLC may withdraw the service, in whole or in part, on notice. Where it does, parties will be given a reasonable opportunity to settle open escrows first.
 
 ## 13. Governing law
 
@@ -169,6 +166,10 @@ Where a clause below describes commercial behaviour (fees, liability, custody), 
 ## 15. Contact
 
 Questions about these Terms, the Dispute Policy, or a specific case should be raised through the workspace, which attaches the relevant order record automatically.
+
+## Version history
+
+- **1.3 — 25 September 2026.** OpenLC launched on BOT Chain mainnet (chain id 677). Replaced the opening notice with a mainnet notice: real BOT, a source-verified contract without an independent security audit, no fee, gas paid by the signing wallet. Withdrew clause 3.6 (the demo supplier). Removed pilot wording from clauses 5.5, 6.3, 10.1, 11.1 and 12.2 without changing their meaning.
 
 ---
 

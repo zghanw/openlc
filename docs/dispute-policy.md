@@ -1,6 +1,6 @@
 # OpenLC Dispute Resolution Policy
 
-**Version 1.2 · Effective 23 September 2026**
+**Version 1.3 · Effective 25 September 2026**
 
 This Policy is part of the [OpenLC Platform Terms of Service](./terms-of-service.md). It is the rulebook OpenLC applies to a dispute over a funded order, and it is the only source of general rules the platform's automated analysis is permitted to apply when your own agreement is silent.
 
@@ -136,7 +136,7 @@ These rules apply where the agreement between the parties does not answer the qu
 
 **DP-9.1** A case escalates to an arbitrator when the negotiation period expires (DP-2.4), when the round limit is reached (DP-2.5), or when the supplier does not respond (DP-4.2).
 
-**DP-9.2** The arbitrator is appointed by OpenLC for every order during the pilot. Nominating your own arbitrator is not available during the pilot.
+**DP-9.2** The arbitrator is appointed by OpenLC for every order. Nominating your own arbitrator is not available yet.
 
 **DP-9.3** The arbitrator receives the complete case record: the claim, the agreement, every evidence submission, every proposal made by either party, and any automated analysis, including analysis the parties rejected.
 
@@ -162,6 +162,7 @@ These rules apply where the agreement between the parties does not answer the qu
 
 ## Version history
 
-- **1.2 — 23 September 2026.** Rebranded to OpenLC on BOT Chain. Clarified that the arbitrator is appointed by OpenLC for every order during the pilot and that nomination is not yet available (DP-9.2, DP-9.7), and clarified what an evidence file without a text transcript is described to automated analysis as (DP-5.5, DP-5.6) and what a factual assertion may quote (DP-8.1, DP-8.3).
+- **1.3 — 25 September 2026.** OpenLC launched on BOT Chain mainnet (chain id 677). Removed pilot wording from DP-9.2 without changing its meaning. No clause identifier changed.
+- **1.2 — 23 September 2026.** Rebranded to OpenLC on BOT Chain. Clarified that the arbitrator is appointed by OpenLC for every order and that nomination is not yet available (DP-9.2, DP-9.7), and clarified what an evidence file without a text transcript is described to automated analysis as (DP-5.5, DP-5.6) and what a factual assertion may quote (DP-8.1, DP-8.3).
 - **1.1 — 5 September 2026.** Added confirmed milestone releases, clarified that disputes are limited to the remaining delivery balance, and added DP-7.11 on damage whose cause cannot be attributed to either party.
 - **1.0 — 2 September 2026.** First published version.
