@@ -98,8 +98,8 @@ BOT Chain runs around 20 gwei; a single escrow action (fund, ship, claim, settle
   [buyer approves the split](https://scan.bohr.life/tx/0x456a3a260b1cfb44a35100aa08c0d5024cd83a6818ccbdaa0696a109b7f518a2) ·
   [supplier approves the same split](https://scan.bohr.life/tx/0x0b83f4cd77cd363bcab2ee6ba35483b033bd12e168bb7c935642b1bee0c2f765) ·
   [settlement executed, 0.15 BOT refunded to the buyer](https://scan.bohr.life/tx/0xb57dc85208eee87e171db06dbcecc370ad310d382c9af0101ae014d6fe220e61)
-- **DEMO-DEADLINE-79452557** (escrow #3, 0.01 BOT, a 150-second delivery deadline — proving the
-  other deadline path): [fund](https://scan.bohr.life/tx/0x0f9b65e2737c099c4fa374f165dd2b9bb6deb393bbac8c460a168cb00f550646) ·
+- **DEMO-DEADLINE-79452557** (escrow #3, 0.01 BOT, a 150-second delivery deadline, proving the
+  buyer's deadline reclaim): [fund](https://scan.bohr.life/tx/0x0f9b65e2737c099c4fa374f165dd2b9bb6deb393bbac8c460a168cb00f550646) ·
   [reclaimed with refundUnshipped() after the deadline passed](https://scan.bohr.life/tx/0xed3f2817831236bf4cb8df7502868149495a05bd293d1ef1235e12d31c246344)
 
 ## Architecture
