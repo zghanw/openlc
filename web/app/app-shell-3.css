@@ -45,7 +45,7 @@
 .report-split{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,max-content));gap:16px}
 .report-split span{display:grid;gap:2px}
 .report-split small{font-size:11.5px;color:var(--muted-foreground)}
-.report-split strong{font-family:var(--font-data);font-size:15px;font-weight:600;color:var(--foreground);font-variant-numeric:tabular-nums}
+.report-split strong{font-family:var(--font-data);font-size:15px;font-weight:600;color:var(--foreground)}
 .proposal-report-toggle{width:max-content}
 .evidence-files{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .evidence-files li{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--secondary);font-size:12px}

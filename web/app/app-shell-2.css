@@ -15,7 +15,7 @@
 .phase-tab{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:0;border-radius:6px;background:transparent;color:var(--muted-foreground);font-size:.8125rem;font-weight:600;white-space:nowrap;cursor:pointer;transition:background-color 150ms ease-out,color 150ms ease-out}
 .phase-tab:hover{color:var(--foreground)}
 .phase-tab-active{background:var(--card);color:var(--foreground);box-shadow:inset 0 0 0 1px var(--border-strong)}
-.phase-count{min-width:20px;padding:1px 6px;border-radius:999px;background:color-mix(in oklch,var(--foreground) 8%,transparent);color:var(--muted-foreground);font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.phase-count{min-width:20px;padding:1px 6px;border-radius:999px;background:color-mix(in oklch,var(--foreground) 8%,transparent);color:var(--muted-foreground);font-size:11.5px;font-weight:700}
 .phase-tab-active .phase-count{background:var(--secondary);color:var(--foreground)}
 .phase-count-hot{background:var(--primary);color:var(--primary-foreground)}
 .table-empty .empty-art{margin:0 auto 8px}
@@ -100,7 +100,7 @@
 .claim-stage-branch .claim-stage-dot{border-color:var(--destructive);color:var(--destructive)}
 .claim-money{display:grid;gap:12px;margin-bottom:16px}
 .claim-money-ask{margin:0;padding-top:12px;border-top:1px solid var(--border);color:var(--foreground);font-size:13px;line-height:1.5}
-.claim-money-ask strong{font-family:var(--font-data);font-weight:650;font-variant-numeric:tabular-nums}
+.claim-money-ask strong{font-family:var(--font-data);font-weight:650}
 .claim-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:20px;align-items:start}
 .claim-main{display:grid;gap:16px;min-width:0}
 .claim-statement{padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--secondary)}
@@ -124,7 +124,7 @@
 .proposal-split{display:grid;grid-template-columns:repeat(3,auto);gap:16px;justify-content:start}
 .proposal-split span{display:grid}
 .proposal-split small{font-size:11.5px;color:var(--muted-foreground)}
-.proposal-split strong{font-family:var(--font-data);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.proposal-split strong{font-family:var(--font-data);font-size:15px;font-weight:600}
 .proposal p{font-size:13.5px}
 .proposal-acceptances{color:var(--success)}
 .proposal-reasoning{display:grid;gap:6px;padding:10px 12px;border-radius:6px;background:var(--secondary);font-size:13px;color:var(--foreground)}
@@ -168,8 +168,6 @@
 @media(max-width:760px){
   .choice-grid{grid-template-columns:1fr}
   .po-dialog .role-choice{grid-template-columns:1fr}
-  .register-table th:nth-child(2),.register-table td:nth-child(2),.register-table th:nth-child(4),.register-table td:nth-child(4){display:none}
-  .register-table th:nth-child(3),.register-table td:nth-child(3),.register-table th:nth-child(6),.register-table td:nth-child(6){display:table-cell}
   .proposal-split{grid-template-columns:1fr 1fr}
   .check-strip{flex-direction:column;align-items:stretch}
 }

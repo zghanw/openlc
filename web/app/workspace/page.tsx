@@ -23,7 +23,7 @@ export default function OverviewPage() {
       .catch(() => setBalance(null));
   }, [workspace.session?.walletAddress]);
 
-  const { queue, waiting, ledger } = useMemo(() => {
+  const { queue, waiting, samplesLeftOut, ledger } = useMemo(() => {
     const queue: QueueItem[] = workspace.invitations.map((invitation) => ({
       key: `invite-${invitation.orderId}`, href: `/orders/${encodeURIComponent(invitation.orderId)}`, reference: invitation.reference,
       title: "Review and confirm the order", detail: `${invitation.counterpartyName} invited you to ${invitation.invitedRole === "buyer" ? "buy" : "supply"} this order. Delivery ${invitation.deliveryDate}.`,
@@ -38,12 +38,14 @@ export default function OverviewPage() {
       if (action.owner === "you" && !queue.some((entry) => entry.href === item.href)) queue.push(item);
       else if (action.owner !== "you") waiting.push(item);
     }
-    const secured = (role: "BUYER" | "SUPPLIER") => workspace.orders.filter((order) => order.role === role && ["funded", "in_transit", "delivered", "dispute_open", "negotiation_open", "arbitration_pending", "settlement_pending"].includes(order.status));
+    // Money figures count real orders only. Sample orders stay in the lists, tagged, but never add to what you hold.
+    const real = workspace.orders.filter((order) => order.source !== "sample");
+    const secured = (role: "BUYER" | "SUPPLIER") => real.filter((order) => order.role === role && ["funded", "in_transit", "delivered", "dispute_open", "negotiation_open", "arbitration_pending", "settlement_pending"].includes(order.status));
     const buying = secured("BUYER");
     const supplying = secured("SUPPLIER");
-    const releaseReady = workspace.orders.filter((order) => order.role === "SUPPLIER" && order.status === "settlement_pending");
+    const releaseReady = real.filter((order) => order.role === "SUPPLIER" && order.status === "settlement_pending");
     return {
-      queue, waiting,
+      queue, waiting, samplesLeftOut: real.length < workspace.orders.length,
       ledger: {
         buying: { value: buying.reduce((sum, order) => sum + order.value, 0), count: buying.length },
         supplying: { value: supplying.reduce((sum, order) => sum + order.value, 0), count: supplying.length },
@@ -79,6 +81,7 @@ export default function OverviewPage() {
           <strong className="metric-value">{money(ledger.release.value)}<small>BOT</small></strong>
           <p className="metric-caption">{ledger.release.count} {ledger.release.count === 1 ? "settlement" : "settlements"} waiting to be executed</p>
         </div>
+        {samplesLeftOut && <p className="metric-note">Sample orders are not counted in these amounts.</p>}
       </section>
 
       <section className="list-card" aria-labelledby="queue-title">

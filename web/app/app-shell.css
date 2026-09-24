@@ -10,9 +10,9 @@
 .shell h3{font-size:15px}
 .shell p{margin:0}
 .shell small{font-size:12px;color:var(--muted-foreground);line-height:1.45}
-.shell code{font-family:var(--font-data);font-size:12px;word-break:break-all;font-variant-numeric:tabular-nums}
+.shell code{font-family:var(--font-data);font-size:12px;word-break:break-all}
 .shell .muted{color:var(--muted-foreground)}
-.shell .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.shell .num{text-align:right;white-space:nowrap}
 .shell a.link{display:inline-flex;align-items:center;gap:4px;color:var(--foreground);font-weight:600;text-decoration:underline;text-decoration-color:color-mix(in oklch,var(--foreground) 35%,transparent);text-underline-offset:3px}
 .shell a.link:hover{text-decoration:underline;text-decoration-color:currentColor}
 
@@ -39,7 +39,7 @@
 .sidebar-link-active:hover svg{transform:none}
 .sidebar-indicator{position:absolute;left:0;top:50%;width:4px;height:24px;border-radius:0 999px 999px 0;background:var(--accent);opacity:0;transform:translateY(-50%);transition:opacity 250ms ease-out}
 .sidebar-link-active .sidebar-indicator{opacity:1}
-.nav-count{margin-left:auto;min-width:20px;height:20px;padding:0 6px;display:inline-grid;place-items:center;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:.6875rem;font-weight:700;font-variant-numeric:tabular-nums}
+.nav-count{margin-left:auto;min-width:20px;height:20px;padding:0 6px;display:inline-grid;place-items:center;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:.6875rem;font-weight:700}
 .shell-collapsed .sidebar .nav-count{position:absolute;left:34px;top:5px;min-width:17px;height:17px;padding:0 4px;font-size:.625rem}
 .shell-collapsed .sidebar-link{justify-content:center;padding:0;gap:0}
 .sidebar-foot{flex:none;display:grid;gap:8px;padding:12px;border-top:1px solid var(--border)}
@@ -49,7 +49,7 @@
 .sidebar-account small,.wallet-chip small{overflow:hidden;text-overflow:ellipsis;font-size:.75rem;color:var(--muted-foreground)}
 .sidebar-avatar{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:var(--radius);background:var(--secondary);color:var(--foreground);font-size:.75rem;font-weight:700}
 .wallet-chip{padding:8px 10px;border:1px solid var(--border);background:var(--card)}
-.wallet-chip strong{font-variant-numeric:tabular-nums}
+.wallet-chip strong{}
 .shell-collapsed .sidebar-account,.shell-collapsed .wallet-chip{justify-content:center;gap:0}
 .shell-collapsed .wallet-chip{padding:12px 0}
 .status-dot{width:8px;height:8px;flex:none;border-radius:999px;background:var(--muted-foreground)}
@@ -102,7 +102,7 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .page-intro p{margin:0;max-width:72ch;color:var(--muted-foreground);font-size:.875rem}
 .page-intro-actions{display:flex;gap:10px;flex:none}
 
-/* Metric tiles (Overview). Values in BOT, tabular; a caption where the reference shows a trend. */
+/* Metric tiles (Overview). Values in BOT; a caption where the reference shows a trend. */
 .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .metric-tile{position:relative;display:grid;align-content:start;gap:10px;padding:20px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--card);color:var(--foreground);transition:border-color 200ms ease-out,background-color 200ms ease-out;animation:tile-in 200ms cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--i,0) * 60ms)}
 @keyframes tile-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -110,7 +110,7 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .metric-title{display:flex;align-items:center;min-height:36px;color:var(--muted-foreground);font-size:.875rem;font-weight:550;line-height:1.3}
 .metric-title .help-hint{margin-left:4px}
 .metric-icon{width:36px;height:36px;flex:none;display:grid;place-items:center;border-radius:var(--radius);background:var(--secondary);color:var(--muted-foreground);transition:color 200ms ease-out}
-.metric-value{display:flex;align-items:baseline;gap:6px;font-size:1.875rem;font-weight:650;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--foreground)}
+.metric-value{display:flex;align-items:baseline;gap:6px;font-size:1.875rem;font-weight:650;letter-spacing:-.02em;line-height:1.1;color:var(--foreground)}
 .metric-value small{font-size:.875rem;font-weight:600;letter-spacing:0;color:var(--muted-foreground)}
 .metric-value-text{font-size:1.25rem;letter-spacing:-.01em}
 .metric-caption{margin:0;color:var(--muted-foreground);font-size:.8125rem;line-height:1.4}
@@ -137,13 +137,13 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .list-row-main>strong{font-size:.9375rem;font-weight:600;line-height:1.35}
 .list-row-main>span{max-width:72ch;color:var(--muted-foreground);font-size:.8125rem;line-height:1.45}
 .list-row-side{flex:none;display:flex;align-items:center;gap:16px}
-.list-amount{font-size:.9375rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.list-amount{font-size:.9375rem;font-weight:600;white-space:nowrap;text-align:right}
 .list-empty{display:grid;justify-items:start;gap:8px;padding:20px 12px 8px;color:var(--muted-foreground);font-size:.875rem}
 .list-empty strong{color:var(--foreground);font-size:1rem;font-weight:600}
 .list-empty span{max-width:60ch}
 .list-empty .btn{margin-top:6px}
 .list-card-quiet{background:color-mix(in oklch,var(--card) 60%,var(--background))}
-.waiting-list .list-row{display:grid;grid-template-columns:minmax(110px,auto) minmax(0,1fr) auto minmax(110px,auto);gap:14px;padding:10px 12px;font-size:.875rem}
+.waiting-list .list-row{display:grid;grid-template-columns:minmax(110px,auto) minmax(0,1fr) auto minmax(110px,auto);grid-template-areas:"ref step pill amount";align-items:center;gap:14px;padding:10px 12px;font-size:.875rem}
 .waiting-step{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted-foreground)}
 
 @media(max-width:1180px){
@@ -189,8 +189,8 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
   .list-row{flex-wrap:wrap;padding:12px 4px}
   .list-avatar{display:none}
   .list-row-side{width:100%;justify-content:space-between}
-  .waiting-list .list-row{grid-template-columns:1fr auto;row-gap:4px}
-  .waiting-step{grid-column:1/-1;grid-row:2;white-space:normal}
+  .waiting-list .list-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"ref amount" "step pill";row-gap:6px;padding:10px 4px}
+  .waiting-step{white-space:normal}
 }
 @keyframes fade-in{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){
@@ -333,7 +333,7 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .order-head p{margin-top:6px;color:var(--muted-foreground);max-width:72ch}
 .order-head-total{display:grid;gap:4px;justify-items:end;text-align:right;flex-shrink:0;max-width:300px}
 .order-head-total>span{font-size:12.5px;font-weight:650;color:var(--muted-foreground)}
-.order-head-total strong{font-family:var(--font-data);font-size:26px;font-weight:600;letter-spacing:-.01em;line-height:1.1;font-variant-numeric:tabular-nums}
+.order-head-total strong{font-family:var(--font-data);font-size:26px;font-weight:600;letter-spacing:-.01em;line-height:1.1}
 .order-head-total strong small{font-family:var(--font-body);font-size:12px;font-weight:700;color:var(--muted-foreground)}
 .order-head-total>small{font-size:12px}
 .stepper{list-style:none;margin:0;padding:16px 20px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--card);counter-reset:step}
@@ -376,7 +376,7 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .inspection-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .inspection-summary div{display:grid;gap:3px;padding:11px 13px;border:1px solid var(--border);border-radius:7px;background:var(--secondary)}
 .inspection-summary span{font-size:12.5px;color:var(--muted-foreground);font-weight:600}
-.inspection-summary strong{font-family:var(--font-data);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.inspection-summary strong{font-family:var(--font-data);font-size:16px;font-weight:600}
 .inspection-record{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);display:grid;gap:10px}
 .demo-control{margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:11px 13px;border:1px dashed var(--border-strong);border-radius:8px;background:var(--secondary)}
 .demo-control strong{display:block;font-size:12.5px;font-weight:700;color:var(--foreground)}
@@ -402,12 +402,12 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .line-editor{display:grid;gap:8px}
 .line-editor-head,.line-editor-row{display:grid;grid-template-columns:minmax(0,2.2fr) 92px 100px 120px 96px 34px;gap:8px;align-items:center}
 .line-editor-head{padding:0 2px;color:var(--muted-foreground);font-size:12px;font-weight:650}
-.line-editor-row strong{font-family:var(--font-data);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.line-editor-row strong{font-family:var(--font-data);font-size:13px;text-align:right}
 .line-editor-add{display:inline-flex;align-items:center;gap:6px;width:max-content;min-height:34px;padding:0 10px;border:1px dashed var(--border-strong);border-radius:6px;background:transparent;color:var(--foreground);font-size:12.5px;font-weight:650;cursor:pointer}
 .line-editor-add:hover{background:var(--secondary)}
 .order-total-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;background:var(--secondary);color:var(--foreground);border:1px solid var(--border)}
 .order-total-strip span{font-size:13px;color:var(--muted-foreground)}
-.order-total-strip strong{font-family:var(--font-data);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.order-total-strip strong{font-family:var(--font-data);font-size:20px;font-weight:600}
 .order-total-strip strong small{font-family:var(--font-body);font-size:12px;color:var(--muted-foreground)}
 .po-pages{list-style:none;margin:0;padding:0;display:flex;align-items:center;gap:8px;color:var(--muted-foreground);font-size:13px;font-weight:650}
 .po-pages li{display:flex;align-items:center;gap:7px}
@@ -439,16 +439,16 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .release-summary .release-zone+.release-zone span{justify-content:flex-end}
 .release-zone span,.release-zone b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .release-zone span{display:flex;align-items:center;gap:5px;color:var(--muted-foreground);font-size:12px;font-weight:600;line-height:1.35}
-.release-zone b{font-family:var(--font-data);font-size:14px;font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.release-zone b{font-family:var(--font-data);font-size:14px;font-weight:650;letter-spacing:-.01em}
 .release-bar{position:relative;display:grid;gap:3px;min-height:62px}
 .release-seg{container-type:inline-size;display:grid;align-content:center;gap:2px;min-width:0;padding:9px 11px;border-radius:2px;overflow:hidden;transition:background 200ms cubic-bezier(.22,1,.36,1),color 200ms cubic-bezier(.22,1,.36,1)}
 .release-seg:first-child{border-radius:var(--seg-radius) 2px 2px var(--seg-radius)}
 .release-seg:last-child{border-radius:2px var(--seg-radius) var(--seg-radius) 2px}
 .release-seg:only-child{border-radius:var(--seg-radius)}
 .release-seg-name{display:none;font-size:12.5px;font-weight:650}
-.release-seg-share{display:none;font-size:16px;font-weight:680;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+.release-seg-share{display:none;font-size:16px;font-weight:680;letter-spacing:-.02em;line-height:1.15}
 @container (min-width:46px){.release-seg-share{display:block}}
-.release-seg-amount{display:none;font-family:var(--font-data);font-size:12.5px;font-weight:550;line-height:1.3;white-space:nowrap;font-variant-numeric:tabular-nums}
+.release-seg-amount{display:none;font-family:var(--font-data);font-size:12.5px;font-weight:550;line-height:1.3;white-space:nowrap}
 .release-seg-state{display:none;align-items:center;gap:4px;margin-top:3px;font-size:12px;font-weight:600;white-space:nowrap}
 @container (min-width:88px){.release-seg-amount{display:block}}
 @container (min-width:128px){.release-seg-state{display:flex}}
@@ -488,9 +488,9 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .release-controls strong{font-size:13.5px;font-weight:650}
 .release-controls small{font-size:12px;color:var(--muted-foreground)}
 .percent-input{display:flex;align-items:center;border:1px solid var(--border-strong);border-radius:7px;background:var(--secondary);border-color:var(--border)}
-.percent-input [data-slot=input]{min-height:40px;border:0!important;box-shadow:none!important;text-align:right;font-family:var(--font-data);background:transparent;font-variant-numeric:tabular-nums}
+.percent-input [data-slot=input]{min-height:40px;border:0!important;box-shadow:none!important;text-align:right;font-family:var(--font-data);background:transparent}
 .percent-input b{padding-right:10px;color:var(--muted-foreground);font-size:12px}
-.release-controls output{font-family:var(--font-data);font-size:13.5px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.release-controls output{font-family:var(--font-data);font-size:13.5px;font-weight:600;text-align:right}
 .release-final>b{text-align:right;color:var(--foreground)}
 .release-ledger{display:grid;gap:16px}
 .order-created{display:grid;gap:14px}
@@ -499,7 +499,7 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .trust-publish>div:first-child{display:grid;gap:3px}
 .trust-publish span{color:var(--muted-foreground);font-size:13px}
 .trust-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
-.trust-link code{min-width:0;flex:1;font-family:var(--font-data);font-size:12px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.trust-link code{min-width:0;flex:1;font-family:var(--font-data);font-size:12px;overflow-wrap:anywhere}
 .trust-profile{display:grid;grid-template-columns:minmax(240px,.72fr) minmax(0,1.6fr);gap:18px;align-items:start}
 .trust-identity,.trust-roles{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--card)}
 .trust-identity{display:grid;gap:12px;padding:24px}
@@ -542,11 +542,11 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .po-dialog .field>span,.consent-dialog .field>span,.money-dialog .field>span{display:flex;align-items:center;gap:6px;color:var(--muted-foreground);font-size:12.5px;font-weight:650}
 .po-dialog .field,.consent-dialog .field,.money-dialog .field{display:grid;gap:6px}
 .po-dialog small,.consent-dialog small,.money-dialog small{font-size:12px;color:var(--muted-foreground);line-height:1.45}
-.po-dialog code,.money-dialog code{font-family:var(--font-data);font-size:12px;word-break:break-all;font-variant-numeric:tabular-nums}
+.po-dialog code,.money-dialog code{font-family:var(--font-data);font-size:12px;word-break:break-all}
 .po-dialog [data-slot=input],.money-dialog [data-slot=input]{border-color:var(--border-strong)}
 .consent-dialog .file-field,.po-dialog .file-field{position:relative}
 .amount-input{display:flex;align-items:center;gap:8px;padding-right:12px;border:1px solid var(--border-strong);border-radius:7px;background:var(--secondary);border-color:var(--border)}
-.amount-input [data-slot=input]{border:0!important;box-shadow:none!important;font-family:var(--font-data);font-size:18px;min-height:46px;background:transparent;font-variant-numeric:tabular-nums}
+.amount-input [data-slot=input]{border:0!important;box-shadow:none!important;font-family:var(--font-data);font-size:18px;min-height:46px;background:transparent}
 .amount-input b{font-size:12.5px;color:var(--muted-foreground)}
 .method-list{display:grid;gap:8px}
 .method{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer}
@@ -555,7 +555,7 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .method strong{font-size:13.5px;font-weight:650}
 .method-active{border-color:var(--foreground);background:var(--secondary);box-shadow:0 0 0 2px color-mix(in oklch,var(--foreground) 9%,transparent)}
 .summary-strip{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:7px;background:var(--secondary);font-size:13px;color:var(--muted-foreground)}
-.summary-strip strong{font-family:var(--font-data);font-size:15px;color:var(--foreground);margin-right:auto;font-variant-numeric:tabular-nums}
+.summary-strip strong{font-family:var(--font-data);font-size:15px;color:var(--foreground);margin-right:auto}
 .crypto-transfer{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start}
 .crypto-transfer>div{display:grid;gap:6px}
 .crypto-transfer strong{font-size:13.5px}
@@ -579,8 +579,8 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .qr-scan-launch small{font-size:12px;color:var(--muted-foreground)}
 .qr-scan-launch:hover{border-color:var(--foreground);background:var(--secondary)}
 .qr-scanner{width:100%;max-height:320px;border-radius:10px;background:var(--secondary);object-fit:cover}
-.qr-pane textarea{width:100%;min-height:96px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:7px;font-family:var(--font-data);font-size:12.5px;line-height:1.5;resize:vertical;font-variant-numeric:tabular-nums}
-.qr-ticket strong{font-family:var(--font-data);font-size:20px;font-variant-numeric:tabular-nums}
+.qr-pane textarea{width:100%;min-height:96px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:7px;font-family:var(--font-data);font-size:12.5px;line-height:1.5;resize:vertical}
+.qr-ticket strong{font-family:var(--font-data);font-size:20px}
 .qr-ticket strong small{font-family:var(--font-body);font-size:12px}
 .qr-live{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;color:var(--success)}
 .qr-live i{width:8px;height:8px;border-radius:999px;background:var(--success);animation:pulse 1.2s ease-in-out infinite}
@@ -593,26 +593,20 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .wallet-card-head .help-hint-button{color:var(--muted-foreground)}
 .wallet-network{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;height:28px;padding:0 10px;border:1px solid var(--border);border-radius:999px;color:var(--foreground)}
 .wallet-network i{width:8px;height:8px;border-radius:999px;background:var(--success)}
-.wallet-amount{font-family:var(--font-body);font-size:2.25rem;font-weight:650;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.wallet-amount{font-family:var(--font-body);font-size:2.25rem;font-weight:650;letter-spacing:-.02em;line-height:1}
 .wallet-amount-text{font-family:var(--font-body);font-size:22px;font-weight:650;letter-spacing:-.01em}
 .wallet-amount small{font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--muted-foreground)}
 .link-light{color:var(--foreground);text-decoration:underline;text-underline-offset:2px}
 .wallet-address{display:flex;flex-wrap:wrap;align-items:center;gap:8px;color:var(--muted-foreground);font-size:13px}
 .wallet-address code{color:var(--foreground)}
 .wallet-note{color:var(--muted-foreground);font-size:12.5px}
-.wallet-actions{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.wallet-action-button{display:grid;justify-items:start;align-content:start;gap:4px;padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--secondary);color:var(--foreground);text-align:left;cursor:pointer;transition:background-color 150ms ease-out,border-color 150ms ease-out;font:inherit}
-.wallet-action-button:hover{border-color:var(--border-strong);background:color-mix(in oklch,var(--secondary) 80%,var(--border-strong))}
-.wallet-action-button:active{background:var(--border)}
-.wallet-action-button span{width:32px;height:32px;display:grid;place-items:center;border-radius:var(--radius);background:var(--card);color:var(--foreground);margin-bottom:4px}
-.wallet-actions strong{font-size:.875rem}
-.wallet-actions small{color:var(--muted-foreground);font-size:.75rem}
+.wallet-actions{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
 .money-rows{margin:0;display:grid}
 .money-rows>div{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--border)}
 .money-rows>div:first-child{border-top:0;padding-top:0;font-size:15px}
 .money-rows dt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--foreground);font-weight:600;font-size:13.5px}
 .money-rows dt small{width:100%;font-weight:500}
-.money-rows dd{margin:0;font-family:var(--font-body);font-size:15px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.money-rows dd{margin:0;font-family:var(--font-body);font-size:15px;font-weight:600;white-space:nowrap}
 .money-rows dd.text{font-family:var(--font-body);font-weight:600;color:var(--muted-foreground)}
 .money-row-pending dt,.money-row-pending dd{color:var(--warning)}
 .money-foot{margin-top:12px;display:flex;align-items:flex-start;gap:8px;color:var(--muted-foreground);font-size:12.5px}
@@ -628,7 +622,7 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .movement-stage-deposit{background:var(--secondary);color:var(--foreground)}
 .movement-stage-dispatch{background:var(--secondary);color:var(--foreground)}
 .movement-stage-delivery{background:var(--secondary);color:var(--foreground)}
-.movement-list .num{font-family:var(--font-data);font-size:14px;font-variant-numeric:tabular-nums}
+.movement-list .num{font-family:var(--font-data);font-size:14px}
 .amount-in{color:var(--success)}
 .amount-escrow{color:var(--muted-foreground);font-weight:600}
 
@@ -674,11 +668,9 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
   .fact-list-inline{grid-template-columns:1fr}
   .inspection-summary{grid-template-columns:1fr}
   .data-table{font-size:13px}
-  .register-table th:nth-child(2),.register-table td:nth-child(2),.register-table th:nth-child(3),.register-table td:nth-child(3),.register-table th:nth-child(6),.register-table td:nth-child(6){display:none}
   .invite-link{grid-template-columns:auto 1fr}
   .invite-link [data-slot=button]{grid-column:1/-1}
-  .wallet-actions{grid-template-columns:1fr}
-  .wallet-amount{font-size:2.25rem;font-family:var(--font-body);font-weight:650;font-variant-numeric:tabular-nums}
+  .wallet-amount{font-size:1.75rem}
   .form-grid,.form-grid-3{grid-template-columns:1fr}
   .qr-grid{grid-template-columns:1fr}
   .crypto-transfer{grid-template-columns:1fr}
@@ -717,5 +709,3 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .release-seg-released{background:var(--success);color:var(--primary-foreground)}
 .release-seg-released .release-seg-state{color:var(--primary-foreground)}
 .movement-in.movement-stage{background:var(--success-soft);color:var(--success)}
-/* Amounts, dates and hashes line up: tabular figures (Mona Sans draws its tabular zero slashed, so prose keeps proportional figures). */
-:is(.shell,.po-dialog,.consent-dialog,.money-dialog,.preview-sheet) :is(.num,time,code,output,.release-seg-amount,.release-seg-share,.proposal-split strong,.fact-list dd strong){font-variant-numeric:tabular-nums}

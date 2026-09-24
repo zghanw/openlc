@@ -65,16 +65,6 @@
 .register-table .cell-party small{margin:0;color:var(--foreground);font-size:11px;font-weight:700}
 .register-table th:nth-child(2),.register-table td:nth-child(2),
 .register-table th:nth-child(3),.register-table td:nth-child(3){min-width:150px}
-
-@media(max-width:760px){
-  .register-table{min-width:760px}
-  .register-table th:nth-child(2),.register-table td:nth-child(2),
-  .register-table th:nth-child(3),.register-table td:nth-child(3),
-  .register-table th:nth-child(4),.register-table td:nth-child(4),
-  .register-table th:nth-child(7),.register-table td:nth-child(7){display:table-cell}
-  .register-table th:nth-child(5),.register-table td:nth-child(5),
-  .register-table th:nth-child(6),.register-table td:nth-child(6){display:none}
-}
 /* Queue rows: grey only the description line, never the badges and pills inside it */
 .guided-demo-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:14px 0;padding:13px 15px;border:1px solid var(--border);border-radius:10px;background:var(--secondary);border-color:var(--border-strong)}
 .guided-demo-bar>div{display:grid;gap:2px}
@@ -144,3 +134,46 @@
 .btn-primary:active,[data-slot=button][data-variant=default]:active{background:color-mix(in oklch,var(--primary) 78%,var(--background))!important}
 .btn:disabled,.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed}
 .phase-tab-active,.segment-active{color:var(--foreground)}
+/* Finish-review fixes */
+.waiting-list .row-link{grid-area:ref}
+.waiting-step{grid-area:step}
+.waiting-list .pill{grid-area:pill;justify-self:start}
+.waiting-list .list-amount{grid-area:amount;justify-self:end}
+@media(max-width:767px){.waiting-list .pill{justify-self:end}}
+.metric-note{grid-column:1/-1;margin:-4px 0 0;color:var(--muted-foreground);font-size:.8125rem}
+:is(.shell,.po-dialog,.consent-dialog,.money-dialog,.preview-sheet) code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.phase-tab{flex:none}
+.phase-tabs{scrollbar-width:thin}
+/* Order detail below 1050px: one column, nothing overlaps. The rail's next-action panel leads,
+   as the desktop reads it, then the working column, then Details and History. */
+@media(max-width:1050px){
+  .order-grid{display:flex;flex-direction:column;gap:18px}
+  .order-rail{display:contents}
+  .rail-actions{order:-1}
+}
+/* Orders below 760px: one stacked row per order instead of a table that scrolls sideways.
+   The row shows the reference and product, the other party, the status, the next step, the amount and Open. */
+@media(max-width:760px){
+  .table-panel .table-scroll{margin:0;overflow:visible}
+  .register-table{min-width:0;display:block}
+  .register-table thead{display:none}
+  .register-table tbody{display:grid;border-top:1px solid var(--border)}
+  .register-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:8px;padding:14px 4px;border-bottom:1px solid var(--border)}
+  .register-table tbody td,.register-table td:first-child{display:block;min-width:0;padding:0;border:0;background:none}
+  .register-table tbody tr:hover td,.register-table tbody tr.lift-row:hover td{background:none}
+  .register-table td:nth-child(1){grid-column:1;grid-row:1;position:relative;padding-left:14px}
+  .register-table td:nth-child(1) strong{white-space:normal}
+  .register-table .action-dot{left:0;top:8px;transform:none}
+  .register-table td:nth-child(6){grid-column:2;grid-row:1;align-self:start;text-align:right;font-weight:600}
+  .register-table td:nth-child(2),.register-table td:nth-child(3),.register-table td:nth-child(4){grid-column:1/-1;padding-left:14px}
+  .register-table td:nth-child(2):has(.side-buying),.register-table td:nth-child(3):has(.side-supplying){display:none}
+  .register-table td:nth-child(2):before,.register-table td:nth-child(3):before{display:block;margin-bottom:2px;color:var(--muted-foreground);font-size:.75rem}
+  .register-table td:nth-child(2):before{content:"Buyer"}
+  .register-table td:nth-child(3):before{content:"Supplier"}
+  .register-table td:nth-child(4){display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+  .register-table td:nth-child(4) small{margin:0}
+  .register-table td:nth-child(5){grid-column:1;padding-left:14px;align-self:center}
+  .register-table td:nth-child(7){grid-column:2;align-self:center}
+  .table-panel{padding:16px}
+  .import-strip{flex-direction:column;align-items:stretch}
+}

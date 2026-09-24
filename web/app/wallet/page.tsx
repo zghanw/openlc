@@ -136,8 +136,8 @@ export default function WalletPage() {
     }
   };
 
-  // A signed-in wallet only reflects real orders. Sample orders stay on the orders page.
-  const ledgerOrders = workspace.live ? workspace.liveOrders : workspace.orders;
+  // The wallet only reflects real orders. Sample orders stay on the orders page and never count as money.
+  const ledgerOrders = workspace.liveOrders;
   const position = useMemo(() => {
     const funded = (role: "BUYER" | "SUPPLIER") => ledgerOrders.filter((order) => order.role === role && ["funded", "in_transit", "delivered", "dispute_open", "negotiation_open", "arbitration_pending", "settlement_pending"].includes(order.status));
     const buying = funded("BUYER");
@@ -185,9 +185,9 @@ export default function WalletPage() {
           <p className="wallet-address">{address ? <><code>{address.slice(0, 10)}...{address.slice(-8)}</code><button type="button" className="text-button text-button-light" onClick={() => void navigator.clipboard.writeText(address)}><ClipboardCopy size={12} aria-hidden="true" />Copy address</button></> : balanceNote}</p>
           {address && balanceNote && <p className="wallet-note">{balanceNote}</p>}
           <div className="wallet-actions">
-            <a href={BOTCHAIN.getBotUrl} target="_blank" rel="noreferrer" className="wallet-action-button"><span><Plus size={17} aria-hidden="true" /></span><strong>{BOTCHAIN.getBotLabel}</strong><small>On {BOTCHAIN.chainName}</small></a>
-            {address && <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer" className="wallet-action-button"><span><ExternalLink size={17} aria-hidden="true" /></span><strong>View on explorer</strong><small>{BOTCHAIN.chainName} Explorer</small></a>}
-            <button type="button" className="wallet-action-button" onClick={() => void navigator.clipboard.writeText(address)}><span><ClipboardCopy size={17} aria-hidden="true" /></span><strong>Copy address</strong><small>{address.slice(0, 6)}...{address.slice(-4)}</small></button>
+            <a href={BOTCHAIN.getBotUrl} target="_blank" rel="noreferrer" className="btn"><Plus size={16} aria-hidden="true" />{BOTCHAIN.getBotLabel}</a>
+            {address && <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer" className="btn"><ExternalLink size={16} aria-hidden="true" />View on explorer</a>}
+            <button type="button" className="btn" disabled={!address} onClick={() => void navigator.clipboard.writeText(address)}><ClipboardCopy size={16} aria-hidden="true" />Copy address</button>
           </div>
         </article>
 
