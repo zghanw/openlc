@@ -293,7 +293,8 @@ function announceSessionChange(): void {
   queueMicrotask(() => window.dispatchEvent(new Event(SESSION_EVENT)));
 }
 
-/** The stored session, or null when there is none or its token expires within a minute (it is then cleared). */
+/** The stored session, or null when there is none, its token's expiry can't be read, or it expires
+ *  within a minute (it is then cleared). The API always sets `exp`, so a token without one is not ours. */
 export function loadSession(): DemoSession | null {
   if (typeof window === "undefined") return null;
   try {
@@ -301,7 +302,7 @@ export function loadSession(): DemoSession | null {
     if (!value) return null;
     const session = JSON.parse(value) as DemoSession;
     const expiresAt = tokenExpiryMs(session.accessToken);
-    if (expiresAt !== null && expiresAt - Date.now() <= EXPIRY_MARGIN_MS) {
+    if (expiresAt === null || expiresAt - Date.now() <= EXPIRY_MARGIN_MS) {
       clearSession();
       return null;
     }

@@ -31,7 +31,8 @@ export function describeConnectError(err: unknown): string {
 
 export function describeTxError(err: unknown): string {
   const e = err as { code?: number; info?: { error?: { message?: string } }; error?: { message?: string }; shortMessage?: string; reason?: string; message?: string } | undefined;
-  if (e?.code === 4001) return "Transaction rejected in MetaMask.";
+  // ethers' BrowserProvider turns MetaMask's EIP-1193 4001 into its own ACTION_REJECTED.
+  if (isError(err, "ACTION_REJECTED") || e?.code === 4001) return "Transaction rejected in MetaMask.";
   const underlying = e?.info?.error?.message || e?.error?.message;
   return underlying || e?.shortMessage || e?.reason || e?.message || "Unknown error.";
 }
