@@ -189,7 +189,8 @@ export type ClaimView = {
   evidence: ClaimEvidence[];
   proposals: ClaimProposal[];
   mediations: ClaimMediation[];
-  settlement?: { buyerValue: number; supplierValue: number; executionStatus: "pending_on_chain" | "verified_on_chain"; proposalId?: string; agreementId: string; transactionDigest?: string };
+  /** buyerUnits/supplierUnits are the agreed split in wei, exactly what both parties sign on chain. */
+  settlement?: { buyerValue: number; supplierValue: number; buyerUnits: string; supplierUnits: string; executionStatus: "pending_on_chain" | "verified_on_chain"; proposalId?: string; agreementId: string; transactionDigest?: string };
   escalationReason?: string;
   onchain?: { escrowObjectId: string; buyerApproved?: boolean; supplierApproved?: boolean };
 };

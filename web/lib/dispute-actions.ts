@@ -101,7 +101,7 @@ export function disputeToClaim(dispute: DisputeRecord): ClaimView {
     claim: dispute.claim, deadline: dispute.negotiationDeadline, round: dispute.currentRound, maxRounds: dispute.maxHumanRounds,
     evidence: dispute.evidence.map((entry) => ({ id: entry.id, side: entry.side, statement: entry.statement, files: entry.files.length, submittedAt: entry.submittedAt })),
     proposals, mediations,
-    settlement: dispute.settlement ? { buyerValue: fromUnits(dispute.settlement.buyerUnits), supplierValue: fromUnits(dispute.settlement.supplierUnits), executionStatus: dispute.settlement.executionStatus, proposalId: dispute.settlement.proposalId, agreementId: dispute.settlement.agreementId, transactionDigest: dispute.settlement.execution?.transactionDigest } : undefined,
+    settlement: dispute.settlement ? { buyerValue: fromUnits(dispute.settlement.buyerUnits), supplierValue: fromUnits(dispute.settlement.supplierUnits), buyerUnits: dispute.settlement.buyerUnits, supplierUnits: dispute.settlement.supplierUnits, executionStatus: dispute.settlement.executionStatus, proposalId: dispute.settlement.proposalId, agreementId: dispute.settlement.agreementId, transactionDigest: dispute.settlement.execution?.transactionDigest } : undefined,
     escalationReason: dispute.escalationReason,
     onchain: dispute.onchainEscrow ? { escrowObjectId: dispute.onchainEscrow.escrowObjectId } : undefined,
   };

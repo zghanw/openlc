@@ -614,14 +614,16 @@ export function useEscrowActions() {
   }
 
   /** One party signs the agreed allocation on BOT Chain. The contract reads the role from
-   *  msg.sender, so `side` only picks which local UI copy to show - it is not sent on-chain. */
-  async function approveSettlement(order: TradeOrder, side: "buyer" | "supplier", allocation: { buyerValue: number; supplierValue: number; proposalId: string }): Promise<string> {
+   *  msg.sender, so `side` only picks which local UI copy to show - it is not sent on-chain.
+   *  The amounts are the settlement's exact wei strings from the record, never a display number:
+   *  a round trip through a float would sign 333333333333333 wei as 333333000000000. */
+  async function approveSettlement(order: TradeOrder, side: "buyer" | "supplier", allocation: { buyerUnits: string; supplierUnits: string; proposalId: string }): Promise<string> {
     void side;
     if (!wallet.account) throw new Error("Connect the wallet for the approving party first.");
     if (!order.funding) throw new Error("The order has no escrow funding.");
     const proposalHash = sha256(toUtf8Bytes(allocation.proposalId));
     const receipt = await sendTx("approveSettlement", [
-      BigInt(order.funding.escrowObjectId), toUnits(allocation.buyerValue), toUnits(allocation.supplierValue), proposalHash,
+      BigInt(order.funding.escrowObjectId), BigInt(allocation.buyerUnits), BigInt(allocation.supplierUnits), proposalHash,
     ]);
     return receipt.hash;
   }

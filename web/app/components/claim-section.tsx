@@ -127,7 +127,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
 
   // On-chain settlement
   const [signed, setSigned] = useState<Record<string, boolean>>({});
-  const allocation = claim.settlement ? { buyerValue: claim.settlement.buyerValue, supplierValue: claim.settlement.supplierValue, proposalId: claim.settlement.proposalId ?? claim.settlement.agreementId } : undefined;
+  const allocation = claim.settlement ? { buyerUnits: claim.settlement.buyerUnits, supplierUnits: claim.settlement.supplierUnits, proposalId: claim.settlement.proposalId ?? claim.settlement.agreementId } : undefined;
 
   // The chain, not localStorage, decides who has signed and whether execution is allowed - it is
   // the only place that reflects the counterparty's own signature. A failed read (RPC outage)
