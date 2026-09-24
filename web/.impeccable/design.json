@@ -1,0 +1,550 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-24T07:33:53.512Z",
+  "title": "Design System: OpenLC",
+  "extensions": {
+    "colorMeta": {
+      "ops-green": {
+        "role": "primary",
+        "displayName": "Ledger Green",
+        "canonical": "oklch(0.7 0.18 145)",
+        "tonalRamp": [
+          "oklch(0.15 0.18 145)",
+          "oklch(0.26 0.18 145)",
+          "oklch(0.37 0.18 145)",
+          "oklch(0.48 0.18 145)",
+          "oklch(0.59 0.18 145)",
+          "oklch(0.7 0.18 145)",
+          "oklch(0.82 0.18 145)",
+          "oklch(0.95 0.18 145)"
+        ]
+      },
+      "waiting-amber": {
+        "role": "secondary",
+        "displayName": "Waiting Amber",
+        "canonical": "oklch(0.75 0.18 55)",
+        "tonalRamp": [
+          "oklch(0.15 0.18 55)",
+          "oklch(0.26 0.18 55)",
+          "oklch(0.37 0.18 55)",
+          "oklch(0.48 0.18 55)",
+          "oklch(0.59 0.18 55)",
+          "oklch(0.7 0.18 55)",
+          "oklch(0.82 0.18 55)",
+          "oklch(0.95 0.18 55)"
+        ]
+      },
+      "claim-red": {
+        "role": "tertiary",
+        "displayName": "Claim Red",
+        "canonical": "oklch(0.65 0.2 25)",
+        "tonalRamp": [
+          "oklch(0.15 0.2 25)",
+          "oklch(0.26 0.2 25)",
+          "oklch(0.37 0.2 25)",
+          "oklch(0.48 0.2 25)",
+          "oklch(0.59 0.2 25)",
+          "oklch(0.7 0.2 25)",
+          "oklch(0.82 0.2 25)",
+          "oklch(0.95 0.2 25)"
+        ]
+      },
+      "ops-ground": {
+        "role": "neutral",
+        "displayName": "Operations Black",
+        "canonical": "oklch(0.09 0.005 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 260)",
+          "oklch(0.26 0.005 260)",
+          "oklch(0.37 0.005 260)",
+          "oklch(0.48 0.005 260)",
+          "oklch(0.59 0.005 260)",
+          "oklch(0.7 0.005 260)",
+          "oklch(0.82 0.005 260)",
+          "oklch(0.95 0.005 260)"
+        ]
+      },
+      "ops-sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar Black",
+        "canonical": "oklch(0.11 0.005 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 260)",
+          "oklch(0.26 0.005 260)",
+          "oklch(0.37 0.005 260)",
+          "oklch(0.48 0.005 260)",
+          "oklch(0.59 0.005 260)",
+          "oklch(0.7 0.005 260)",
+          "oklch(0.82 0.005 260)",
+          "oklch(0.95 0.005 260)"
+        ]
+      },
+      "ops-card": {
+        "role": "neutral",
+        "displayName": "Panel Black",
+        "canonical": "oklch(0.12 0.005 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 260)",
+          "oklch(0.26 0.005 260)",
+          "oklch(0.37 0.005 260)",
+          "oklch(0.48 0.005 260)",
+          "oklch(0.59 0.005 260)",
+          "oklch(0.7 0.005 260)",
+          "oklch(0.82 0.005 260)",
+          "oklch(0.95 0.005 260)"
+        ]
+      },
+      "ops-raised": {
+        "role": "neutral",
+        "displayName": "Raised Grey",
+        "canonical": "oklch(0.18 0.005 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 260)",
+          "oklch(0.26 0.005 260)",
+          "oklch(0.37 0.005 260)",
+          "oklch(0.48 0.005 260)",
+          "oklch(0.59 0.005 260)",
+          "oklch(0.7 0.005 260)",
+          "oklch(0.82 0.005 260)",
+          "oklch(0.95 0.005 260)"
+        ]
+      },
+      "ops-hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.22 0.005 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 260)",
+          "oklch(0.26 0.005 260)",
+          "oklch(0.37 0.005 260)",
+          "oklch(0.48 0.005 260)",
+          "oklch(0.59 0.005 260)",
+          "oklch(0.7 0.005 260)",
+          "oklch(0.82 0.005 260)",
+          "oklch(0.95 0.005 260)"
+        ]
+      },
+      "ops-rule": {
+        "role": "neutral",
+        "displayName": "Rule Grey",
+        "canonical": "oklch(0.3 0.005 260)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 260)",
+          "oklch(0.26 0.005 260)",
+          "oklch(0.37 0.005 260)",
+          "oklch(0.48 0.005 260)",
+          "oklch(0.59 0.005 260)",
+          "oklch(0.7 0.005 260)",
+          "oklch(0.82 0.005 260)",
+          "oklch(0.95 0.005 260)"
+        ]
+      },
+      "ops-ink": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "oklch(0.95 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.59 0 0)",
+          "oklch(0.7 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ops-muted": {
+        "role": "neutral",
+        "displayName": "Helper Grey",
+        "canonical": "oklch(0.65 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.59 0 0)",
+          "oklch(0.7 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "landing-black": {
+        "role": "neutral",
+        "displayName": "Landing Black",
+        "canonical": "#000000",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.59 0 0)",
+          "oklch(0.7 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "landing-card": {
+        "role": "neutral",
+        "displayName": "Gloss Black",
+        "canonical": "#0d0d0f",
+        "tonalRamp": [
+          "oklch(0.15 0.003 286)",
+          "oklch(0.26 0.003 286)",
+          "oklch(0.37 0.003 286)",
+          "oklch(0.48 0.003 286)",
+          "oklch(0.59 0.003 286)",
+          "oklch(0.7 0.003 286)",
+          "oklch(0.82 0.003 286)",
+          "oklch(0.95 0.003 286)"
+        ]
+      },
+      "landing-ink": {
+        "role": "neutral",
+        "displayName": "Silver White",
+        "canonical": "#f4f4f5",
+        "tonalRamp": [
+          "oklch(0.15 0.003 286)",
+          "oklch(0.26 0.003 286)",
+          "oklch(0.37 0.003 286)",
+          "oklch(0.48 0.003 286)",
+          "oklch(0.59 0.003 286)",
+          "oklch(0.7 0.003 286)",
+          "oklch(0.82 0.003 286)",
+          "oklch(0.95 0.003 286)"
+        ]
+      },
+      "landing-soft": {
+        "role": "neutral",
+        "displayName": "Soft Silver",
+        "canonical": "#d4d4d8",
+        "tonalRamp": [
+          "oklch(0.15 0.005 286)",
+          "oklch(0.26 0.005 286)",
+          "oklch(0.37 0.005 286)",
+          "oklch(0.48 0.005 286)",
+          "oklch(0.59 0.005 286)",
+          "oklch(0.7 0.005 286)",
+          "oklch(0.82 0.005 286)",
+          "oklch(0.95 0.005 286)"
+        ]
+      },
+      "landing-muted": {
+        "role": "neutral",
+        "displayName": "Quiet Silver",
+        "canonical": "#a1a1aa",
+        "tonalRamp": [
+          "oklch(0.15 0.013 286)",
+          "oklch(0.26 0.013 286)",
+          "oklch(0.37 0.013 286)",
+          "oklch(0.48 0.013 286)",
+          "oklch(0.59 0.013 286)",
+          "oklch(0.7 0.013 286)",
+          "oklch(0.82 0.013 286)",
+          "oklch(0.95 0.013 286)"
+        ]
+      },
+      "landing-pill-ink": {
+        "role": "neutral",
+        "displayName": "Pill Ink",
+        "canonical": "#09090b",
+        "tonalRamp": [
+          "oklch(0.15 0.005 286)",
+          "oklch(0.26 0.005 286)",
+          "oklch(0.37 0.005 286)",
+          "oklch(0.48 0.005 286)",
+          "oklch(0.59 0.005 286)",
+          "oklch(0.7 0.005 286)",
+          "oklch(0.82 0.005 286)",
+          "oklch(0.95 0.005 286)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing hero and close headlines only; Bricolage Grotesque at opsz 96."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Landing section heads and the contract tile title."
+      },
+      "landing-body": {
+        "displayName": "Landing Body",
+        "purpose": "Base text of the landing."
+      },
+      "landing-lede": {
+        "displayName": "Landing Lede",
+        "purpose": "Paragraph under a landing head, max 60ch, Quiet Silver."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Workspace page and order titles."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Workspace panel and card headings."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Money tile values; lining proportional figures."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Workspace base text; tables and forms at 13.5px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Pills, table headers, fact labels, helper text."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Hashes and addresses in the workspace."
+      }
+    },
+    "shadows": [
+      {
+        "name": "dialog",
+        "value": "0 24px 60px oklch(0 0 0 / .55)",
+        "purpose": "Modal dialogs in the workspace."
+      },
+      {
+        "name": "menu",
+        "value": "0 16px 40px oklch(0 0 0 / .5)",
+        "purpose": "User menu popover."
+      },
+      {
+        "name": "tooltip",
+        "value": "0 6px 18px oklch(0 0 0 / 0.50)",
+        "purpose": "Help-hint tips."
+      },
+      {
+        "name": "pinned-bar",
+        "value": "0 8px 20px oklch(0 0 0 / .35)",
+        "purpose": "Sticky stepper bar on the order page."
+      },
+      {
+        "name": "glossy-card",
+        "value": "inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.6), 0 28px 56px -32px rgba(0,0,0,.95)",
+        "purpose": "Every landing card."
+      },
+      {
+        "name": "lit-glow",
+        "value": "0 0 24px rgba(255,255,255,.3)",
+        "purpose": "A landing element in its on state."
+      },
+      {
+        "name": "pill-glow",
+        "value": "inset 0 -1px 0 rgba(0,0,0,.14), 0 0 0 1px rgba(255,255,255,.45), 0 10px 34px -10px rgba(255,255,255,.3)",
+        "purpose": "Landing solid pill at rest."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-landing",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Landing transitions: pills 0.4s, lit states 0.7-0.9s, the split 1.2s."
+      },
+      {
+        "name": "ease-workspace",
+        "value": "cubic-bezier(.22, 1, .36, 1)",
+        "purpose": "Workspace entries and drawers: tile rise 200ms, drawer 250ms."
+      },
+      {
+        "name": "state-transition",
+        "value": "150-200ms ease-out",
+        "purpose": "Workspace hover, border and colour changes."
+      },
+      {
+        "name": "tile-stagger",
+        "value": "60ms per tile",
+        "purpose": "Overview money tiles; the only workspace entry motion."
+      },
+      {
+        "name": "live-pill",
+        "value": "2.2s ease-in-out infinite",
+        "purpose": "Breathing ring on a live status pill."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "landing-sm",
+        "value": "520px"
+      },
+      {
+        "name": "landing-md",
+        "value": "720px"
+      },
+      {
+        "name": "landing-timeline",
+        "value": "820px"
+      },
+      {
+        "name": "landing-lg",
+        "value": "1100px"
+      },
+      {
+        "name": "orders-stacked",
+        "value": "760px"
+      },
+      {
+        "name": "sidebar-drawer",
+        "value": "767px"
+      },
+      {
+        "name": "order-single-column",
+        "value": "1050px"
+      },
+      {
+        "name": "metrics-two-up",
+        "value": "1180px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The workspace primary action; near-white on black, never green.",
+      "html": "<button class=\"ds-btn-primary\">New order</button>",
+      "css": ".ds-btn-primary{min-height:40px;padding:0 15px;border:1px solid var(--foreground);border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);font-family:\"Mona Sans\",system-ui,sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background-color 150ms ease-out}.ds-btn-primary:hover{background:var(--primary-hover)}.ds-btn-primary:active{background:color-mix(in oklch,var(--primary) 78%,var(--background))}.ds-btn-primary:focus-visible{outline:2px solid var(--ring);outline-offset:2px}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary workspace action.",
+      "html": "<button class=\"ds-btn-outline\">Open</button>",
+      "css": ".ds-btn-outline{min-height:40px;padding:0 15px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--card);color:var(--foreground);font-family:\"Mona Sans\",system-ui,sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background-color 150ms ease-out}.ds-btn-outline:hover{background:var(--secondary)}.ds-btn-outline:focus-visible{outline:2px solid var(--ring);outline-offset:2px}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Workspace field with the label above; green focus ring.",
+      "html": "<label class=\"ds-field\"><span>Amount (BOT)</span><input class=\"ds-input\" placeholder=\"0.00\"></label>",
+      "css": ".ds-field{display:grid;gap:6px;font-family:\"Mona Sans\",system-ui,sans-serif}.ds-field span{color:var(--foreground);font-size:12.5px;font-weight:650}.ds-input{min-height:40px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--secondary);color:var(--foreground);font:inherit;font-size:13.5px}.ds-input::placeholder{color:var(--muted-foreground);opacity:1}.ds-input:focus-visible{outline:0;border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 30%,transparent)}"
+    },
+    {
+      "name": "Status Pills",
+      "kind": "chip",
+      "refersTo": "status-pill-success",
+      "description": "One meaning per hue: green done, amber waiting, red claim, grey neutral.",
+      "html": "<span class=\"ds-pill ds-pill-ok\">Funded</span> <span class=\"ds-pill ds-pill-wait\">Inspection due</span> <span class=\"ds-pill ds-pill-claim\">Claim open</span> <span class=\"ds-pill\">Draft</span>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:0 8px;border-radius:6px;background:var(--secondary);color:var(--muted-foreground);font-family:\"Mona Sans\",system-ui,sans-serif;font-size:12px;font-weight:600;line-height:1;white-space:nowrap}.ds-pill:before{content:\"\";width:6px;height:6px;border-radius:999px;background:currentColor}.ds-pill-ok{background:var(--success-soft);color:var(--success)}.ds-pill-wait{background:var(--warning-soft);color:var(--warning)}.ds-pill-claim{background:var(--destructive-soft);color:var(--destructive)}"
+    },
+    {
+      "name": "Sidebar Nav",
+      "kind": "nav",
+      "refersTo": "",
+      "description": "Active row: raised grey, green icon and a 4px green edge bar.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link ds-nav-active\" href=\"#\"><i></i><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\"/></svg>Overview</a><a class=\"ds-nav-link\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6h16M4 12h16M4 18h16\"/></svg>Orders</a></nav>",
+      "css": ".ds-nav{display:grid;gap:4px;width:236px;padding:16px 12px;background:var(--sidebar);font-family:\"Mona Sans\",system-ui,sans-serif}.ds-nav-link{position:relative;display:flex;align-items:center;gap:12px;min-height:42px;padding:0 12px;border-radius:var(--radius);color:var(--muted-foreground);font-size:14px;font-weight:550;text-decoration:none;transition:background-color 200ms ease-out,color 200ms ease-out}.ds-nav-link:hover{color:var(--foreground);background:color-mix(in oklch,var(--secondary) 55%,transparent)}.ds-nav-link:focus-visible{outline:2px solid var(--ring);outline-offset:2px}.ds-nav-active{color:var(--foreground);background:var(--secondary)}.ds-nav-active svg{color:var(--accent)}.ds-nav-active i{position:absolute;left:0;top:50%;width:4px;height:24px;border-radius:0 999px 999px 0;background:var(--accent);transform:translateY(-50%)}"
+    },
+    {
+      "name": "Money Tile",
+      "kind": "card",
+      "refersTo": "metric-tile",
+      "description": "Overview metric; lining figures, the unit in a muted small; never counts sample orders.",
+      "html": "<article class=\"ds-tile\"><span class=\"ds-tile-title\">Locked in escrow</span><strong class=\"ds-tile-value\">12.4<small>BOT</small></strong><p class=\"ds-tile-cap\">Across 3 live orders</p></article>",
+      "css": ".ds-tile{display:grid;gap:10px;width:260px;padding:20px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--card);color:var(--foreground);font-family:\"Mona Sans\",system-ui,sans-serif;transition:border-color 200ms ease-out,background-color 200ms ease-out}.ds-tile:hover{border-color:var(--border-strong);background:color-mix(in oklch,var(--card) 70%,var(--secondary))}.ds-tile-title{color:var(--muted-foreground);font-size:14px;font-weight:550}.ds-tile-value{display:flex;align-items:baseline;gap:6px;font-size:1.875rem;font-weight:650;letter-spacing:-.02em;line-height:1.1}.ds-tile-value small{font-size:.875rem;font-weight:600;color:var(--muted-foreground)}.ds-tile-cap{margin:0;color:var(--muted-foreground);font-size:13px}"
+    },
+    {
+      "name": "Landing Solid Pill",
+      "kind": "button",
+      "refersTo": "landing-pill-solid",
+      "description": "The landing primary action; a white gradient pill with a soft glow.",
+      "html": "<button class=\"ds-lp-pill\">Try it with one wallet <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button>",
+      "css": ".ds-lp-pill{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 24px;border:1px solid transparent;border-radius:999px;background:linear-gradient(180deg,#fff 0%,#e4e4e7 100%);color:#09090b;font-family:\"Mona Sans\",system-ui,sans-serif;font-size:15.5px;font-weight:600;cursor:pointer;box-shadow:inset 0 -1px 0 rgba(0,0,0,.14),0 0 0 1px rgba(255,255,255,.45),0 10px 34px -10px rgba(255,255,255,.3);transition:transform .4s cubic-bezier(.16,1,.3,1),box-shadow .4s cubic-bezier(.16,1,.3,1)}.ds-lp-pill svg{transition:transform .4s cubic-bezier(.16,1,.3,1)}.ds-lp-pill:hover{transform:translateY(-1px);box-shadow:inset 0 -1px 0 rgba(0,0,0,.14),0 0 0 1px rgba(255,255,255,.7),0 16px 44px -10px rgba(255,255,255,.45)}.ds-lp-pill:hover svg{transform:translateX(3px)}.ds-lp-pill:active{transform:scale(.975)}.ds-lp-pill:focus-visible{outline:2px solid #fff;outline-offset:3px}"
+    },
+    {
+      "name": "Landing Ghost Pill",
+      "kind": "button",
+      "refersTo": "landing-pill-ghost",
+      "description": "The landing secondary action.",
+      "html": "<button class=\"ds-lp-ghost\">See how it works</button>",
+      "css": ".ds-lp-ghost{height:50px;padding:0 24px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.02);color:#f4f4f5;font-family:\"Mona Sans\",system-ui,sans-serif;font-size:15.5px;font-weight:600;cursor:pointer;transition:background-color .3s ease,border-color .3s ease}.ds-lp-ghost:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.28)}.ds-lp-ghost:focus-visible{outline:2px solid #fff;outline-offset:3px}"
+    },
+    {
+      "name": "Glossy Card",
+      "kind": "card",
+      "refersTo": "landing-card",
+      "description": "The landing container: a near-black gradient, hairline and inset highlight.",
+      "html": "<div class=\"ds-lp-card\"><h3>No owner, no admin, no upgrade path.</h3><p>Enforced by the contract and checkable on the explorer.</p></div>",
+      "css": ".ds-lp-card{max-width:420px;padding:28px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(180deg,#0d0d0f 0%,#08080a 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 1px 2px rgba(0,0,0,.6),0 28px 56px -32px rgba(0,0,0,.95);color:#f4f4f5;font-family:\"Mona Sans\",system-ui,sans-serif}.ds-lp-card h3{margin:0;font-size:1.375rem;font-weight:600;letter-spacing:-.02em;line-height:1.2}.ds-lp-card p{margin:12px 0 0;color:#a1a1aa;font-size:15px;line-height:1.6}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Money You Can Watch",
+    "overview": "OpenLC is one product with two rooms. The landing is a monochrome cinematic world: a black ground, silver-white type, glossy near-black cards, luminous white lines, and white pill actions, with no hue anywhere. It shows money being locked and released as light moving along a line, never as a colour. The workspace is a dark operations dashboard, pinned by the owner from a reference: cool near-black greys, a collapsible sidebar, a blurred sticky header, and one green accent that only ever means \"active\" or \"done\".\n\nBoth rooms share Mona Sans, a flat near-white headline treatment, and the same refusal of decoration: size, weight and position carry hierarchy, and colour is reserved for state. The landing performs (a wave-line tunnel, a centre-staff timeline that lights as you scroll, a bar that physically splits); the workspace does not. Its only entry motion is the Overview tile stagger, and it puts money state and the next action first.\n\nDensity differs by room. The landing is spacious, centred and set in large type. The workspace is a 14px productivity scale in a 1320px column, where amounts are right-aligned, hashes are monospace, and every row leads to one action.",
+    "keyCharacteristics": [
+      "Two worlds, one type family: Mona Sans everywhere, Bricolage Grotesque only for landing display headlines.",
+      "Landing: white is the only colour; emphasis is light (glow, gradient-lit silver), not hue.",
+      "Workspace: cool greys tinted to hue 260; green for active and success, amber for waiting, red for claims and problems.",
+      "Flat near-white headlines, no gradient text, no eyebrow labels.",
+      "Tonal layering in the workspace; shadows only on things that float."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Green appears in the workspace only for active and success states. If a green element does not mean \"you are here\", \"this is focused\" or \"this is done\", it is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three Meanings Rule",
+        "body": "Amber means waiting, red means a claim or a problem, and green means active or done. No hue is ever used for a role, a party or decoration; buyer and supplier read from an icon and a word, never a colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Hue Landing Rule",
+        "body": "The landing has no hue at all. Light carries emphasis: glows, white-gradient fills and luminous lines.",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat Headline Rule",
+        "body": "Headlines are flat near-white (Silver White on the landing, Paper White in the workspace). Size and weight carry emphasis. There is no gradient text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Honest Figures Rule",
+        "body": "Amounts use Mona Sans's default lining, proportional figures; never set `tabular-nums` on money, because it brings in the slashed zero. Money columns are right-aligned with `white-space: nowrap`. Hashes and addresses are monospace.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Eyebrow Rule",
+        "body": "No small uppercase label ever sits above a heading. The heading starts the block.",
+        "section": "typography"
+      },
+      {
+        "name": "The Float-Only Rule",
+        "body": "In the workspace a shadow means \"this floats\": dialogs, menus, tooltips and the pinned stepper. Cards at rest have none.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Light Is Emphasis Rule",
+        "body": "On the landing, an element becomes important by lighting up (white fill plus glow), never by changing hue.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep green for active and success only: the active nav, focus ring, checked controls, completed steps, connected dot and success pills.",
+      "**Do** pair every state hue with its 14% soft fill, never a solid saturated block behind text.",
+      "**Do** make the workspace primary button near-white on black (`ops-ink` on `ops-ground`), not green.",
+      "**Do** right-align money columns with `white-space: nowrap`, in lining proportional figures; set hashes and addresses in the monospace stack.",
+      "**Do** use Bricolage Grotesque only for landing display and section headlines; everything else is Mona Sans.",
+      "**Do** collapse the order detail to one column below 1050px, led by the next action, and turn the orders table into stacked rows below 760px.",
+      "**Do** leave sample orders out of every money tile total and say so when they are left out.",
+      "**Do** honour `prefers-reduced-motion` with final states and no travel, as both rooms already do."
+    ],
+    "donts": [
+      "**Don't** introduce any hue on the landing; white light is the only colour there.",
+      "**Don't** use colour to tell buyer from supplier; use an icon and a word.",
+      "**Don't** set gradient text or tint headlines; headlines are flat near-white.",
+      "**Don't** put an eyebrow or kicker label above a heading.",
+      "**Don't** set `tabular-nums` on amounts; it brings in Mona Sans's slashed zero.",
+      "**Don't** give workspace cards a shadow at rest; shadows are for dialogs, menus, tooltips and the pinned stepper.",
+      "**Don't** add entry animation to workspace pages beyond the Overview tile stagger."
+    ]
+  }
+}
