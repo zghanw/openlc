@@ -550,12 +550,22 @@ Abstain, and state the reason, only when no agreement term or policy clause answ
       const run = buildRun("proposal", []);
       return { outcome: "proposal", proposal, run, debateRounds: rounds, modelCalls: calls };
     } catch (error) {
-      const validationIssue = issue(error);
-      const run = buildRun("validation_failed", [validationIssue]);
-      // A model outage (429 quota, or a 5xx from every fallback model) is not a validation failure;
-      // say so rather than blaming the output.
+      // A model outage (429 quota, a 5xx from every fallback model, a cut-off MAX_TOKENS answer on the
+      // last model, or that model's request timing out/aborting) is not a validation failure; say so
+      // rather than blaming the output. A real validation failure (bad citations, a non-conserving
+      // allocation, an honestly-reported safety block) keeps the generic message below.
       const message = error instanceof Error ? error.message : "";
-      const busy = message.startsWith("Gemini request failed (429)") || message.startsWith("Gemini request failed (5");
+      const name = error instanceof Error ? error.name : "";
+      const isOutageStatus = message.startsWith("Gemini request failed (429)") || message.startsWith("Gemini request failed (5");
+      const isCutOff = message.startsWith("Gemini response was cut off (MAX_TOKENS)");
+      const isTimeout = name === "TimeoutError" || name === "AbortError" || message === "AI mediation time limit exceeded";
+      const busy = isOutageStatus || isCutOff || isTimeout;
+      // ponytail: web/lib/dispute-actions.ts's isModelOutage() regex only recognises strings shaped
+      // "Gemini request failed (4xx|5xx)" and we can't edit web/ from here, so every busy case is
+      // reshaped into that exact form (original detail kept after the colon); add a real HTTP status
+      // upstream instead if that regex ever gets its own dedicated field.
+      const validationIssue = busy && !isOutageStatus ? `Gemini request failed (503): ${message}`.slice(0, 300) : issue(error);
+      const run = buildRun("validation_failed", [validationIssue]);
       return {
         outcome: "abstain",
         reason: busy

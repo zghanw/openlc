@@ -279,6 +279,59 @@ describe("bounded AI mediation", () => {
     });
   });
 
+  it("reports a cut-off (MAX_TOKENS) answer on the last model as busy, in the shape the web recognises as an outage", async () => {
+    const truncating: JsonModel = {
+      async generateJson() { throw new Error("Gemini response was cut off (MAX_TOKENS)"); },
+    };
+    const { control, dispute } = disputeFixture();
+    const result = await new MediationOrchestrator(truncating, policy, control.ctx).mediate(dispute);
+    expect(result).toMatchObject({
+      outcome: "abstain",
+      reason: "The AI mediator is busy right now. No proposal was created; try again in a minute.",
+      run: { outcome: "validation_failed" },
+    });
+    if (result.outcome === "abstain") {
+      // web/lib/dispute-actions.ts's isModelOutage() only recognises this exact shape.
+      expect(result.unresolvedIssues[0]).toMatch(/^Gemini request failed \(5\d\d\)/);
+    }
+  });
+
+  it("reports a request timeout/abort as busy, in the shape the web recognises as an outage", async () => {
+    const timingOut: JsonModel = {
+      async generateJson() {
+        const error = new Error("The operation was aborted due to timeout");
+        error.name = "TimeoutError";
+        throw error;
+      },
+    };
+    const { control, dispute } = disputeFixture();
+    const result = await new MediationOrchestrator(timingOut, policy, control.ctx).mediate(dispute);
+    expect(result).toMatchObject({
+      outcome: "abstain",
+      reason: "The AI mediator is busy right now. No proposal was created; try again in a minute.",
+      run: { outcome: "validation_failed" },
+    });
+    if (result.outcome === "abstain") {
+      expect(result.unresolvedIssues[0]).toMatch(/^Gemini request failed \(5\d\d\)/);
+    }
+  });
+
+  it("keeps a safety-blocked answer as a real validation failure, never the busy wording", async () => {
+    const blocked: JsonModel = {
+      async generateJson() { throw new Error("Gemini response had no answer text (finishReason: SAFETY)"); },
+    };
+    const { control, dispute } = disputeFixture();
+    const result = await new MediationOrchestrator(blocked, policy, control.ctx).mediate(dispute);
+    expect(result).toMatchObject({
+      outcome: "abstain",
+      reason: "The AI output failed deterministic safety validation; no proposal was created.",
+      run: { outcome: "validation_failed" },
+    });
+    if (result.outcome === "abstain") {
+      expect(result.unresolvedIssues[0]).toContain("finishReason: SAFETY");
+    }
+  });
+
   it("records a traceable index from readable citation ids back to submissions", async () => {
     const model = new QueueModel([advocate("15000"), advocate("15000"), proposal("15000")]);
     const { control, dispute } = disputeFixture();

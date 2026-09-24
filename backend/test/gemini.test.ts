@@ -94,10 +94,17 @@ describe("GeminiJsonModel model fallback", () => {
     await expect(model.generateJson("system", "input")).rejects.toThrow("Gemini response was cut off (MAX_TOKENS)");
   });
 
-  it("also falls back on malformed JSON with no MAX_TOKENS finish reason, and still throws the clear error on the last model", async () => {
+  it("also falls back on malformed JSON with no MAX_TOKENS finish reason, and reports the real finishReason on the last model", async () => {
     const fetcher: typeof fetch = async () => json({ candidates: [{ content: { parts: [{ text: "not valid json" }] } }] });
     const model = new GeminiJsonModel("key", "gemini-solo", fetcher);
-    await expect(model.generateJson("system", "input")).rejects.toThrow("Gemini response was cut off (MAX_TOKENS)");
+    await expect(model.generateJson("system", "input")).rejects.toThrow("Gemini response was not valid JSON (finishReason: UNKNOWN)");
+  });
+
+  it("reports an empty answer honestly by its real finishReason instead of claiming MAX_TOKENS", async () => {
+    const fetcher: typeof fetch = async () =>
+      json({ candidates: [{ content: { parts: [{ text: "" }] }, finishReason: "SAFETY" }] });
+    const model = new GeminiJsonModel("key", "gemini-solo", fetcher);
+    await expect(model.generateJson("system", "input")).rejects.toThrow("Gemini response had no answer text (finishReason: SAFETY)");
   });
 
   it("a single-model string behaves as today: retries a transient status before succeeding", async () => {

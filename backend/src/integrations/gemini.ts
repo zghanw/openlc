@@ -36,15 +36,21 @@ class GeminiTruncatedResponseError extends Error {}
 async function parseGeneratedJson<T>(response: Response): Promise<T> {
   const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }> };
   const candidate = body.candidates?.[0];
+  const finishReason = candidate?.finishReason ?? "UNKNOWN";
   const text = candidate?.content?.parts?.map((part) => part.text ?? "").join("");
-  if (!text || candidate?.finishReason === "MAX_TOKENS") {
+  // MAX_TOKENS is always a cut-off answer, whether or not any text made it out before the budget ran
+  // out. Any other empty/invalid answer (a SAFETY block, a plain malformed response) gets its real
+  // finishReason reported instead of being mislabelled as a token-budget problem.
+  if (finishReason === "MAX_TOKENS") {
     throw new GeminiTruncatedResponseError("Gemini response was cut off (MAX_TOKENS)");
+  }
+  if (!text) {
+    throw new GeminiTruncatedResponseError(`Gemini response had no answer text (finishReason: ${finishReason})`);
   }
   try {
     return JSON.parse(text) as T;
   } catch {
-    // Some other truncation or malformed answer; same recovery as an explicit MAX_TOKENS finish.
-    throw new GeminiTruncatedResponseError("Gemini response was cut off (MAX_TOKENS)");
+    throw new GeminiTruncatedResponseError(`Gemini response was not valid JSON (finishReason: ${finishReason})`);
   }
 }
 
