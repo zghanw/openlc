@@ -21,7 +21,7 @@ import { TunnelCanvas } from "@/app/components/landing/tunnel-canvas";
 import { WalletEntry } from "@/app/components/landing/wallet-entry";
 import { CreditTimeline } from "@/app/components/landing/credit-timeline";
 import { PartialClaim } from "@/app/components/landing/partial-claim";
-import { BOTCHAIN, explorerAddressUrl } from "@/lib/chain";
+import { BOTCHAIN, NETWORKS } from "@/lib/chain";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const ONCE = { once: true, amount: 0.3 } as const;
@@ -205,9 +205,10 @@ function ClaimSection() {
             When part of it goes wrong, only that part waits.
           </h2>
           <p className="lp-lede">
-            Our launch order <span className="lp-nowrap">OLC-LAUNCH-001</span> was for 0.005 BOT. The 0.0005 BOT deposit and the 0.001 BOT
-            dispatch payment had already reached the supplier, leaving 0.0035 BOT held for delivery. Part of the goods arrived
-            damaged, so the buyer claimed 0.001 BOT.
+            Our launch order <span className="lp-nowrap">OLC-LAUNCH-001</span> was for 0.005 BOT, run between two of our own
+            wallets. The 0.0005 BOT deposit and the 0.001 BOT dispatch payment had already reached the supplier, leaving
+            0.0035 BOT held for delivery. The buyer recorded part of the delivery as damaged, anchored a damage photo and
+            claimed 0.001 BOT.
           </p>
           <p className="lp-mediator">
             <Scale size={18} aria-hidden="true" />
@@ -249,7 +250,7 @@ const TRY_STEPS = [
   },
   {
     title: "Get BOT",
-    body: "You pay for the order and the gas in BOT. At 20 gwei, funding costs about 0.0067 BOT in gas and each later step 0.001 to 0.0021 BOT.",
+    body: "You pay for the order and the gas in BOT. At 20 gwei, funding costs about 0.0067 BOT in gas and each later step 0.0006 to 0.0021 BOT.",
     link: { href: BOTCHAIN.getBotUrl, label: BOTCHAIN.getBotLabel },
     visual: (
       <div className="lp-bal">
@@ -445,7 +446,7 @@ function TruthsSection() {
             <div className="lp-tile-foot">
               <a
                 className="lp-inline-link"
-                href={explorerAddressUrl(CONTRACT)}
+                href={`${NETWORKS[677].explorerBase}/address/${CONTRACT}`}
                 target="_blank"
                 rel="noreferrer"
               >

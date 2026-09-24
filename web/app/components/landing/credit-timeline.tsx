@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { ArrowUpRight, Check, Clock3 } from "lucide-react";
-import { explorerTxUrl } from "@/lib/chain";
+import { NETWORKS } from "@/lib/chain";
+
+// OLC-LAUNCH-001 is on mainnet whatever network this build targets.
+const MAINNET_TX = `${NETWORKS[677].explorerBase}/tx/`;
 
 const ATRADIUS =
   "https://group.atradius.com/dam/jcr:de5379ba-2ad5-415f-9c77-6e6c2669d13e/payment-practices-barometer-asia-2025-en.pdf";
@@ -43,8 +46,8 @@ const STEPS: Step[] = [
     day: "Day 3",
     waiting: "Still no payment.",
     escrow: {
-      title: "Part of it arrives damaged. Only that part is held.",
-      body: "One claim transaction pays the undisputed 0.0025 BOT to the supplier and holds 0.001 BOT for the damage.",
+      title: "The buyer records part of the delivery as damaged. Only that part is held.",
+      body: "A damage photo is anchored on chain, then one claim transaction pays the undisputed 0.0025 BOT to the supplier and holds 0.001 BOT.",
       paid: "0.004 of 0.005 BOT paid",
       tx: "0xc745bfad13f06f90b18d5b8e46c3eed66389f9bd020f27c7ca22f607ef418699",
       txLabel: "Claim",
@@ -173,7 +176,7 @@ export function CreditTimeline() {
                     <p className="lp-cell-body">{step.escrow.body}</p>
                     <div className="lp-entry-foot">
                       <span className="lp-paid">{step.escrow.paid}</span>
-                      <a className="lp-tx" href={explorerTxUrl(step.escrow.tx)} target="_blank" rel="noreferrer">
+                      <a className="lp-tx" href={`${MAINNET_TX}${step.escrow.tx}`} target="_blank" rel="noreferrer">
                         {step.escrow.txLabel} on chain <span>{shortHash(step.escrow.tx)}</span>
                         <ArrowUpRight size={13} aria-hidden="true" />
                       </a>

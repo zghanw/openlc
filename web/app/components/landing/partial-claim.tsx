@@ -3,21 +3,22 @@
 import { useRef } from "react";
 import { useInView } from "motion/react";
 import { ArrowUpRight } from "lucide-react";
-import { explorerTxUrl } from "@/lib/chain";
+import { NETWORKS } from "@/lib/chain";
 
 const SPLIT_TX = "0xc745bfad13f06f90b18d5b8e46c3eed66389f9bd020f27c7ca22f607ef418699";
 const SETTLE_TX = "0x5584e24933f4d613980589f42ea2d9a3ed9a01a0893bd9e7f5b5ba05e15599fa";
 
 function TxLink({ hash, children }: { hash: string; children: string }) {
   return (
-    <a className="lp-tx" href={explorerTxUrl(hash)} target="_blank" rel="noreferrer">
+    <a className="lp-tx" href={`${NETWORKS[677].explorerBase}/tx/${hash}`} target="_blank" rel="noreferrer">
       {children} <span>{`${hash.slice(0, 6)}…${hash.slice(-4)}`}</span>
       <ArrowUpRight size={13} aria-hidden="true" />
     </a>
   );
 }
 
-/** The real OLC-LAUNCH-001 claim: 0.0035 BOT held for delivery splits into 0.0025 paid and 0.001 held. */
+/** The real OLC-LAUNCH-001 claim: 0.0035 BOT held for delivery splits into 0.0025 paid and 0.001 held.
+ *  The order is on mainnet whatever network this build targets, so the links always use 677. */
 export function PartialClaim() {
   const splitRef = useRef<HTMLDivElement>(null);
   const split = useInView(splitRef, { once: true, amount: 0.9 });
