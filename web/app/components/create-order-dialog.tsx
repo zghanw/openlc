@@ -45,7 +45,8 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
   const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   // The email is optional: identity is the wallet, and the confirmation link is the invitation.
   const email = counterpartyEmail.trim();
-  const emailInvalid = Boolean(email) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  // zod 4's z.string().email() pattern, which the API validates with: anything this accepts, the API accepts.
+  const emailInvalid = Boolean(email) && !/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/.test(email);
   const detailsValid = Boolean(counterpartyName.trim() && !emailInvalid && delivery && location.trim() && total > 0 && items.every((item) => item.description.trim() && item.quantity > 0 && item.unitPrice > 0));
   const canSend = Boolean(accepted && detailsValid);
   const deliveryPercent = 100 - depositPercent - dispatchPercent;
