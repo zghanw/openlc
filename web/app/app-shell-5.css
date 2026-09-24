@@ -144,6 +144,9 @@
 :is(.shell,.po-dialog,.consent-dialog,.money-dialog,.preview-sheet) code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .phase-tab{flex:none}
 .phase-tabs{scrollbar-width:thin}
+/* A split in the claim action panel reads label left, amount right, at every width. */
+.claim-actions .fact-list>div{grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:12px}
+.claim-actions .fact-list dd{text-align:right;white-space:nowrap}
 /* Order detail below 1050px: one column, nothing overlaps. The rail's next-action panel leads,
    as the desktop reads it, then the working column, then Details and History. */
 @media(max-width:1050px){

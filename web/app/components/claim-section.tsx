@@ -305,6 +305,11 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
               {open && !iProposed && !myAccepted && (
                 <>
                   <strong>{open.source === "ai" ? "Review the AI proposal" : `Review ${sourceLabel(open, order)}'s proposal`}</strong>
+                  {/* The split being accepted, next to the button that accepts it (the proposals block may sit far away on a phone). */}
+                  <dl className="fact-list">
+                    <div><dt>Back to buyer</dt><dd><strong>{money(open.buyerValue)} {order.currency}</strong></dd></div>
+                    <div><dt>To supplier</dt><dd><strong>{money(open.supplierValue)} {order.currency}</strong></dd></div>
+                  </dl>
                   <p>Accept it to settle, counter with your own split, or reject it.</p>
                   <Button className="btn-primary" disabled={Boolean(busy)} onClick={() => void accept()}><Check size={14} aria-hidden="true" />{busy === "accept" ? "Accepting" : "Accept proposal"}</Button>
                   <Button variant="outline" disabled={Boolean(busy)} onClick={() => { setBuyerShare(Math.round(open.buyerValue)); setProposeOpen(true); }}>Counter with another split</Button>
