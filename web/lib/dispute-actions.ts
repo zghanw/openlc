@@ -68,7 +68,7 @@ function isModelOutage(text?: string): boolean {
 export function disputeToClaim(dispute: DisputeRecord): ClaimView {
   const proposals: ClaimProposal[] = dispute.proposals.map((proposal) => ({
     id: proposal.id, source: proposal.source, side: proposal.proposerSide, round: proposal.round,
-    buyerValue: fromUnits(proposal.buyerUnits), supplierValue: fromUnits(proposal.supplierUnits),
+    buyerValue: fromUnits(proposal.buyerUnits), supplierValue: fromUnits(proposal.supplierUnits), buyerUnits: proposal.buyerUnits,
     summary: proposal.summary, reasoning: proposal.reasoning, status: proposal.status, acceptances: proposal.acceptances,
     citations: proposal.citations ?? [], unresolvedIssues: proposal.unresolvedIssues ?? [], evidenceSufficiency: proposal.evidenceSufficiency, createdAt: proposal.createdAt,
   }));

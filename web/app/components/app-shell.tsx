@@ -366,9 +366,9 @@ export function AgreementBlock({ company, clauses, label, accepted, onChange, re
 export type ConsentCheck = { id: string; text: string };
 
 /** A confirmation step built on the agreement block. */
-export function ConsentDialog({ open, onOpenChange, title, description, clauses, checks = [], company, confirmLabel, onConfirm, busy = false, children }: {
+export function ConsentDialog({ open, onOpenChange, title, description, clauses, checks = [], company, confirmLabel, onConfirm, busy = false, confirmDisabled = false, children }: {
   open: boolean; onOpenChange: (open: boolean) => void; title: string; description: ReactNode; clauses: AgreementClause[]; checks?: ConsentCheck[]; company: string;
-  confirmLabel: string; onConfirm: () => void | Promise<void>; busy?: boolean; children?: ReactNode;
+  confirmLabel: string; onConfirm: () => void | Promise<void>; busy?: boolean; /** The form inside is invalid; the dialog's children show why. */ confirmDisabled?: boolean; children?: ReactNode;
 }) {
   const [accepted, setAccepted] = useState(false);
   const [extra, setExtra] = useState<Record<string, boolean>>({});
@@ -386,7 +386,7 @@ export function ConsentDialog({ open, onOpenChange, title, description, clauses,
           extraChecks={checks.map((check) => ({ id: check.id, text: check.text, checked: Boolean(extra[check.id]), onChange: (checked) => setExtra((value) => ({ ...value, [check.id]: checked })) }))} />
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="btn-primary" disabled={!complete || busy} onClick={() => void onConfirm()}>{busy ? "Working" : confirmLabel}</Button>
+          <Button className="btn-primary" disabled={!complete || busy || confirmDisabled} onClick={() => void onConfirm()}>{busy ? "Working" : confirmLabel}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

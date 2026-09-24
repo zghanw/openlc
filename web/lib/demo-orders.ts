@@ -146,6 +146,8 @@ export type ClaimProposal = {
   source: "human" | "ai" | "arbitrator" | "early_position";
   side?: "buyer" | "supplier";
   buyerValue: number;
+  /** The buyer share in wei, for a counter's prefill. */
+  buyerUnits: string;
   supplierValue: number;
   summary: string;
   reasoning: string;

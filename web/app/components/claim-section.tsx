@@ -12,8 +12,8 @@ import { ReleasePlanBar, releaseProgress } from "@/app/components/release-plan";
 import { type ClaimProposal, type ClaimView, type DemoOrder, formatDateTime, formatOrderMoney as money } from "@/lib/demo-orders";
 import { acceptClaimProposal, enforceClaimDeadline, loadClaim, proposeClaimSplit, rejectClaimProposal, requestMediation, respondToClaim, type EvidenceFileInput } from "@/lib/dispute-actions";
 import { readEscrowState, useEscrowActions, type EscrowChainState } from "@/lib/escrow-actions";
-import { fromUnits, getLiveOrder, toUnits } from "@/lib/live-orders";
-import { splitUnits } from "@/lib/split.mjs";
+import { getLiveOrder } from "@/lib/live-orders";
+import { shareText, splitUnits } from "@/lib/split.mjs";
 import { BOTCHAIN, escrowConfigured, ESCROW_NOT_CONFIGURED_REASON, explorerTxUrl, formatBot } from "@/lib/chain";
 
 type Props = { order: DemoOrder; claim: ClaimView; company: string; onOrderChange: (order: DemoOrder) => void; onClaimChange: (claim: ClaimView) => void; railId?: string };
@@ -93,13 +93,16 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
 
   // Proposals
   const [proposeOpen, setProposeOpen] = useState(false);
-  // The typed share stays text; splitUnits converts it once and gives the supplier exactly the rest in wei.
-  const [buyerShare, setBuyerShare] = useState(() => formatBot(BigInt(claim.requestedBuyerUnits || "0") / 2n));
+  // The typed share stays text; splitUnits validates the text itself, converts it once and gives
+  // the supplier exactly the rest in wei, or says why Send is disabled.
+  const [buyerShare, setBuyerShare] = useState(() => shareText((BigInt(claim.requestedBuyerUnits || "0") / 2n).toString()));
   const [summary, setSummary] = useState("");
-  const split = splitUnits(claim.disputedUnits || "0", Number(buyerShare));
+  const split = splitUnits(claim.disputedUnits, claim.requestedBuyerUnits, buyerShare);
   const propose = () => run("propose", async () => {
-    const text = summary.trim() || `Refund ${money(fromUnits(split.buyerUnits))} ${order.currency} to the buyer and release ${money(fromUnits(split.supplierUnits))} ${order.currency} to the supplier.`;
-    await applyLive(await proposeClaimSplit(claim.id, { ...split, summary: text, reasoning: `${company} proposed this split during negotiation.` }, open?.id));
+    if (split.error !== undefined) throw new Error(split.error);
+    const { buyerUnits, supplierUnits } = split;
+    const text = summary.trim() || `Refund ${money(formatBot(buyerUnits))} ${order.currency} to the buyer and release ${money(formatBot(supplierUnits))} ${order.currency} to the supplier.`;
+    await applyLive(await proposeClaimSplit(claim.id, { buyerUnits, supplierUnits, summary: text, reasoning: `${company} proposed this split during negotiation.` }, open?.id));
     setProposeOpen(false);
     setSummary("");
   }, "Your proposal was sent. The other party can accept, reject or counter it.");
@@ -300,7 +303,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                   </dl>
                   <p>Accept it to settle, counter with your own split, or reject it.</p>
                   <Button className="btn-primary" disabled={Boolean(busy)} onClick={() => void accept()}><Check size={14} aria-hidden="true" />{busy === "accept" ? "Accepting" : "Accept proposal"}</Button>
-                  <Button variant="outline" disabled={Boolean(busy)} onClick={() => { setBuyerShare(formatBot(toUnits(open.buyerValue))); setProposeOpen(true); }}>Counter with another split</Button>
+                  <Button variant="outline" disabled={Boolean(busy)} onClick={() => { setBuyerShare(shareText(open.buyerUnits)); setProposeOpen(true); }}>Counter with another split</Button>
                   <Button variant="outline" className="btn-danger-outline" disabled={Boolean(busy)} onClick={() => void reject()}><X size={14} aria-hidden="true" />Reject</Button>
                 </>
               )}
@@ -380,8 +383,13 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
       <ConsentDialog open={proposeOpen} onOpenChange={setProposeOpen} company={company} title="Propose a split of the disputed amount"
         description={`${money(claim.disputedValue)} ${order.currency} is in dispute. Choose how much goes back to ${order.buyer}; the rest is released to ${order.supplier}.`}
         clauses={["A proposal you make is binding on your company once the other party accepts it.", "Each proposal uses one negotiation round."]}
-        confirmLabel="Send proposal" busy={busy === "propose"} onConfirm={propose}>
-        <label className="field"><span>Back to buyer ({order.currency})</span><Input type="number" min={0} max={claim.disputedValue} step="any" value={buyerShare} onChange={(event) => setBuyerShare(event.target.value)} /><small>To supplier: {money(fromUnits(split.supplierUnits))} {order.currency}</small></label>
+        confirmLabel="Send proposal" busy={busy === "propose"} confirmDisabled={split.error !== undefined} onConfirm={propose}>
+        <label className="field"><span>Back to buyer ({order.currency})</span>
+          <Input type="text" inputMode="decimal" autoComplete="off" value={buyerShare} onChange={(event) => setBuyerShare(event.target.value)} aria-invalid={split.error !== undefined} aria-describedby="split-result" />
+          {split.error !== undefined
+            ? <small id="split-result" className="form-error">{split.error}</small>
+            : <small id="split-result">Back to buyer: {money(formatBot(split.buyerUnits))} {order.currency}. To supplier: {money(formatBot(split.supplierUnits))} {order.currency}.</small>}
+        </label>
         <label className="field"><span>Why this split (optional)</span><Input value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Half of the damaged cartons were still saleable." /></label>
       </ConsentDialog>
     </section>
