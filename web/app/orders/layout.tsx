@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SessionScope } from "@/app/components/sign-in-gate";
 
 export const metadata: Metadata = {
   title: "OpenLC · Orders",
@@ -6,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function OrdersLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return children;
+  return <SessionScope>{children}</SessionScope>;
 }

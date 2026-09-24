@@ -180,3 +180,23 @@
   .table-panel{padding:16px}
   .import-strip{flex-direction:column;align-items:stretch}
 }
+
+/* Sign-in gate: takes the page's place in the content area when there is no valid session,
+   or when MetaMask is on a different wallet than the session. A card at rest: no shadow. */
+.signin-gate{display:grid;place-items:center;padding:clamp(24px,8vh,80px) 0}
+.signin-card{width:min(440px,100%);display:grid;gap:16px;padding:28px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--card)}
+.signin-mark{width:48px;height:48px;display:block;border-radius:12px;overflow:hidden}
+.signin-mark img{display:block;width:100%;height:100%}
+.signin-lede{color:var(--muted-foreground);line-height:1.55}
+.signin-lede code,.signin-note code{font-size:12.5px;color:var(--foreground);word-break:normal}
+.signin-points{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.signin-points li{display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+.signin-points svg{flex:none;margin-top:3px;color:var(--muted-foreground)}
+.signin-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.signin-actions [data-slot=button]{flex:1 1 auto}
+.signin-card .spin{color:inherit}
+.signin-note{font-size:12.5px;color:var(--muted-foreground)}
+.signin-consent{font-size:12px;line-height:1.5;color:var(--muted-foreground)}
+.signin-consent a,.signin-card .form-error a{color:var(--foreground);text-decoration:underline;text-underline-offset:3px}
+.user-menu-wallet{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media(max-width:767px){.signin-card{padding:20px}}

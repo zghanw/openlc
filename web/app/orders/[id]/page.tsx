@@ -16,7 +16,7 @@ import { loadClaim } from "@/lib/dispute-actions";
 import { getLiveOrder, previewLiveInvite } from "@/lib/live-orders";
 import { withExtras } from "@/lib/local-order-extras";
 import { STATUS, isDisputed } from "@/lib/order-status";
-import { clearSession, loadSession, signOutSession } from "@/lib/openlc-api";
+import { loadSession } from "@/lib/openlc-api";
 import { savePendingInvite } from "@/lib/pending-invite";
 import { authenticateConnectedWallet } from "@/lib/auth";
 import { advanceSample, guidedDemoNextLabel } from "@/lib/sample-orders";
@@ -52,9 +52,8 @@ export default function OrderPage() {
           setLoadError(message);
           setInviteAuthRequired(Boolean(token && /supplier email|different supplier account|invited/i.test(message)));
         }
-      } else if (token) {
-        setInviteAuthRequired(true);
       } else {
+        // The AppShell sign-in gate shows instead; signing in remounts this page on the same URL, invitation included.
         setLoadError("Sign in to open this order.");
       }
       setReady(true);
@@ -313,9 +312,8 @@ function InviteGate({ error }: { error: string }) {
     setActionError("");
     setSigningIn(true);
     try {
-      if (needsAccountSwitch) { try { await signOutSession(); } catch { clearSession(); } }
+      // Replaces the session in place; the route's SessionScope then reopens this page under it.
       await authenticateConnectedWallet({ address: wallet.account, sign: wallet.signMessage });
-      window.location.reload();
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : "Wallet sign-in could not be completed.");
     } finally {
@@ -331,7 +329,7 @@ function InviteGate({ error }: { error: string }) {
           <span className="gate-icon"><ShieldCheck size={22} aria-hidden="true" /></span>
           <h1 id="invite-sign-in-title">{needsAccountSwitch ? "Switch wallet to review this order" : "Connect a wallet to review this order"}</h1>
           <p>{needsAccountSwitch
-            ? <>You are signed in as <strong>{currentSession?.user.email || "a different account"}</strong>. Connect the wallet that received this invitation.</>
+            ? <>You are signed in as <strong>{currentSession?.walletAddress ? shortAddress(currentSession.walletAddress) : "a different wallet"}</strong>. Connect the wallet that received this invitation.</>
             : "Connect the wallet that received the invitation. Your invitation stays attached and opens automatically after sign-in."}</p>
           <div className="gate-assurance"><LockKeyhole size={15} aria-hidden="true" /><span><strong>The order remains private</strong><small>OpenLC checks the signed-in wallet before showing commercial terms.</small></span></div>
           {(actionError || wallet.error || (error && !needsAccountSwitch)) && <p className="form-error" role="alert">{actionError || wallet.error || error}</p>}

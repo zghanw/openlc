@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { AgreementBlock, ConsentDialog, FileField, HelpHint, Notice } from "@/app/components/app-shell";
 import { buildDocument, extractPurchaseOrder } from "@/app/components/order-documents";
 import { ReleasePlanBar } from "@/app/components/release-plan";
-import { type DemoOrder, type ExtractedPurchaseOrder, type OrderDocument, formatOrderMoney as money, itemSummary } from "@/lib/demo-orders";
+import { type DemoOrder, type ExtractedPurchaseOrder, type OrderDocument, formatOrderMoney as money } from "@/lib/demo-orders";
 import { ARBITRATOR_NOT_CONFIGURED_REASON, arbitratorConfigured, createLiveOrder } from "@/lib/live-orders";
 import { loadExtras, saveExtras } from "@/lib/local-order-extras";
-import { loadSession, type InvitationDelivery, type WorkspaceProfile } from "@/lib/openlc-api";
+import { loadSession, SESSION_EXPIRED_MESSAGE, type InvitationDelivery, type WorkspaceProfile } from "@/lib/openlc-api";
 
 type DraftLine = { id: number; description: string; quantity: number; unit: string; unitPrice: number };
 const blankLine = (id: number): DraftLine => ({ id, description: "", quantity: 1, unit: "units", unitPrice: 0 });
@@ -104,33 +104,14 @@ export function CreateOrderDialog({ open, onOpenChange, onCreate, profile, compa
     return documents;
   };
 
-  const buildSample = async (): Promise<DemoOrder> => {
-    const ref = reference.trim() || `PO-${String(Date.now()).slice(-6)}`;
-    const documents = await attachments();
-    const counterpartyLabel = usingDemoSupplier ? "OpenLC Demo Supplier" : counterpartyName.trim();
-    return {
-      id: `sample-${ref.toLowerCase()}-${Date.now().toString(36)}`, reference: ref, role: buying ? "BUYER" : "SUPPLIER", initiatorRole: role, counterparty: counterpartyLabel,
-      buyer: buying ? company : counterpartyLabel, supplier: buying ? counterpartyLabel : company, item: itemSummary(lines()), items: lines(),
-      status: usingDemoSupplier ? "supplier_confirmed" : (buying ? "awaiting_supplier" : "awaiting_buyer"), value: total,
-      delivery, deliveryLocation: location.trim(), settlementAsset: "Native BOT", currency: "BOT", inviteToken: crypto.randomUUID(), version: 1,
-      releasePlan: { depositValue: releaseValue(depositPercent), dispatchValue: releaseValue(dispatchPercent), deliveryValue: Math.max(0, total - releaseValue(depositPercent) - releaseValue(dispatchPercent)) },
-      source: "sample", documents, events: [{ at: new Date().toISOString(), label: "Order created", detail: `${company} issued the purchase order${buying ? "" : " as supplier"}.` }, ...documents.map((document) => ({ at: document.uploadedAt, label: "Document attached", detail: document.name }))],
-    };
-  };
-
   const send = async () => {
     setSaving(true);
     setError("");
     try {
-      if (!loadSession()) {
-        const sample = await buildSample();
-        onCreate(sample);
-        setCreated(sample);
-        setInviteUrl(`${window.location.origin}/orders/${encodeURIComponent(sample.id)}?invite=${sample.inviteToken}`);
-        return;
-      }
-      if (!profile) throw new Error("Your workspace is still loading. Try again in a moment.");
+      // Orders are created only under a live session; a lapsed one shows the sign-in gate instead.
       const session = loadSession();
+      if (!session) throw new Error(SESSION_EXPIRED_MESSAGE);
+      if (!profile) throw new Error("Your workspace is still loading. Try again in a moment.");
       const result = await createLiveOrder({ reference: reference.trim(), initiatorRole: role, counterpartyName: counterpartyName.trim(), counterpartyEmail: counterpartyEmail.trim(), deliveryDate: delivery, deliveryLocation: location.trim(), organizationId: profile.primary.organizationId, items: lines(), supplierWalletAddress: buying ? undefined : session?.walletAddress, releasePercentages: { deposit: depositPercent, dispatch: dispatchPercent }, useDemoSupplier: usingDemoSupplier });
       let order = result.order;
       const documents = await attachments();

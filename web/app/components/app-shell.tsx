@@ -1,17 +1,17 @@
 "use client";
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { AlertCircle, AlertTriangle, Box, Building2, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FileText, Info, LayoutDashboard, LogOut, Menu, Pencil, Plus, Upload, WalletCards, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Box, Building2, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FileText, Info, LayoutDashboard, LogOut, Menu, Pencil, Plus, Upload, UserRound, WalletCards, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { STATUS, TERMS, statusLabel, statusTone } from "@/lib/order-status";
 import { MotionShell } from "@/app/components/motion";
 import { BuiltOnBotChain } from "@/app/components/built-on-botchain";
-import { clearSession, loadSession, signOutSession, updateWorkspaceName } from "@/lib/openlc-api";
+import { SignInGate } from "@/app/components/sign-in-gate";
+import { clearSession, signOutSession, updateWorkspaceName, useSession, type DemoSession } from "@/lib/openlc-api";
 import { BOTCHAIN } from "@/lib/chain";
-import { authenticateConnectedWallet } from "@/lib/auth";
-import { isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
+import { isWalletMismatch, shortAddress, useWallet } from "@/lib/wallet";
 
 export function Logo() {
   return (
@@ -78,7 +78,7 @@ export function EmptyArt({ kind }: { kind: "inbox" | "documents" | "activity" })
   );
 }
 
-function UserMenu({ company, email }: { company: string; email?: string }) {
+function UserMenu({ company, session }: { company: string; session: DemoSession | null }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(company);
@@ -93,9 +93,10 @@ function UserMenu({ company, email }: { company: string; email?: string }) {
     document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
   }, [open]);
+  // Clearing the session re-renders every signed-in page as the sign-in gate, on the same URL.
   const signOut = async () => {
+    setOpen(false);
     try { await signOutSession(); } catch { clearSession(); }
-    window.location.href = "/";
   };
   const beginEdit = () => {
     setDraft(company);
@@ -120,24 +121,22 @@ function UserMenu({ company, email }: { company: string; email?: string }) {
     }
   };
   const initials = company.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "PP";
+  const wallet = session?.walletAddress ? shortAddress(session.walletAddress) : "Signed-in wallet";
   return (
     <>
       <div className="user-menu" ref={ref}>
-        <button type="button" className="user-menu-button" aria-haspopup="menu" aria-expanded={open} aria-label={`Account menu, ${company}`} onClick={() => setOpen((value) => !value)}>
-          <span className="user-menu-avatar" aria-hidden="true">{initials}</span>
-          <span className="user-menu-text"><strong>{company}</strong><small>{email ?? "Not signed in"}</small></span>
+        <button type="button" className="user-menu-button" aria-haspopup="menu" aria-expanded={open} aria-label={session ? `Account menu, ${company}, ${wallet}` : "Account menu, not signed in"} onClick={() => setOpen((value) => !value)}>
+          <span className="user-menu-avatar" aria-hidden="true">{session ? initials : <UserRound size={16} />}</span>
           <ChevronDown size={14} aria-hidden="true" />
         </button>
         {open && (
           <div className="user-menu-panel" role="menu">
-            <div className="user-menu-head"><strong>{company}</strong><small>{email ?? "Browsing without an account"}</small></div>
-            {email && <button type="button" role="menuitem" onClick={beginEdit}><Pencil size={14} aria-hidden="true" />Edit company name</button>}
-            {email && <a role="menuitem" href="/trust">Trust profile</a>}
+            {session && <div className="user-menu-head"><strong className="user-menu-wallet">{wallet}</strong><small>Signed in</small></div>}
+            {session && <button type="button" role="menuitem" onClick={beginEdit}><Pencil size={14} aria-hidden="true" />Edit company name</button>}
+            {session && <a role="menuitem" href="/trust">Trust profile</a>}
             <a role="menuitem" href="/legal/terms">Terms of Service</a>
             <a role="menuitem" href="/legal/dispute-policy">Dispute Resolution Policy</a>
-            {email
-              ? <button type="button" role="menuitem" onClick={() => void signOut()}><LogOut size={14} aria-hidden="true" />Sign out</button>
-              : <a role="menuitem" href="/#access">Sign in</a>}
+            {session && <button type="button" role="menuitem" onClick={() => void signOut()}><LogOut size={14} aria-hidden="true" />Sign out</button>}
           </div>
         )}
       </div>
@@ -182,30 +181,13 @@ export function AppShell({ active, company, title, description, actions, pageHea
   active: "overview" | "orders" | "wallet" | "none"; company: string; title: string; description?: ReactNode; actions?: ReactNode;
   pageHeading?: boolean; onNewOrder?: () => void; children: ReactNode; actionCount?: number;
 }) {
-  const [email, setEmail] = useState<string>();
-  const [sessionAddress, setSessionAddress] = useState<string>();
-  useEffect(() => {
-    const session = loadSession();
-    setEmail(session?.user.email);
-    setSessionAddress(session?.walletAddress);
-  }, []);
+  const session = useSession();
+  const sessionAddress = session?.walletAddress;
   const wallet = useWallet();
   const wrongNetwork = Boolean(wallet.account) && !wallet.isCorrectNetwork;
-  const walletMismatch = Boolean(wallet.account && sessionAddress) && !isSameAddress(wallet.account, sessionAddress);
-  const [resigning, setResigning] = useState(false);
-  const [resignError, setResignError] = useState("");
-  const resignIn = async () => {
-    if (!wallet.account) return;
-    setResigning(true);
-    setResignError("");
-    try {
-      await authenticateConnectedWallet({ address: wallet.account, sign: wallet.signMessage });
-      window.location.reload();
-    } catch (cause) {
-      setResignError(cause instanceof Error ? cause.message : "Wallet sign-in could not be completed.");
-      setResigning(false);
-    }
-  };
+  const walletMismatch = isWalletMismatch(wallet.account, sessionAddress);
+  // The page renders only for a valid session whose wallet MetaMask is still on; otherwise the gate takes its place.
+  const gated = !session || walletMismatch;
 
   // The app renders client-only (providers load with ssr: false), so storage can be read on first render.
   const [collapsed, setCollapsed] = useState(() => { try { return window.localStorage.getItem(SIDEBAR_KEY) === "1"; } catch { return false; } });
@@ -240,11 +222,12 @@ export function AppShell({ active, company, title, description, actions, pageHea
     return () => { document.removeEventListener("keydown", onKey); wide.removeEventListener("change", onWide); };
   }, [drawerOpen]);
 
-  const address = wallet.account ?? sessionAddress;
-  const walletState = !wallet.account ? "idle" : wrongNetwork ? "warn" : "ok";
-  const walletStateLabel = walletState === "ok" ? BOTCHAIN.chainName : walletState === "warn" ? "Wrong network" : "Wallet not connected";
+  // The sidebar shows the session's wallet, not whichever account MetaMask happens to be on.
+  const address = sessionAddress;
+  const walletState = !session || !wallet.account ? "idle" : walletMismatch || wrongNetwork ? "warn" : "ok";
+  const walletStateLabel = !session ? "Not signed in" : !wallet.account ? "Wallet not connected" : walletMismatch ? "MetaMask is on another wallet" : wrongNetwork ? "Wrong network" : BOTCHAIN.chainName;
   const initials = company.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "PP";
-  const Heading = pageHeading ? "h1" : "p";
+  const Heading = pageHeading && !gated ? "h1" : "p";
 
   return (
     <MotionShell>
@@ -262,7 +245,7 @@ export function AppShell({ active, company, title, description, actions, pageHea
           {NAV.map((item) => {
             const Icon = item.icon;
             const current = active === item.key;
-            const count = item.key === "orders" ? actionCount : 0;
+            const count = item.key === "orders" && !gated ? actionCount : 0;
             return (
               <a key={item.key} className={`sidebar-link${current ? " sidebar-link-active" : ""}`} href={item.href} aria-current={current ? "page" : undefined}
                 title={collapsed ? item.label : undefined} onClick={() => setDrawerOpen(false)}>
@@ -275,10 +258,12 @@ export function AppShell({ active, company, title, description, actions, pageHea
           })}
         </nav>
         <div className="sidebar-foot">
-          <div className="sidebar-account" title={collapsed ? company : undefined}>
-            <span className="sidebar-avatar" aria-hidden="true">{initials}</span>
-            <span className="sidebar-text"><strong>{company}</strong><small>Workspace</small></span>
-          </div>
+          {session && (
+            <div className="sidebar-account" title={collapsed ? company : undefined}>
+              <span className="sidebar-avatar" aria-hidden="true">{initials}</span>
+              <span className="sidebar-text"><strong>{company}</strong><small>Workspace</small></span>
+            </div>
+          )}
           <div className={`wallet-chip wallet-chip-${walletState}`} title={collapsed ? `${address ? shortAddress(address) : "No wallet"}, ${walletStateLabel}` : undefined}>
             <span className="status-dot" aria-hidden="true" />
             <span className="sidebar-text"><strong>{address ? shortAddress(address) : "No wallet"}</strong><small>{walletStateLabel}</small></span>
@@ -304,21 +289,13 @@ export function AppShell({ active, company, title, description, actions, pageHea
             ) : (
               <span className="network-pill" title={BOTCHAIN.chainName}><span className="status-dot" aria-hidden="true" /><span className="network-pill-text">{BOTCHAIN.chainName}</span></span>
             )}
-            {onNewOrder
+            {!gated && (onNewOrder
               ? <button type="button" className="btn btn-primary header-new-order" onClick={onNewOrder}><Plus size={16} aria-hidden="true" /><span>New order</span></button>
-              : <a className="btn btn-primary header-new-order" href="/orders?action=create"><Plus size={16} aria-hidden="true" /><span>New order</span></a>}
-            <UserMenu company={company} email={email} />
+              : <a className="btn btn-primary header-new-order" href="/orders?action=create"><Plus size={16} aria-hidden="true" /><span>New order</span></a>)}
+            <UserMenu company={company} session={session} />
           </div>
         </header>
-        {walletMismatch && (
-          <Notice tone="warning">
-            <span>You switched wallets. Sign in again as <strong>{shortAddress(wallet.account!)}</strong> to continue. Chain actions are disabled until it matches your session.{resignError && <> {resignError}</>}</span>
-            <Button size="sm" variant="outline" disabled={resigning} onClick={() => void resignIn()}>
-              {resigning ? "Signing in…" : "Sign in again"}
-            </Button>
-          </Notice>
-        )}
-        {!walletMismatch && wrongNetwork && (
+        {!gated && wrongNetwork && (
           <Notice tone="warning">
             <span>Your wallet is connected to the wrong network. This app needs <strong>{BOTCHAIN.chainName}</strong>.</span>
             <Button size="sm" variant="outline" disabled={wallet.switchingNetwork} onClick={() => void wallet.ensureBotChain()}>
@@ -327,13 +304,15 @@ export function AppShell({ active, company, title, description, actions, pageHea
           </Notice>
         )}
         <main id="main" className="shell-main" tabIndex={-1}>
-          {(description || actions) && (
-            <div className="page-intro">
-              {description && <p>{description}</p>}
-              {actions && <div className="page-intro-actions">{actions}</div>}
-            </div>
-          )}
-          {children}
+          {gated ? <SignInGate signedInAs={walletMismatch ? sessionAddress : undefined} /> : <>
+            {(description || actions) && (
+              <div className="page-intro">
+                {description && <p>{description}</p>}
+                {actions && <div className="page-intro-actions">{actions}</div>}
+              </div>
+            )}
+            {children}
+          </>}
         </main>
         <footer className="shell-footer">
           <BuiltOnBotChain />

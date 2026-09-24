@@ -3,7 +3,7 @@
 import { Contract, Interface, JsonRpcProvider, sha256, toUtf8Bytes, type ContractTransactionReceipt, type JsonRpcSigner, type LogDescription } from "ethers";
 import ESCROW_ABI from "@/lib/openlc-escrow.abi.json";
 import { BOTCHAIN, ESCROW_ADDRESS, ESCROW_DEPLOY_BLOCK, explorerTxUrl, requireEscrowConfigured } from "@/lib/chain";
-import { describeTxError, isSameAddress, shortAddress, useWallet } from "@/lib/wallet";
+import { describeTxError, isSameAddress, isWalletMismatch, shortAddress, useWallet } from "@/lib/wallet";
 import type { DocumentKind, InspectionLine } from "@/lib/demo-orders";
 import { confirmClaimExecution, disputeToClaim, type DisputeRecord, type EvidenceFileInput } from "@/lib/dispute-actions";
 import {
@@ -389,7 +389,7 @@ export function useEscrowActions() {
   // True once a connected wallet stops matching the address that signed the API session in - the
   // UI uses this to disable chain-action buttons up front, on top of the fail-closed throw below.
   const sessionAddress = loadSession()?.walletAddress;
-  const sessionMismatch = Boolean(wallet.account && sessionAddress) && !isSameAddress(wallet.account, sessionAddress);
+  const sessionMismatch = isWalletMismatch(wallet.account, sessionAddress);
 
   /** Fails closed if the connected wallet no longer matches the wallet that signed the API
    *  session in (switching MetaMask accounts after sign-in must not let a transaction go out

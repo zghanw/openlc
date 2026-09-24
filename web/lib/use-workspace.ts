@@ -61,7 +61,8 @@ export function useWorkspace(): Workspace {
       }
     }
     setHidden(samplesHidden());
-    setSampleOrders(loadSampleOrders(active?.user.id ?? "guest", orgName));
+    // Samples belong to a signed-in account; signed out, the pages show the sign-in gate instead.
+    setSampleOrders(active ? loadSampleOrders(active.user.id, orgName) : []);
     setReady(true);
   }, []);
 

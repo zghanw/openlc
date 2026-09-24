@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export type DemoSession = {
   accessToken: string;
   user: { id: string; email: string; name: string };
@@ -271,11 +273,39 @@ export async function restoreSupabaseSession(): Promise<DemoSession | null> {
   return session;
 }
 
+const SESSION_EVENT = "openlc:session-changed";
+/** A session is dropped this long before its token expires, so no request goes out on a dying token. */
+const EXPIRY_MARGIN_MS = 60_000;
+export const SESSION_EXPIRED_MESSAGE = "Your sign-in expired. Sign in again with your wallet.";
+
+/** The token's `exp` in milliseconds, read with a plain base64url decode; null when it has none. */
+function tokenExpiryMs(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { exp?: unknown };
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+// Deferred so a clear that happens while a component renders never updates another one mid-render.
+function announceSessionChange(): void {
+  queueMicrotask(() => window.dispatchEvent(new Event(SESSION_EVENT)));
+}
+
+/** The stored session, or null when there is none or its token expires within a minute (it is then cleared). */
 export function loadSession(): DemoSession | null {
   if (typeof window === "undefined") return null;
   try {
     const value = window.localStorage.getItem(STORAGE_KEY);
-    return value ? (JSON.parse(value) as DemoSession) : null;
+    if (!value) return null;
+    const session = JSON.parse(value) as DemoSession;
+    const expiresAt = tokenExpiryMs(session.accessToken);
+    if (expiresAt !== null && expiresAt - Date.now() <= EXPIRY_MARGIN_MS) {
+      clearSession();
+      return null;
+    }
+    return session;
   } catch {
     return null;
   }
@@ -283,10 +313,44 @@ export function loadSession(): DemoSession | null {
 
 export function saveSession(session: DemoSession): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  announceSessionChange();
 }
 
 export function clearSession(): void {
   window.localStorage.removeItem(STORAGE_KEY);
+  announceSessionChange();
+}
+
+/**
+ * The current valid session. It updates when this tab signs in or out, when another tab does
+ * (the storage event), when the tab comes back into view, and the moment the token expires.
+ */
+export function useSession(): DemoSession | null {
+  const [session, setSession] = useState(loadSession);
+  useEffect(() => {
+    // Same token, same object: listeners firing for nothing never re-render the page.
+    const sync = () => setSession((current) => {
+      const next = loadSession();
+      return next?.accessToken === current?.accessToken ? current : next;
+    });
+    const onStorage = (event: StorageEvent) => { if (event.key === STORAGE_KEY || event.key === null) sync(); };
+    const onVisible = () => { if (document.visibilityState === "visible") sync(); };
+    window.addEventListener(SESSION_EVENT, sync);
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener(SESSION_EVENT, sync);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  useEffect(() => {
+    const expiresAt = session ? tokenExpiryMs(session.accessToken) : null;
+    if (expiresAt === null) return;
+    const timer = window.setTimeout(() => setSession(loadSession()), Math.max(0, expiresAt - EXPIRY_MARGIN_MS - Date.now()) + 500);
+    return () => window.clearTimeout(timer);
+  }, [session]);
+  return session;
 }
 
 export async function signOutSession(): Promise<void> {
@@ -309,6 +373,11 @@ export async function apiRequest<T>(
   if (session?.accessToken)
     headers.set("authorization", `Bearer ${session.accessToken}`);
   const response = await fetch(`${BACKEND_URL}${path}`, { ...init, headers });
+  // Every /v1 route answers 401 only for a missing, invalid or expired session: drop it so the sign-in gate shows.
+  if (response.status === 401) {
+    clearSession();
+    throw new Error(SESSION_EXPIRED_MESSAGE);
+  }
   if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as T;
 }

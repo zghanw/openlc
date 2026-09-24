@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
-import { authenticateConnectedWallet } from "@/lib/auth";
+import { useWalletSignIn, type SignInPhase } from "@/lib/auth";
 import { loadSession } from "@/lib/openlc-api";
-import { useWallet } from "@/lib/wallet";
 
-type Phase = "idle" | "connecting" | "signing" | "opening";
-
-const PROGRESS: Record<Exclude<Phase, "idle">, string> = {
+const PROGRESS: Record<Exclude<SignInPhase, "idle">, string> = {
   connecting: "Connecting…",
   signing: "Sign the message in MetaMask…",
   opening: "Opening…",
@@ -21,55 +18,21 @@ const PROGRESS: Record<Exclude<Phase, "idle">, string> = {
  */
 function useWalletEntry(destination: string) {
   const router = useRouter();
-  const wallet = useWallet();
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [error, setError] = useState("");
-  const [noWallet, setNoWallet] = useState(false);
-  const [awaitingAccount, setAwaitingAccount] = useState(false);
-
-  function open() {
-    setPhase("opening");
+  const [leaving, setLeaving] = useState(false);
+  const open = () => {
+    setLeaving(true);
     router.push(destination);
-  }
-
-  async function signIn(address: string) {
-    setPhase("signing");
-    try {
-      await authenticateConnectedWallet({ address, sign: wallet.signMessage });
-      open();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Wallet ownership could not be verified.");
-      setPhase("idle");
-    }
-  }
-
-  // A connect request started by this button has settled: carry on to the signature, or say why not.
-  useEffect(() => {
-    if (!awaitingAccount || wallet.connecting) return;
-    setAwaitingAccount(false);
-    if (wallet.account) {
-      void signIn(wallet.account);
-    } else {
-      setError(wallet.error || "MetaMask did not connect. Try again.");
-      setPhase("idle");
-    }
-    // signIn is recreated each render; the effect only needs to react to the connect settling.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [awaitingAccount, wallet.connecting, wallet.account, wallet.error]);
+  };
+  const signIn = useWalletSignIn(open);
+  const phase: SignInPhase = leaving ? "opening" : signIn.phase;
 
   function start() {
     if (phase !== "idle") return;
-    setError("");
-    setNoWallet(false);
     if (loadSession()) return open();
-    if (!wallet.hasWallet) return setNoWallet(true);
-    if (wallet.account) return void signIn(wallet.account);
-    setPhase("connecting");
-    setAwaitingAccount(true);
-    void wallet.connect();
+    signIn.start();
   }
 
-  return { phase, error, noWallet, start };
+  return { phase, error: signIn.error, noWallet: signIn.noWallet, start };
 }
 
 export function WalletEntry({

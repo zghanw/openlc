@@ -5,7 +5,7 @@
  * Modeled on Vol.1's proven useEscrow.ts (D:\Codes\BuildWeekHackathon\frontend\src\hooks\useEscrow.ts)
  * connect/switch/listener pattern, trimmed to what this app needs (no bounty-specific state).
  */
-import { BrowserProvider, getAddress, type Eip1193Provider, type JsonRpcSigner } from "ethers";
+import { BrowserProvider, getAddress, isError, type Eip1193Provider, type JsonRpcSigner } from "ethers";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BOTCHAIN, BOTCHAIN_ADD_CHAIN_PARAMS } from "@/lib/chain";
 
@@ -163,8 +163,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       try {
         return await signer.signMessage(message);
       } catch (err) {
-        const code = (err as { code?: number } | undefined)?.code;
-        throw new Error(code === 4001 ? "Signature request rejected in MetaMask." : describeConnectError(err));
+        // ethers' BrowserProvider turns MetaMask's EIP-1193 4001 into its own ACTION_REJECTED.
+        const rejected = isError(err, "ACTION_REJECTED") || (err as { code?: number } | undefined)?.code === 4001;
+        throw new Error(rejected ? "Signature request rejected in MetaMask." : describeConnectError(err));
       }
     },
     [getSigner],
@@ -219,6 +220,11 @@ export function useWallet(): WalletContextValue {
 
 export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}\u2026${address.slice(-4)}`;
+}
+
+/** MetaMask is connected to a different account than the one the session signed in with. */
+export function isWalletMismatch(account?: string | null, sessionAddress?: string | null): boolean {
+  return Boolean(account && sessionAddress) && !isSameAddress(account, sessionAddress);
 }
 
 /** Checksum-safe address equality (MetaMask and the backend don't always agree on casing). */
