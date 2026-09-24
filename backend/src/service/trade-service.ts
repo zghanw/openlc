@@ -191,7 +191,7 @@ export class TradeService {
       : order.supplierId === actor.id || (order.supplierOrganizationId && await this.hasCapability(actor, "supply", order.supplierOrganizationId))
         ? "supplier"
         : pendingSide(order) ?? "supplier";
-    // Hash the raw bytes so the record matches what the browser hashed and anchored on Sui.
+    // Hash the raw bytes so the record matches what the browser hashed and anchored on BOT Chain.
     const fileHash = createHash("sha256").update(input.bytes).digest("hex");
     let anchor: TradeDocument["anchor"];
     const anchorDigest = input.anchorTransactionDigest?.trim();
@@ -230,7 +230,7 @@ export class TradeService {
     return { document, bytes: file.bytes, mimeType: file.mimeType || document.mimeType };
   }
 
-  /** Bind an already-stored document to a verified Sui transaction. This lets irreversible
+  /** Bind an already-stored document to a verified BOT Chain transaction. This lets irreversible
    * release flows persist evidence before asking the supplier to sign. */
   async anchorDocument(orderId: string, actor: Actor, documentId: string, transactionDigest: string): Promise<TradeOrder> {
     const order = await this.getOrder(orderId, actor);

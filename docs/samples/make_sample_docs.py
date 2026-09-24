@@ -1,10 +1,10 @@
-"""Regenerate the OpenLC live-demo documents (purchase order, agreement, delivery order).
+"""Regenerate the OpenLC sample documents (purchase order, agreement, delivery order).
 
-These are the sample files a tester uploads during the live BOT Chain demo. They must
+These are the files someone trying OpenLC can upload while running an order. They must
 stay text-based PDFs (real text, not images) so the create-order dialog's "Import from
 file" AI reader can extract fields from the purchase order.
 
-Run: python docs/demo/make_demo_docs.py
+Run: python docs/samples/make_sample_docs.py
 Regenerates, in this folder:
   OLC-DEMO-0905-purchase-order.pdf
   OLC-DEMO-0905-purchase-order.txt

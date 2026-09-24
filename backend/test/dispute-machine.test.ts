@@ -122,7 +122,7 @@ describe("dispute state machine", () => {
     expect(settled.proposals.at(-1)?.proposedBy).toBe(ARBITRATOR);
   });
 
-  it("marks settlement complete only after a trusted verifier supplies complete Sui effects", () => {
+  it("marks settlement complete only after a trusted verifier supplies complete on-chain effects", () => {
     const control = controlledContext();
     const opened = openDispute(openInput(), buyer, control.ctx);
     const agreed = supplierRespond(opened, supplier, { agrees: true }, control.ctx);

@@ -244,7 +244,7 @@ function ChainTruthPanel({ order }: { order: DemoOrder }) {
   if (!escrowId) return null;
   const chain = read.view === "ready" ? read.chain : null;
   const statusWord = chain ? (chain.status === 2 ? "Settled" : chain.status === 1 ? "Disputed" : "Open") : "";
-  const statusLine = chain && chain.status === 2 ? `${statusWord} — ${SETTLEMENT_MODE_LABEL[chain.mode] ?? "settled"}` : statusWord;
+  const statusLine = chain && chain.status === 2 ? `${statusWord}, ${SETTLEMENT_MODE_LABEL[chain.mode] ?? "settled"}` : statusWord;
   const mismatch = chain ? chainMismatchNotice(chain, order.status) : null;
 
   return (

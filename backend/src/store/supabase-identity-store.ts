@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   IdentityStore,
-  PayProofAccount,
+  OpenLCAccount,
   WalletChallenge,
 } from "./identity-store.js";
 
@@ -23,7 +23,7 @@ export class SupabaseIdentityStore implements IdentityStore {
     });
   }
 
-  async findAccountById(id: string): Promise<PayProofAccount | undefined> {
+  async findAccountById(id: string): Promise<OpenLCAccount | undefined> {
     const { data, error } = await this.client
       .from("openlc_accounts")
       .select("*,openlc_wallet_identities(address)")
@@ -33,7 +33,7 @@ export class SupabaseIdentityStore implements IdentityStore {
     return data ? accountFromRow(data as AccountRow) : undefined;
   }
 
-  async findAccountByAddress(address: string): Promise<PayProofAccount | undefined> {
+  async findAccountByAddress(address: string): Promise<OpenLCAccount | undefined> {
     const { data, error } = await this.client
       .from("openlc_wallet_identities")
       .select("openlc_accounts(*)")
@@ -44,7 +44,7 @@ export class SupabaseIdentityStore implements IdentityStore {
     return account ? { ...accountFromRow(account), walletAddress: address } : undefined;
   }
 
-  async createWalletAccount(address: string): Promise<PayProofAccount> {
+  async createWalletAccount(address: string): Promise<OpenLCAccount> {
     const { data, error } = await this.client.rpc("resolve_wallet_account", {
       p_address: address,
     });
@@ -88,7 +88,7 @@ export class SupabaseIdentityStore implements IdentityStore {
   }
 }
 
-export function accountFromRow(row: AccountRow): PayProofAccount {
+export function accountFromRow(row: AccountRow): OpenLCAccount {
   const identity = Array.isArray(row.openlc_wallet_identities) ? row.openlc_wallet_identities[0] : row.openlc_wallet_identities;
   return {
     id: row.id,

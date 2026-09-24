@@ -1,11 +1,11 @@
-OPENLC LIVE DEMO - COPY AND PASTE
-==================================
+OPENLC SAMPLE ORDER - COPY AND PASTE
+====================================
 
 ORDER
 -----
 Buyer company: Choong Trading Sdn. Bhd.
 Supplier company: FreshSource Foods Sdn. Bhd.
-Supplier wallet: your second MetaMask account (or tick "Use the OpenLC demo supplier" for a one-wallet run)
+Supplier wallet: the supplier's own MetaMask account (open the confirmation link there)
 PO reference: OLC-DEMO-0905
 Expected delivery: 1 October 2026
 Delivery location: Receiving Bay 2, Shah Alam Distribution Centre

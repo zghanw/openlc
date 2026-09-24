@@ -276,7 +276,7 @@ function toCitation(clause: PolicyClause): LegalCitation {
   const isAgreement = clause.id.startsWith("AGREEMENT-");
   return {
     passageId: clause.id,
-    sourceId: isAgreement ? "order-agreement" : "payproof-dispute-policy",
+    sourceId: isAgreement ? "order-agreement" : "openlc-dispute-policy",
     title: isAgreement ? "Agreement between the parties" : "OpenLC Dispute Resolution Policy",
     locator: isAgreement ? clause.section : clause.id,
     sourceUrl: isAgreement ? "" : "/legal/dispute-policy",
@@ -524,7 +524,7 @@ Abstain, and state the reason, only when no agreement term or policy clause answ
       const deterministicSummary = `Refund ${final.buyerRefundUnits} ${dispute.assetType} units to the buyer; release ${final.supplierReleaseUnits} ${dispute.assetType} units to the supplier.`;
       const deterministicReasoning = [
         final.commonGround.length ? `Common ground: ${final.commonGround.join(" | ")}` : "Common ground: none recorded.",
-        `Findings: ${final.findings.map((finding) => `${finding.issue} — ${finding.finding}${finding.supportingEvidence.length ? ` (evidence: ${finding.supportingEvidence.map((entry) => `“${entry.quote}”`).join(", ")})` : " (no supporting evidence quoted)"}`).join(" | ")}`,
+        `Findings: ${final.findings.map((finding) => `${finding.issue}: ${finding.finding}${finding.supportingEvidence.length ? ` (evidence: ${finding.supportingEvidence.map((entry) => `“${entry.quote}”`).join(", ")})` : " (no supporting evidence quoted)"}`).join(" | ")}`,
         final.contractBasis.length ? `Agreement terms applied: ${final.contractBasis.map((entry) => `${entry.clauseId}: “${entry.quote}”`).join(" | ")}` : "Agreement terms applied: none quoted.",
         final.policyBasis.length ? `Policy clauses applied: ${final.policyBasis.map((entry) => `${entry.clauseId}: “${entry.quote}”`).join(" | ")}` : "Policy clauses applied: none quoted.",
         `Reasoning: ${final.reasoning}`,

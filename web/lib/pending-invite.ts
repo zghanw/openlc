@@ -7,8 +7,8 @@ export type PendingInvite = { orderId: string; token: string; savedAt: number };
 
 /**
  * The invitation a visitor arrived with, kept while they sign in or sign up so
- * that leaving this page — to the landing page, to Google, or to a new session
- * tomorrow — never strands them away from the order they were invited to.
+ * that leaving this page (to the landing page, or to a new session tomorrow)
+ * never strands them away from the order they were invited to.
  */
 export function savePendingInvite(orderId: string, token: string): void {
   try {

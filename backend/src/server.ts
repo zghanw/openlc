@@ -26,7 +26,7 @@ const store = config.store === "supabase"
   ? new SupabaseDisputeStore(config.supabaseUrl(), config.supabaseSecretKey())
   : new MemoryDisputeStore();
 const service = new DisputeService(store, systemContext);
-const sessionSecret = config.payProofSessionSecret();
+const sessionSecret = config.sessionSecret();
 const identity = sessionSecret
   ? new IdentityService(new SupabaseIdentityStore(config.supabaseUrl(), config.supabaseSecretKey()), {
       sessionSecret,
@@ -82,7 +82,7 @@ const invitationEmail = config.brevoApiKey() && invitationFrom
 console.log("Invitation email sender", invitationEmail instanceof SmtpInvitationEmailSender
   ? `SMTP ${smtpHost}:${config.smtpPort()} (${config.smtpSecure() ? "implicit TLS" : "STARTTLS"})`
   : invitationEmail instanceof BrevoInvitationEmailSender ? "Brevo"
-  : invitationEmail instanceof ResendInvitationEmailSender ? "Resend" : "disabled — invitations will report not_configured");
+  : invitationEmail instanceof ResendInvitationEmailSender ? "Resend" : "disabled, invitations will report not_configured");
 let fundingVerifier: EvmFundingVerifier | undefined;
 let settlementVerifier: EvmSettlementVerifier | undefined;
 if (config.escrowVerifierEnabled) {

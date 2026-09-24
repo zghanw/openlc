@@ -12,10 +12,10 @@ const tradeTable = await client
   .from("trade_orders")
   .select("id,buyer_organization_id,supplier_organization_id", { count: "exact", head: true });
 const accountTable = await client
-  .from("payproof_accounts")
+  .from("openlc_accounts")
   .select("id", { count: "exact", head: true });
 const identityTable = await client
-  .from("payproof_sui_identities")
+  .from("openlc_wallet_identities")
   .select("address", { count: "exact", head: true });
 const walletChallengeTable = await client
   .from("wallet_auth_challenges")

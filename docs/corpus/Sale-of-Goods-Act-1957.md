@@ -134,15 +134,15 @@ SALE OF GOODS ACT 1957
 An Act relating to the sale of goods.
 [Federal Territory, Johore, Kedah, Kelantan, Negeri Sembilan,
 Pahang, Perak, Perlis, Selangor and Terengganu
-—23 April 1957,
-Malacca and Penang—23 February 1990]
+: 23 April 1957,
+Malacca and Penang: 23 February 1990]
 CHAPTER I
 PRELIMINARY
 Short title and application
 1. (1) This Act may be cited as the Sale of Goods Act 1957.
 (2) This Act shall apply to the States of *Penisular Malaysia.
 Interpretation
-2. In this Act, unless the context otherwise requires—
+2. In this Act, unless the context otherwise requires:
 “buyer” means a person who buys or agrees to buy goods;
 “delivery” means voluntary transfer of possession from one
 person to another; goods are said to be in a “deliverable state”
@@ -155,8 +155,8 @@ other document used in the ordinary course of business as proof
 of the possession or control of goods, or authorizing or purporting
 to authorize, either by endorsement or by delivery, the possessor
 of the document to transfer or receive goods thereby represented;
-*NOTE—All references to “West Malaysia” shall be construed as reference to “Peninsular Malaysia”
-–see the Interpretation (Amendment) Act 1997 [Act A996], subsection 5(2).
+*NOTE: All references to “West Malaysia” shall be construed as reference to “Peninsular Malaysia”
+-see the Interpretation (Amendment) Act 1997 [Act A996], subsection 5(2).
 
 8 Laws of Malaysia ACT 382
 “fault” means wrongful act or default;
@@ -307,7 +307,7 @@ or warranty the fulfilment of which is excused by law by reason
 of impossibility or otherwise.
 Implied undertaking as to title, etc.
 14. In a contract of sale, unless the circumstances of the contract
-are such as to show a different intention, there is—
+are such as to show a different intention, there is:
 (a) an implied condition on the part of the seller, that, in the
 case of a sale, he has a right to sell the goods, and that,
 in the case of an agreement to sell, he will have a right
@@ -360,7 +360,7 @@ Sale by sample
 17. (1) A contract of sale is a contract for sale by sample where
 there is a term in the contract express or implied to that effect.
 (2) In the case of a contract for sale by sample there is an
-implied condition—
+implied condition:
 (a) that the bulk shall correspond with the sample in quality;
 (b) that the buyer shall have a reasonable opportunity of
 comparing the bulk with the sample;
@@ -425,7 +425,7 @@ unconditionally appropriated the goods to the contract.
 Goods sent on approval or “on sale or return”
 24. When goods are delivered to the buyer on approval or “on
 sale or return”, or other similar terms, the property therein passes
-to the buyer—
+to the buyer:
 (a) when he signifies his approval or acceptance to the seller
 or does any other act adopting the transaction;
 (b) if he does not signify his approval or acceptance to the
@@ -666,7 +666,7 @@ CHAPTER V
 RIGHTS OF UNPAID SELLER AGAINST THE GOODS
 Unpaid seller defined
 45. (1) The seller of goods is deemed to be an “unpaid seller”
-within the meaning of this Act—
+within the meaning of this Act:
 (a) when the whole of the price has not been paid or tendered;
 (b) when a bill of exchange or other negotiable instrument
 has been received as conditional payment, and the condition
@@ -683,7 +683,7 @@ Unpaid seller’s rights
 46. (1) Subject to this Act and of any law for the time being in
 force, notwithstanding that the property in the goods may have
 passed to the buyer, the unpaid seller of goods, as such, has, by
-implication of law—
+implication of law:
 (a) a lien on the goods for the price while he is in possession
 of them;
 (b) in case of the insolvency of the buyer a right of stopping
@@ -716,7 +716,7 @@ he may exercise his right of lien on the remainder, unless such part
 delivery has been made under such circumstances as to show an
 agreement to waive the lien.
 Termination of lien
-49. (1) The unpaid seller of goods loses his lien thereon—
+49. (1) The unpaid seller of goods loses his lien thereon:
 (a) when he delivers the goods to a carrier or other bailee
 for the purpose of transmission to the buyer without
 reserving the right of disposal of the goods;
@@ -865,7 +865,7 @@ Remedy for breach of warranty
 where the buyer elects or is compelled to treat any breach of a
 condition on the part of the seller as a breach of warranty, the
 buyer is not by reason only of such breach of warranty entitled to
-reject the goods; but he may—
+reject the goods; but he may:
 (a) set up against the seller the breach of warranty in diminution
 or extinction of the price; or
 (b) sue the seller for damages for breach of warranty.
@@ -887,7 +887,7 @@ of it has failed.
 Sale of Goods 29
 (2) In the absence of a contract to the contrary, the court may
 award interest at such rate as it thinks fit on the amount of the
-price—
+price:
 (a) to the seller in a suit by him for the amount of the price,
 from the date of the tender of the goods or from the date
 on which the price was payable;

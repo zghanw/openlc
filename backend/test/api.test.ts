@@ -82,7 +82,7 @@ describe("HTTP API", () => {
     const previousOrigin = process.env.FRONTEND_ORIGIN;
     process.env.FRONTEND_ORIGIN = "https://openlc.xyz";
     try {
-      // a 32-byte Sui-shaped address must not be accepted by a BOT Chain endpoint
+      // a 32-byte non-EVM address must not be accepted by a BOT Chain endpoint
       const response = await app.request("/auth/wallet/challenge", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -114,7 +114,7 @@ describe("HTTP API", () => {
     expect(response.status).toBe(403);
   });
 
-  it("requires a trusted Sui verifier before marking an agreement settled", async () => {
+  it("requires a trusted chain verifier before marking an agreement settled", async () => {
     const control = controlledContext();
     const verifier: TokenVerifier = { verify: async (token) => ({ id: token }) };
     const service = new DisputeService(new MemoryDisputeStore(), control.ctx);

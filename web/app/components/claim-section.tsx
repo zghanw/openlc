@@ -46,6 +46,10 @@ function sourceLabel(proposal: ClaimProposal, order: DemoOrder): string {
   return proposal.side === "buyer" ? order.buyer : proposal.side === "supplier" ? order.supplier : "A party";
 }
 
+// The split form writes this sentence when the proposer leaves the summary blank. Older proposals
+// saved it with amounts rounded to cents, so it is rebuilt from the exact amounts at render time.
+const AUTO_SUMMARY = /^Refund .+ to the buyer and release .+ to the supplier\.$/;
+
 export function ClaimSection({ order, claim, company, onOrderChange, onClaimChange, railId }: Props) {
   const [rail, setRail] = useState<HTMLElement | null>(null);
   useEffect(() => { setRail(railId ? document.getElementById(railId) : null); }, [railId]);
@@ -244,7 +248,7 @@ export function ClaimSection({ order, claim, company, onOrderChange, onClaimChan
                     <span><small>To supplier</small><strong>{money(proposal.supplierValue)} {order.currency}</strong></span>
                     {proposal.evidenceSufficiency && <span><small>Evidence</small><strong className="capitalize">{proposal.evidenceSufficiency}</strong></span>}
                   </div>
-                  <p>{proposal.source === "ai" ? `Refund ${money(proposal.buyerValue)} ${order.currency} to the buyer and release ${money(proposal.supplierValue)} ${order.currency} to the supplier.` : proposal.summary}</p>
+                  <p>{proposal.source === "ai" || AUTO_SUMMARY.test(proposal.summary) ? `Refund ${money(proposal.buyerValue)} ${order.currency} to the buyer and release ${money(proposal.supplierValue)} ${order.currency} to the supplier.` : proposal.summary}</p>
                   {proposal.acceptances.length > 0 && proposal.status === "open" && <small className="proposal-acceptances">Accepted by {proposal.acceptances.map((side) => side === "buyer" ? order.buyer : order.supplier).join(" and ")}. Waiting for the other party.</small>}
                   {(() => {
                     const run = proposal.source === "ai" ? claim.mediations.find((entry) => entry.proposalId === proposal.id && entry.report) : undefined;

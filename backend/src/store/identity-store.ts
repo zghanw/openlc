@@ -1,4 +1,4 @@
-export interface PayProofAccount {
+export interface OpenLCAccount {
   id: string;
   supabaseUserId?: string;
   email?: string;
@@ -15,33 +15,33 @@ export interface WalletChallenge {
 }
 
 export interface IdentityStore {
-  findAccountById(id: string): Promise<PayProofAccount | undefined>;
-  findAccountByAddress(address: string): Promise<PayProofAccount | undefined>;
-  createWalletAccount(address: string): Promise<PayProofAccount>;
+  findAccountById(id: string): Promise<OpenLCAccount | undefined>;
+  findAccountByAddress(address: string): Promise<OpenLCAccount | undefined>;
+  createWalletAccount(address: string): Promise<OpenLCAccount>;
   createChallenge(challenge: WalletChallenge): Promise<void>;
   getChallenge(id: string): Promise<WalletChallenge | undefined>;
   consumeChallenge(id: string, usedAt: string): Promise<boolean>;
 }
 
 export class MemoryIdentityStore implements IdentityStore {
-  private readonly accounts = new Map<string, PayProofAccount>();
+  private readonly accounts = new Map<string, OpenLCAccount>();
   private readonly addressAccounts = new Map<string, string>();
   private readonly challenges = new Map<string, WalletChallenge>();
 
-  async findAccountById(id: string): Promise<PayProofAccount | undefined> {
+  async findAccountById(id: string): Promise<OpenLCAccount | undefined> {
     const account = this.accounts.get(id);
     return account ? structuredClone(account) : undefined;
   }
 
-  async findAccountByAddress(address: string): Promise<PayProofAccount | undefined> {
+  async findAccountByAddress(address: string): Promise<OpenLCAccount | undefined> {
     const id = this.addressAccounts.get(address);
     return id ? structuredClone(this.accounts.get(id)!) : undefined;
   }
 
-  async createWalletAccount(address: string): Promise<PayProofAccount> {
+  async createWalletAccount(address: string): Promise<OpenLCAccount> {
     const existing = await this.findAccountByAddress(address);
     if (existing) return existing;
-    const account: PayProofAccount = {
+    const account: OpenLCAccount = {
       id: crypto.randomUUID(),
       walletAddress: address,
     };

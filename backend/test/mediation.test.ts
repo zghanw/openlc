@@ -115,7 +115,7 @@ describe("bounded AI mediation", () => {
       expect(result.proposal.reasoning).toContain("Policy clauses applied");
       expect(result.proposal.reasoning).toContain("AI inferences (not verified facts)");
       expect(result.proposal.citations).toEqual(expect.arrayContaining([
-        expect.objectContaining({ passageId: "DP-7.5", sourceId: "payproof-dispute-policy", sourceUrl: "/legal/dispute-policy" }),
+        expect.objectContaining({ passageId: "DP-7.5", sourceId: "openlc-dispute-policy", sourceUrl: "/legal/dispute-policy" }),
         expect.objectContaining({ passageId: "AGREEMENT-2", sourceId: "order-agreement" }),
       ]));
       const recorded = recordAiProposal(dispute, result.proposal, control.ctx, result.run);

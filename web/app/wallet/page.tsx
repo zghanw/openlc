@@ -48,7 +48,9 @@ function escrowMovements(orders: DemoOrder[]): Movement[] {
     }
     if (progress.dispatch > 0) {
       out.push({ ...base, id: `${order.id}-dispatch`, type: toSupplier, title: `Dispatch payment released${suffix}`, amount: progress.dispatch,
-        at: order.shipment?.dispatchedAt ?? settledAt, transactionDigest: order.shipment?.transactionDigest, stage: "dispatch" });
+        // The release record carries the time the chain paid it; dispatchedAt is the date the supplier typed.
+        at: order.raw?.releaseRecords?.find((record) => record.stage === "dispatch")?.releasedAt ?? order.shipment?.dispatchedAt ?? settledAt,
+        transactionDigest: order.shipment?.transactionDigest, stage: "dispatch" });
     }
     // A claim pays the undisputed value out immediately, well before any settlement exists.
     const undisputed = order.raw?.undisputedRelease;
@@ -59,7 +61,7 @@ function escrowMovements(orders: DemoOrder[]): Movement[] {
     }
     if (!order.settlement) continue;
     const finalToSupplier = Math.max(0, progress.delivery - atClaim);
-    if (finalToSupplier > 0.0001) {
+    if (finalToSupplier > 1e-9) {
       out.push({ ...base, id: `${order.id}-delivery`, type: toSupplier, title: `Delivery balance released${suffix}`, amount: finalToSupplier,
         at: settledAt, transactionDigest: order.settlement.transactionDigest, stage: "delivery" });
     }

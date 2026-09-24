@@ -485,7 +485,7 @@ describe("EvmSettlementVerifier.verify (dispute settlement)", () => {
   });
 
   it("rejects a settlement whose split does not conserve the disputed amount", async () => {
-    // 12000 + 17000 = 29000, but the dispute holds 30000 — both the agreement and the (matching) on-chain event fail to conserve it.
+    // 12000 + 17000 = 29000, but the dispute holds 30000, so both the agreement and the (matching) on-chain event fail to conserve it.
     const dispute = settlementDispute({ buyerUnits: "12000", supplierUnits: "17000" });
     const reader = fullSettlementReader({ buyerRefund: "12000", supplierRelease: "17000" });
     const verifier = new EvmSettlementVerifier({ escrowAddress: ESCROW, reader });

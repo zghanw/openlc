@@ -2,10 +2,7 @@ import { network } from "hardhat";
 import { expect } from "chai";
 
 /**
- * OpenLCEscrow: the BOT Chain port of payproof::escrow.
- *
- * Every test in sources/ProofPay/contracts/payproof/tests/escrow_tests.move has a
- * counterpart here, so a behaviour that held on Sui is proven to still hold on EVM:
+ * OpenLCEscrow contract tests. The core behaviours each have a named test:
  *
  *   milestone_plan_releases_deposit_dispatch_and_delivery_without_overpaying
  *     -> "releases deposit, dispatch and delivery without ever overpaying"

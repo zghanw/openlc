@@ -67,20 +67,20 @@ Section
 24. What considerations and object are lawful, and what not
 Void Agreements
 25. Agreements void if considerations and objects unlawful in part
-26. Agreement without consideration, void, unless—
+26. Agreement without consideration, void, unless:
 (a) it is in writing and registered;
 (b) or is a promise to compensate for something done;
 (c) or is a promise to pay a debt barred by limitation law
 27. Agreement in restraint of marriage void
 28. Agreement in restraint of trade void
-Exception 1—Saving of agreement not to carry on business of which
+Exception 1: Saving of agreement not to carry on business of which
 goodwill is sold;
-Exception 2—of agreement between partners prior to dissolution;
-Exception 3—or during continuance of partnership
+Exception 2: of agreement between partners prior to dissolution;
+Exception 3: or during continuance of partnership
 29. Agreements in restraint of legal proceedings void
-Exception 1—Saving of contract to refer to arbitration dispute that may
+Exception 1: Saving of contract to refer to arbitration dispute that may
 arise
-Exception 2—Saving of contract to refer questions that have already
+Exception 2: Saving of contract to refer questions that have already
 arisen
 30. Agreements void for uncertainty
 31. (1) Agreements by way of wager void
@@ -352,8 +352,8 @@ CONTRACTS ACT 1950
 An Act relating to contracts.
 [Kuala Lumpur, Johore, Kedah, Kelantan,
 Negeri Sembilan, Pahang, Perak, Perlis,
-Selangor and Terengganu—23 May 1950;
-Malacca, Penang, Sabah and Sarawak—1 July 1974]
+Selangor and Terengganu: 23 May 1950;
+Malacca, Penang, Sabah and Sarawak: 1 July 1974]
 PART I
 PRELIMINARY
 Short title
@@ -372,7 +372,7 @@ to make a proposal;
 (b) when the person to whom the proposal is made signifies
 his assent thereto, the proposal is said to be accepted: a
 proposal, when accepted, becomes a promise;
-*NOTE—See Appendix—Contracts (Amendment) Act 1976 [Act A329] with respect to Scholarship
+*NOTE: See Appendix: Contracts (Amendment) Act 1976 [Act A329] with respect to Scholarship
 Agreements.
 
 14 Laws of Malaysia ACT 136
@@ -410,13 +410,13 @@ Communication, when complete
 to the knowledge of the person to whom it is made.
 
 Contracts 15
-(2) The communication of an acceptance is complete—
+(2) The communication of an acceptance is complete:
 (a) as against the proposer, when it is put in a course of
 transmission to him, so as to be out of the power of the
 acceptor; and
 (b) as against the acceptor, when it comes to the knowledge of
 the proposer.
-(3) The communication of a revocation is complete—
+(3) The communication of a revocation is complete:
 (a) as against the person who makes it, when it is put into a
 course of transmission to the person to whom it is made, so
 as to be out of the power of the person who makes it; and
@@ -427,7 +427,7 @@ ILLUSTRATIONS
 The communication of the proposal is complete when B receives the
 letter.
 (b) B accepts A’s proposal by a letter sent by post.
-The communication of the acceptance is complete—
+The communication of the acceptance is complete:
 as against A, when the letter is posted;
 as against B, when the letter is received by A.
 (c) A revokes his proposal by telegram.
@@ -453,7 +453,7 @@ his letter of acceptance, but not afterwards.
 B may revoke his acceptance at any time before or at the moment when the
 letter communicating it reaches A, but not afterwards.
 Revocation how made
-6. A proposal is revoked—
+6. A proposal is revoked:
 (a) by the communication of notice of revocation by the
 proposer to the other party;
 (b) by the lapse of the time prescribed in the proposal for its
@@ -466,7 +466,7 @@ of his death or mental disorder comes to the knowledge of
 the acceptor before acceptance.
 Acceptance must be absolute
 7. In order to convert a proposal into a promise the acceptance
-must—
+must:
 (a) be absolute and unqualified;
 (b) be expressed in some usual and reasonable manner, unless
 the proposal prescribes the manner in which it is to be
@@ -526,7 +526,7 @@ lasts.
 13. Two or more persons are said to consent when they agree upon
 the same thing in the same sense.
 “Free consent”
-14. Consent is said to be free when it is not caused by—
+14. Consent is said to be free when it is not caused by:
 (a) coercion, as defined in section 15;
 (b) undue influence, as defined in section 16;
 (c) fraud, as defined in section 17;
@@ -543,7 +543,7 @@ act forbidden by the Penal Code, or the unlawful detaining or
 threatening to detain, any property, to the prejudice of any person
 whatever, with the intention of causing any person to enter into an
 agreement.
-Explanation—It is immaterial whether the Penal Code is or is not in force
+Explanation: It is immaterial whether the Penal Code is or is not in force
 in the place where the coercion is employed.
 ILLUSTRATION
 A, on board an English ship on the high seas, causes B to enter into an
@@ -559,7 +559,7 @@ parties is in a position to dominate the will of the other and uses that
 position to obtain an unfair advantage over the other.
 (2) In particular and without prejudice to the generality of the
 foregoing principle, a person is deemed to be in a position to
-dominate the will of another—
+dominate the will of another:
 (a) where he holds a real or apparent authority over the other,
 or where he stands in a fiduciary relation to the other; or
 (b) where he makes a contract with a person whose mental
@@ -604,7 +604,7 @@ or belief of the fact;
 (d) any other act fitted to deceive; and
 (e) any such act or omission as the law specially declares to be
 fraudulent.
-Explanation—Mere silence as to facts likely to affect the willingness of a
+Explanation: Mere silence as to facts likely to affect the willingness of a
 person to enter into a contract is not fraud, unless the circumstances of the case
 are such that, regard being had to them, it is the duty of the person keeping
 silence to speak, or unless his silence is, in itself, equivalent to speech.
@@ -621,7 +621,7 @@ sound.” A says nothing. Here, A’s silence is equivalent to speech.
 of a change in prices which would affect B’s willingness to proceed with the
 contract. A is not bound to inform B.
 “Misrepresentation”
-18. “Misrepresentation” includes—
+18. “Misrepresentation” includes:
 (a) the positive assertion, in a manner not warranted by the
 information of the person making it, of that which is not
 true, though he believes it to be true;
@@ -640,13 +640,13 @@ option of the party whose consent was so caused.
 misrepresentation, may, if he thinks fit, insist that the contract shall
 be performed, and that he shall be put in the position in which he
 would have been if the representations made had been true.
-Exception—If such consent was caused by misrepresentation or by silence,
+Exception: If such consent was caused by misrepresentation or by silence,
 fraudulent within the meaning of section 17, the contract, nevertheless, is not
 voidable, if the party whose consent was so caused had the means of discovering
 the truth with ordinary diligence.
 
 22 Laws of Malaysia ACT 136
-Explanation—A fraud or misrepresentation which did not cause the consent
+Explanation: A fraud or misrepresentation which did not cause the consent
 to a contract of the party on whom the fraud was practised, or to whom the
 misrepresentation was made, does not render a contract voidable.
 ILLUSTRATIONS
@@ -687,7 +687,7 @@ Agreement void where both parties are under mistake as to
 matter of fact
 21. Where both the parties to an agreement are under a mistake as
 to a matter of fact essential to the agreement, the agreement is void.
-Explanation—An erroneous opinion as to the value of the thing which forms
+Explanation: An erroneous opinion as to the value of the thing which forms
 the subject-matter of the agreement is not to be deemed a mistake as to a matter
 of fact.
 ILLUSTRATIONS
@@ -712,7 +712,7 @@ Contract caused by mistake of one party as to matter of fact
 23. A contract is not voidable merely because it was caused by one
 of the parties to it being under a mistake as to a matter of fact.
 What considerations and objects are lawful, and what not
-24. The consideration or object of an agreement is lawful, unless—
+24. The consideration or object of an agreement is lawful, unless:
 (a) it is forbidden by a law;
 
 24 Laws of Malaysia ACT 136
@@ -779,8 +779,8 @@ A promises to superintend, on behalf of B, a legal manufacture of indigo, and
 an illegal traffic in other articles. B promises to pay to A a salary of RM10,000
 a year. The agreement is void, the object of A’s promise and the consideration
 for B’s promise, being in part unlawful.
-Agreement without consideration, void, unless—
-26. An agreement made without consideration is void, unless—
+Agreement without consideration, void, unless:
+26. An agreement made without consideration is void, unless:
 it is in writing and registered
 (a) it is expressed in writing and registered under the law (if
 any) for the time being in force for the registration of such
@@ -801,9 +801,9 @@ specially authorized in that behalf, to pay wholly or in part
 a debt of which the creditor might have enforced payment
 but for the law for the limitation of suits.
 In any of these cases, such an agreement is a contract.
-Explanation 1—Nothing in this section shall affect the validity, as between
+Explanation 1: Nothing in this section shall affect the validity, as between
 the donor and donee, of any gift actually made.
-Explanation 2—An agreement to which the consent of the promisor is freely
+Explanation 2: An agreement to which the consent of the promisor is freely
 given is not void merely because the consideration is inadequate; but the
 inadequacy of the consideration may be taken into account by the court in
 determining the question whether the consent of the promisor was freely given.
@@ -836,19 +836,19 @@ Agreement in restraint of trade void
 a lawful profession, trade, or business of any kind, is to that extent
 void.
 Saving of agreement not to carry on business of which goodwill is sold
-Exception 1—One who sells the goodwill of a business may agree with the
+Exception 1: One who sells the goodwill of a business may agree with the
 buyer to refrain carrying on a similar business, within specified local limits, so
 long as the buyer, or any person deriving title to the goodwill from him, carries
 on a like business therein:
 Provided that such limits appear to the court reasonable, regard being had
 to the nature of the business.
 of agreement between partners prior to dissolution
-Exception 2—Partners may, upon or in anticipation of a dissolution of the
+Exception 2: Partners may, upon or in anticipation of a dissolution of the
 partnership, agree that some or all of them will not carry on a business similar
 to that of the partnership within such local limits as are referred to in exception
 1.
 or during continuance of partnership
-Exception 3—Partners may agree that some one or all of them will not carry
+Exception 3: Partners may agree that some one or all of them will not carry
 on any business, other than that of the partnership, during the continuance of
 the partnership.
 Agreements in restraint of legal proceedings void
@@ -860,16 +860,16 @@ is void to that extent.
 
 28 Laws of Malaysia ACT 136
 Saving of contract to refer to arbitration dispute that may arise
-Exception 1—This section shall not render illegal a contract by which two
+Exception 1: This section shall not render illegal a contract by which two
 or more persons agree that any dispute which may arise between them in
 respect of any subject or class of subjects shall be referred to arbitration, and
 that only the amount awarded in the arbitration shall be recoverable in respect
 of the dispute so referred.
 Saving of contract to refer questions that have already arisen
-Exception 2-—Nor shall this section render illegal any contract in writing,
+Exception 2-: Nor shall this section render illegal any contract in writing,
 by which two or more persons agree to refer to arbitration any question between
 them which has already arisen, or affect any law as to references to arbitration.
-*Exception 3—Nor shall this section render illegal any contract in writing
+*Exception 3: Nor shall this section render illegal any contract in writing
 between the Government and any person with respect to an award of a
 scholarship by the Government wherein it is provided that the discretion
 exercised by the Government under that contract shall be final and conclusive
@@ -892,7 +892,7 @@ words, and A has entered into a contract for the sale of one hundred tons of
 coconut oil.
 (d) A agrees to sell to B “all the grain in my granary at Ipoh”. There is no
 uncertainty here to make the agreement void.
-*NOTE—See Appendix–Contracts (Amendment) Act 1976 [Act 32a] with respect to Scholarship
+*NOTE: See Appendix-Contracts (Amendment) Act 1976 [Act 32a] with respect to Scholarship
 Agreements.
 
 Contracts 29
@@ -1097,7 +1097,7 @@ Sharing of loss by default in contribution
 (3) If any one of two or more joint promisors makes default in the
 contribution, the remaining joint promisors must bear the loss
 arising from the default in equal shares.
-Explanation—Nothing in this section shall prevent a surety from recovering
+Explanation: Nothing in this section shall prevent a surety from recovering
 from his principal payments made by the surety on behalf of the principal, or
 entitle the principal to recover anything from the surety on account of payments
 made by the principal.
@@ -1142,7 +1142,7 @@ made and no time is specified
 without application by the promisee, and no time for performance is
 specified, the engagement must be performed within a reasonable
 time.
-Explanation—The question “what is a reasonable time” is, in each particular
+Explanation: The question “what is a reasonable time” is, in each particular
 case, a question of fact.
 Time and place for performance of promise where time is
 specified and no application to be made
@@ -1161,7 +1161,7 @@ and place
 promisor has not undertaken to perform it without application by the
 promisee, it is the duty of the promisee to apply for performance at
 a proper place and within the hours of business.
-Explanation— The question “what is a proper time and place” is, in each
+Explanation: The question “what is a proper time and place” is, in each
 particular case, a question of fact.
 
 Contracts 37
@@ -1544,7 +1544,7 @@ been incurred and has not been discharged, any person injured by the
 failure to discharge it is entitled to receive the same compensation
 from the party in default as if the person had contracted to discharge
 it and had broken his contract.
-Explanation— In estimating the loss or damage arising from a breach of
+Explanation: In estimating the loss or damage arising from a breach of
 contract, the means which existed of remedying the inconvenience caused by
 the non-performance of the contract must be taken into account.
 
@@ -1680,17 +1680,17 @@ or loss is proved to have been caused thereby, to receive from the
 party who has broken the contract reasonable compensation not
 exceeding the amount so named or, as the case may be, the penalty
 stipulated for.
-Explanation—A stipulation for increased interest from the date of default
+Explanation: A stipulation for increased interest from the date of default
 may be a stipulation by way of penalty.
 
 Contracts 51
-Exception—When any person enters into any bail-bond, recognizance, or
+Exception: When any person enters into any bail-bond, recognizance, or
 other instrument of the same nature, or, under the provisions of any law, or
 under the orders of the Federal Government or the Government of any State,
 gives any bond for the performance of any public duty or act in which the public
 are interested, he shall be liable, upon breach of the condition of any such
 instrument, to pay the whole sum mentioned therein.
-Explanation— A person who enters into a contract with Government does
+Explanation: A person who enters into a contract with Government does
 not necessarily thereby undertake any public duty, or promise to do an act in
 which the public are interested.
 ILLUSTRATIONS
@@ -1747,7 +1747,7 @@ which C may take against B in respect of a certain sum of RM200. This is a
 contract of indemnity.
 Rights of indemnity-holder when sued
 78. The promisee in the contract of indemnity, acting within the
-scope of his authority, is entitled to recover from the promisor—
+scope of his authority, is entitled to recover from the promisor:
 (a) all damages which he may be compelled to pay in any suit
 in respect of any matter to which the promise to indemnify
 applies;
@@ -2053,19 +2053,19 @@ Liability of co-sureties bound in different sums
 equally as far as the limits of their respective obligations permit.
 ILLUSTRATIONS
 (a) A, B and C, as sureties for D, enter into three several bonds, each in a
-different penalty—namely, A in the penalty of RM10,000, B in that of
+different penalty: namely, A in the penalty of RM10,000, B in that of
 RM20,000, C in that of RM40,000, conditioned for D’s duly accounting to E.
 D makes default to the extent of RM30,000. A, B and C are each liable to pay
 RM10,000.
 
 Contracts 61
 (b) A, B and C, as sureties for D enter into three several bonds, each in a
-different penalty—namely, A in the penalty of RM10,000, B in that of
+different penalty: namely, A in the penalty of RM10,000, B in that of
 RM20,000, C in that of RM40,000, conditioned for D’s duly accounting to E.
 D makes default to the extent of RM40,000. A is liable to pay RM10,000, and
 B and C RM15,000.
 (c) A, B and C, as sureties for D, enter into three several bonds, each in a
-different penalty—namely, A in the penalty of RM10,000, B in that of
+different penalty: namely, A in the penalty of RM10,000, B in that of
 RM20,000, C in that of RM40,000, conditioned for D’s duly accounting to E.
 D makes default to the extent of RM70,000. A, B and C have to pay each the
 full penalty of his bond.
@@ -2078,7 +2078,7 @@ purpose is accomplished, be returned or otherwise disposed of
 according to the directions of the person delivering them. The
 person delivering the goods is called the “bailor”. The person to
 whom they are delivered is called the “bailee”.
-Explanation—If a person already in possession of the goods of another
+Explanation: If a person already in possession of the goods of another
 contracts to hold them as a bailee, he thereby becomes the bailee, and the owner
 becomes the bailor, of such goods, although they may not have been delivered
 by way of bailment.
@@ -2242,7 +2242,7 @@ When finder of thing commonly on sale may sell it
 122. When a thing which is commonly the subject of sale is lost,
 if the owner cannot with reasonable diligence be found, or if he
 refuses, upon demand, to pay the lawful charges of the finder, the
-finder may sell it—
+finder may sell it:
 (a) when the thing is in danger of perishing or of losing the
 greater part of its value; or
 (b) when the lawful charges of the finder, in respect of the
@@ -2317,7 +2317,7 @@ Pledge by possessor of goods, or of documentary title to goods
 lading, dock-warrant, warehouse-keeper’s certificate, wharfinger’s
 certificate, or warrant or order for delivery, or any other document
 of title to goods, may make a valid pledge of the goods or documents:
-Provided that—
+Provided that:
 (a) the pawnee acts in good faith, and under circumstances
 which are not such as to raise a reasonable presumption
 that the pawnor is acting improperly; and
@@ -2628,8 +2628,8 @@ ILLUSTRATIONS
 a sum of money is paid on A’s account, with orders to remit. B retains the money
 for a considerable time. A, in consequence of not receiving the money, becomes
 insolvent. B is liable for the money and interest from the day on which it ought
-to have been paid, according to the usual rate, and for any further direct loss—
-as, e. g., by variation of rate of exchange—but not further.
+to have been paid, according to the usual rate, and for any further direct loss:
+as, e. g., by variation of rate of exchange: but not further.
 (b) A, an agent for the sale of goods, having authority to sell on credit, sells
 to B on credit, without making the proper and usual enquiries as to the solvency
 of B. B, at the time of the sale, is insolvent. A must make compensation to his
@@ -2948,7 +2948,7 @@ Short title and construction
 and shall be construed as one with the Contracts Act 1950 [Act 136]
 (hereinafter referred to as the “principal Act”).
 Interpretation
-2. In this Act, unless the context otherwise requires—
+2. In this Act, unless the context otherwise requires:
 “appropriate authority” means the Federal Government or a State
 Government, a statutory authority, or an approved educational
 institution;
@@ -2979,14 +2979,14 @@ for the purpose of this Act.
 Validity of scholarship agreement
 4. Notwithstanding anything to the contrary contained in the
 principal Act, no scholarship agreement shall be invalidated on the
-ground that—
+ground that:
 (a) the scholar entering into such agreement is not of the age
 of majority;
 (b) such agreement is contrary to any provision of any law in
 force relating to moneylenders; or
 (c) such agreement lacks consideration.
 Remedy in the event of breach
-5. Where a scholarship agreement has been broken by the scholar—
+5. Where a scholarship agreement has been broken by the scholar:
 (a) if a sum is named in the agreement as the amount to be paid
 in case of such breach, notwithstanding anything to the
 contrary contained in the principal Act, the scholar and the
@@ -3002,7 +3002,7 @@ Contracts 89
 (b) if no such sum is mentioned in the scholarship agreement,
 the scholar and the surety shall be jointly and severally
 liable to pay and the appropriate authority shall be entitled
-to be paid—
+to be paid:
 (i) the whole amount expended by the appropriate
 authority under the agreement; and
 (ii) the whole of such further amount as it will cost the
@@ -3024,7 +3024,7 @@ in all civil proceedings which arise from or relate to a scholarship
 agreement.
 Representation
 8. In all proceedings which arise from or relate to a scholarship
-agreement—
+agreement:
 (a) the Federal Government, any statutory authority under the
 jurisdiction of the Federal Government and any approved
 educational in stitution may be represented by a Federal
@@ -3034,7 +3034,7 @@ the jurisdiction of the State Government may be represented
 by the respective State Legal Adviser, or the respective
 State Attorney General, or a Federal Counsel authorized
 by either of them.
-*NOTE—See section 111 of the Subordinate Courts Act 1948 [Act 92].
+*NOTE: See section 111 of the Subordinate Courts Act 1948 [Act 92].
 
 | 90  | Laws of Malaysia | ACT 136 |
 | --- | ---------------- | ------- |

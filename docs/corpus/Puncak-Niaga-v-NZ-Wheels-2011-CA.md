@@ -53,7 +53,7 @@ renowned.
 [7] This judgment concerned the plaintiff appellant and the first
 defendant respondent.
 The salient facts
-[8] Sometime in March 2007, the plaintiff appellant – familiar with the
+[8] Sometime in March 2007, the plaintiff appellant - familiar with the
 second and third defendants’ public claims of high quality and standards
 attached to their Mercedes-Benz motor vehicles, purchased a brand new
 luxury Mercedes-Benz motor vehicle model S350L (“the Mercedes-Benz
@@ -224,8 +224,8 @@ of the Consumer Protection Act 1999 enacts as follows (the relevant parts):
 32. (1) Where goods are supplied to a consumer there shall be
 implied a guarantee that the goods are of acceptable quality.
 (2) For the purposes of subsection (1), goods shall be deemed to
-be of acceptable quality–
-(a) if they are–
+be of acceptable quality-
+(a) if they are-
 (i) fit for all the purposes for which goods of the type in
 question are commonly supplied;
 (ii) acceptable in appearance and finish;
@@ -254,7 +254,7 @@ Consumer Protection Act 1999 which enacts as follows (the relevant parts):
 Act to reject goods by notifying the supplier of the decision to reject
 the goods and of the ground or grounds for the rejection.
 (2) Where the consumer exercises the right to reject goods, the
-consumer shall return the rejected goods to the supplier unless– .”
+consumer shall return the rejected goods to the supplier unless- .”
 [28] Here, the plaintiff appellant had rejected the Mercedes-Benz
 motor car when it was left in the first defendant respondent’s workshop on
 21.5.2007. Section 45(3) of the Consumer Protection Act 1999 states that
@@ -386,7 +386,7 @@ within a reasonable time, and the supplier did so, did the right to
 reject the goods under the failure of a “substantial character”
 
 16
-provision still allow for rejection under section 21 of the Act – did
+provision still allow for rejection under section 21 of the Act - did
 the rights in sections 18(2) and (3) exist concurrently (in that they
 might both be exercised) or sequentially (so that if a right to one
 existed, the right under the other was automatically
@@ -621,7 +621,7 @@ of the plaintiff appellant:
 dated 7.9.2006 as per exhibit “PN-1” of the plaintiff appellant’s first
 affidavit (see page 211 of the appeal record at Jilid 3) carried the
 following notes:
-“To attend breakdown service at Taman Melawati KL – vehicle cannot
+“To attend breakdown service at Taman Melawati KL - vehicle cannot
 start .... .”
 (b) the first defendant respondent’s invoice no: IV 063373/NZ 063108J
 dated 7.9.2006 as per exhibit “PN-2” of the plaintiff appellant’s first
@@ -632,19 +632,19 @@ following remarks:
 dated 7.9.2006 as per exhibit “PN-3” of the plaintiff appellant’s first
 affidavit (see page 215 of the appeal record at Jilid 3) carried the
 following remarks:
-“To attend breakdown service at Taman Melawati KL – vehicle unable
+“To attend breakdown service at Taman Melawati KL - vehicle unable
 to start .... .”
 (d) the first defendant respondent’s invoice no: IV 064504/NZ 064398J
 dated 18.1.2007 as per exhibit “PN-4” of the plaintiff appellant’s first
 affidavit (see page 217 of the appeal record at Jilid 3) carried the
 following notes:
-“To attend breakdown at Taman Melawati, Kuala Lumpur –
+“To attend breakdown at Taman Melawati, Kuala Lumpur -
 To check vehicle cannot start .... .”
 (e) the first defendant respondent’s invoice no: IV 065906/NZ 065910J
 dated 18.1.2007 as per exhibit “PN-5” of the plaintiff appellant’s first
 affidavit (see page 221 of the appeal record at Jilid 3) carried the
 following notes:
-“To check SRS light on sometimes – check vehicle cannot start.... .”
+“To check SRS light on sometimes - check vehicle cannot start.... .”
 (f) the first defendant respondent’s warranty invoice no: 701 dated
 5.4.2007 as per exhibit “PN-6” of the plaintiff appellant’s first affidavit
 (see page 223 of the appeal record at Jilid 3) carried the following

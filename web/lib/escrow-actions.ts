@@ -46,8 +46,8 @@ function asBytes32(hex: string, what = "The value"): string {
  *  Move abort-code table. Keys are exactly the error names in web/lib/openlc-escrow.abi.json. */
 const CUSTOM_ERROR_MESSAGES: Record<string, string> = {
   Unauthorized: "You are not authorized to perform this action on this escrow.",
-  InvalidState: "This escrow is not in a state that allows this action right now — it may already be disputed or settled. Refresh the order and try again.",
-  AlreadyShipped: "Shipment was already marked on-chain for this escrow. This order is behind the chain — refresh and try again.",
+  InvalidState: "This escrow is not in a state that allows this action right now. It may already be disputed or settled. Refresh the order and try again.",
+  AlreadyShipped: "Shipment was already marked on-chain for this escrow. This order is behind the chain. Refresh and try again.",
   DeadlineNotReached: "The delivery deadline written into the escrow has not passed yet.",
   NotShipped: "Shipment was never marked on-chain, so this escrow cannot be claimed as uninspected.",
   InvalidDispute: "The disputed amount must be greater than zero and cannot exceed the escrow's remaining balance.",
@@ -163,7 +163,7 @@ function clearPending(orderId: string, action: PendingAction): void {
 function recordingFailedError(txHash: string, cause: unknown): Error {
   const reason = cause instanceof Error ? cause.message : String(cause);
   return new Error(
-    `This step completed on BOT Chain in transaction ${txHash} (${explorerTxUrl(txHash)}), but recording it here failed: ${reason}. Nothing is lost — press this action again to finish recording it, without signing again.`,
+    `This step completed on BOT Chain in transaction ${txHash} (${explorerTxUrl(txHash)}), but recording it here failed: ${reason}. Nothing is lost: press this action again to finish recording it, without signing again.`,
   );
 }
 

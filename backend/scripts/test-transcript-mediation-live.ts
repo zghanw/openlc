@@ -1,7 +1,7 @@
 /**
  * Live check of the agreement/policy mediation path using fabricated evidence
  * transcripts in place of real uploads. Prints the full structured output so
- * the shape of each side's case and the mediator's determination can be judged.
+ * the shape of each side's case and the mediator's determination can be reviewed.
  */
 import { MediationOrchestrator } from "../src/ai/mediation.js";
 import { config } from "../src/config.js";
@@ -132,7 +132,7 @@ if (result.outcome === "proposal") {
   line("STORED PROPOSAL (what the parties see)");
   console.log(result.proposal.summary);
   console.log(`\n${result.proposal.reasoning}`);
-  console.log(`\nCitations:\n${result.proposal.citations.map((item) => `  [${item.passageId}] ${item.title} — ${item.locator}`).join("\n")}`);
+  console.log(`\nCitations:\n${result.proposal.citations.map((item) => `  [${item.passageId}] ${item.title}: ${item.locator}`).join("\n")}`);
 }
 
 const transcriptText = JSON.stringify(result.run);

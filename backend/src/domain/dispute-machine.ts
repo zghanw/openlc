@@ -365,7 +365,7 @@ export function confirmSettlementExecution(
   dispute.status = "settled";
   dispute.settlement.executionStatus = "verified_on_chain";
   dispute.settlement.execution = { ...execution, verifiedAt: ctx.now().toISOString() };
-  audit(dispute, ctx, "sui-verifier", "settlement.executed_on_chain", {
+  audit(dispute, ctx, "chain-verifier", "settlement.executed_on_chain", {
     agreementId: dispute.settlement.agreementId,
     transactionDigest: execution.transactionDigest,
     receiptObjectId: execution.receiptObjectId,

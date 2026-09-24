@@ -36,9 +36,9 @@
 
 @media(max-width:1050px){.roles{width:min(100% - 36px,1380px)}}
 
-/* Luxury Motion Edition — Aceternity-inspired spotlight, tilt, glow and reveal */
+/* Luxury Motion Edition: Aceternity-inspired spotlight, tilt, glow and reveal */
 
-/* Buyer order desk — two-step drafting, document extraction and inspectable records */
+/* Buyer order desk: two-step drafting, document extraction and inspectable records */
 .order-wizard{
   width:min(1080px,calc(100vw - 36px))!important;
   max-width:1080px!important;
@@ -128,7 +128,7 @@
   .detail-hero{align-items:flex-start;flex-direction:column}.detail-flow{align-items:stretch;flex-direction:column;gap:4px}.detail-flow i{width:1px;height:8px;flex:none;align-self:center}
 }
 
-/* Ops Atlas — operational clarity with the Luxury Motion system preserved */
+/* Ops Atlas: operational clarity with the Luxury Motion system preserved */
 .logo{font-size:21px;font-weight:820;letter-spacing:-.045em}
 .logo-mark{width:40px;height:40px;border-radius:5px;background:linear-gradient(145deg,var(--primary),var(--primary));box-shadow:0 8px 20px color-mix(in oklch,var(--foreground) 11%,transparent);font-family:var(--font-display);font-size:18px}
 
@@ -197,7 +197,7 @@
 @media(max-width:520px){.supplier-summary article{min-height:105px}.supplier-focus-grid{gap:10px}.qr-session-card{grid-template-columns:1fr}.qr-session-card .qr-code{margin-top:8px}.secured-chip{font-size:6px}.supplier-record-strip{font-size:7px}}
 @media(prefers-reduced-motion:reduce){.qr-live i{animation:none!important}.workspace-return{transition:none!important}.workspace-return:hover{transform:none!important}}
 
-/* Buyer typography pass — Mona Sans, enterprise 14px productivity scale */
+/* Buyer typography pass: Mona Sans, enterprise 14px productivity scale */
 .buyer-shell,.order-wizard,.order-details-sheet,.review-sheet{
   font-family:"Mona Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   font-optical-sizing:auto;
@@ -378,7 +378,7 @@
   .supplier-confirm-dialog{max-height:92vh;overflow-y:auto;padding:21px!important}.supplier-confirm-dialog [data-slot=dialog-title]{font-size:25px!important}.incoming-dialog-facts{grid-template-columns:1fr}.incoming-dialog-facts>div+div{border-left:0;border-top:1px solid var(--border)}.incoming-dialog-parties{grid-template-columns:1fr}.incoming-dialog-parties>svg{justify-self:center;transform:rotate(90deg)}.supplier-confirm-actions{align-items:stretch!important;flex-direction:column}.confirmation-result{width:100%;margin:0}
 }
 
-/* Unified order register — role is an order property, never a workspace switch */.order-status{display:inline-flex;padding:6px 8px;border-radius:4px;background:var(--secondary);color:var(--muted-foreground);font-size:8px;font-weight:760;white-space:nowrap}.status-confirmation-required,.status-inspection-due{background:var(--warning-soft);color:var(--warning)}.status-prepare-shipment,.status-funds-secured,.status-awaiting-buyer-funding,.status-awaiting-supplier{background:var(--secondary);color:var(--foreground)}.status-release-ready,.status-partially-settled,.status-shipment-prepared{background:var(--success-soft);color:var(--success)}.line-item-row input{height:41px;border-color:var(--border);border-radius:5px;background:var(--card);font-size:10px}.line-item-row{display:grid;grid-template-columns:minmax(0,1.6fr) 110px 130px 140px;gap:9px;align-items:center}.line-item-row{padding:11px;background:var(--card)}.line-item-row strong{text-align:right;font-family:var(--font-data);font-size:10px}
+/* Unified order register: role is an order property, never a workspace switch */.order-status{display:inline-flex;padding:6px 8px;border-radius:4px;background:var(--secondary);color:var(--muted-foreground);font-size:8px;font-weight:760;white-space:nowrap}.status-confirmation-required,.status-inspection-due{background:var(--warning-soft);color:var(--warning)}.status-prepare-shipment,.status-funds-secured,.status-awaiting-buyer-funding,.status-awaiting-supplier{background:var(--secondary);color:var(--foreground)}.status-release-ready,.status-partially-settled,.status-shipment-prepared{background:var(--success-soft);color:var(--success)}.line-item-row input{height:41px;border-color:var(--border);border-radius:5px;background:var(--card);font-size:10px}.line-item-row{display:grid;grid-template-columns:minmax(0,1.6fr) 110px 130px 140px;gap:9px;align-items:center}.line-item-row{padding:11px;background:var(--card)}.line-item-row strong{text-align:right;font-family:var(--font-data);font-size:10px}
 @media(max-width:760px){.line-item-row{grid-template-columns:1fr 1fr}.line-item-row input:first-child{grid-column:1/-1}}
 @media(max-width:520px){.line-item-row{grid-template-columns:1fr}.line-item-row input:first-child{grid-column:auto}.line-item-row strong{text-align:left}}
 
@@ -387,7 +387,7 @@
 
 /* Role selection belongs to order creation, not the global workspace. */
 
-/* Settlement progress — accepted value moves, disputed value stays locked. */
+/* Settlement progress: accepted value moves, disputed value stays locked. */
 
 /* Canonical purchase-order creation and review flow */
 .order-preview-sheet{display:flex!important;flex-direction:column}.request-changes-button{color:var(--destructive)!important}

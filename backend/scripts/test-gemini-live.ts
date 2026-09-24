@@ -4,9 +4,9 @@ import { GeminiEmbedder, GeminiJsonModel } from "../src/integrations/gemini.js";
 const model = new GeminiJsonModel(config.geminiApiKey(), config.geminiModel);
 const generated = await model.generateJson<{ ok: boolean; purpose: string }>(
   "Return valid JSON only. Do not add markdown.",
-  'Return exactly this semantic content as JSON: ok is true and purpose is "PayProof connectivity test".',
+  'Return exactly this semantic content as JSON: ok is true and purpose is "OpenLC connectivity test".',
 );
-if (generated.ok !== true || generated.purpose !== "PayProof connectivity test") {
+if (generated.ok !== true || generated.purpose !== "OpenLC connectivity test") {
   throw new Error("Gemini structured generation returned unexpected content");
 }
 

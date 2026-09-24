@@ -3,7 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { DomainError, type Actor } from "../domain/types.js";
 import type {
   IdentityStore,
-  PayProofAccount,
+  OpenLCAccount,
 } from "../store/identity-store.js";
 
 const encoder = new TextEncoder();
@@ -28,7 +28,7 @@ export class IdentityService {
     this.sessionKey = encoder.encode(options.sessionSecret);
   }
 
-  async account(id: string): Promise<PayProofAccount | undefined> {
+  async account(id: string): Promise<OpenLCAccount | undefined> {
     return this.store.findAccountById(id);
   }
 
@@ -76,7 +76,7 @@ export class IdentityService {
     challengeId: string;
     address: string;
     signature: string;
-  }): Promise<{ account: PayProofAccount; accessToken: string }> {
+  }): Promise<{ account: OpenLCAccount; accessToken: string }> {
     const normalized = this.normalizeAddress(input.address);
     const challenge = await this.store.getChallenge(input.challengeId);
     if (!challenge)
@@ -118,8 +118,8 @@ export class IdentityService {
   async verifySession(token: string): Promise<Actor> {
     try {
       const { payload } = await jwtVerify(token, this.sessionKey, {
-        issuer: "payproof",
-        audience: "payproof-api",
+        issuer: "openlc",
+        audience: "openlc-api",
       });
       if (!payload.sub) throw new Error("missing subject");
       const account = await this.store.findAccountById(payload.sub);
@@ -137,11 +137,11 @@ export class IdentityService {
     }
   }
 
-  private async issueSession(account: PayProofAccount): Promise<string> {
+  private async issueSession(account: OpenLCAccount): Promise<string> {
     return new SignJWT({ address: account.walletAddress, auth: "evm-wallet" })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .setIssuer("payproof")
-      .setAudience("payproof-api")
+      .setIssuer("openlc")
+      .setAudience("openlc-api")
       .setSubject(account.id)
       .setIssuedAt()
       .setExpirationTime("12h")

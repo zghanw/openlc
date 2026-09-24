@@ -621,8 +621,7 @@ export class EvmSettlementVerifier implements EscrowSettlementVerifier {
       transactionDigest: settlementHash,
       packageId: contractAddress,
       escrowObjectId: id,
-      // The settled escrow record itself is the receipt on EVM; its id stands in for the object
-      // Sui used to create separately (SettlementExecution.receiptObjectId is dropped in a later rename).
+      // The settled escrow record itself is the receipt, so the escrow id doubles as the receipt id.
       receiptObjectId: id,
       checkpoint: String(settlementReceipt.blockNumber),
     };

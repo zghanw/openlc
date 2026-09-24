@@ -2,8 +2,7 @@
 
 /**
  * MetaMask wallet context: connect, network enforcement/switching, and message signing on ethers.
- * Modeled on Vol.1's proven useEscrow.ts (D:\Codes\BuildWeekHackathon\frontend\src\hooks\useEscrow.ts)
- * connect/switch/listener pattern, trimmed to what this app needs (no bounty-specific state).
+ * One provider owns the account, the chain id and the MetaMask listeners for the whole app.
  */
 import { BrowserProvider, getAddress, isError, type Eip1193Provider, type JsonRpcSigner } from "ethers";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -21,7 +20,7 @@ declare global {
   }
 }
 
-/** Same human sentences Vol.1's contract.ts uses for MetaMask's own error codes. */
+/** Human sentences for MetaMask's own error codes. */
 export function describeConnectError(err: unknown): string {
   const code = (err as { code?: number } | undefined)?.code;
   if (code === 4001) return "Connection request rejected in MetaMask.";

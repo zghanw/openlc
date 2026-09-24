@@ -1,4 +1,4 @@
-# Pings the API every 10 minutes so the free Render instance never sleeps before a judge arrives.
+# Pings the API every 10 minutes so the free Render instance never sleeps between visitors.
 # Set the repository variable API_HEALTH_URL (https://<render-service>/health) to switch it on.
 name: Keep API warm
 on:

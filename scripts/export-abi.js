@@ -32,7 +32,7 @@ function findArtifact() {
   walkDir(artifactsDir);
 
   if (matches.length === 0) {
-    console.error("❌ No artifact found — run `npm run compile` first");
+    console.error("❌ No artifact found. Run `npm run compile` first");
     process.exit(1);
   }
 

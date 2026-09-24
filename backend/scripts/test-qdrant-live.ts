@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { config } from "../src/config.js";
 
-const collection = `payproof_connectivity_${Date.now()}`;
+const collection = `openlc_connectivity_${Date.now()}`;
 const base = config.qdrantUrl().replace(/\/$/, "");
 const headers = { "content-type": "application/json", "api-key": config.qdrantApiKey() };
 async function request(path: string, init: RequestInit) {
@@ -22,7 +22,7 @@ try {
   if (result.result?.points?.[0]?.id !== pointId) throw new Error("Qdrant live query did not return the inserted point");
   console.log("Qdrant create, upsert, vector query, and result validation: passed.");
 } finally {
-  if (!collection.startsWith("payproof_connectivity_")) throw new Error("Refusing to clean up an unexpected Qdrant collection");
+  if (!collection.startsWith("openlc_connectivity_")) throw new Error("Refusing to clean up an unexpected Qdrant collection");
   const response = await fetch(`${base}/collections/${collection}`, { method: "DELETE", headers });
   if (!response.ok && response.status !== 404) throw new Error(`Qdrant cleanup failed (${response.status})`);
   console.log("Temporary Qdrant test collection removed.");

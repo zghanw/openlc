@@ -73,7 +73,7 @@ export interface TradeShipment {
   dispatchedAt: string;
   expectedAt?: string;
   recordedBy: string;
-  /** The mark_shipped transaction, when the supplier signed shipment on Sui. */
+  /** The mark_shipped transaction, when the supplier signed shipment on BOT Chain. */
   transactionDigest?: string;
   verificationStatus?: "verified_on_chain" | "external_reference";
 }

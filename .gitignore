@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# Sui reference copy: never published from this repo
+# Local reference copies: never published from this repo
 sources/
 
 # Dependencies and build output

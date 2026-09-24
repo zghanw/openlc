@@ -141,7 +141,7 @@ export interface Proposal extends SettlementAllocation {
 export interface SettlementRecord extends SettlementAllocation {
   source: "supplier_agreement" | "mutual_proposal" | "arbitrator" | "early_mutual";
   proposalId?: string;
-  /** SHA-256 of the immutable proposal/agreement identifier signed by Sui. */
+  /** SHA-256 of the immutable proposal/agreement identifier signed on BOT Chain. */
   proposalHash?: string;
   agreementId: string;
   evidenceBundleHash: string;
@@ -179,7 +179,7 @@ export interface TradeTerms {
 /**
  * On-chain facts that bind an off-chain dispute to one escrow lifecycle.
  * Clients may submit these after wallet-signed transactions finalize; the
- * backend verifier re-reads each digest from Sui before recording settlement.
+ * backend verifier re-reads each transaction from BOT Chain before recording settlement.
  */
 export interface OnchainEscrowBinding {
   packageId: string;

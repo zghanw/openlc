@@ -4,12 +4,12 @@
 
 ---
 
-## Notice — read this first
+## Notice: read this first
 
-OpenLC — the open letter of credit — is launched on **BOT Chain mainnet** (chain id 677).
+OpenLC, the open letter of credit, is launched on **BOT Chain mainnet** (chain id 677).
 
 - Amounts are **real BOT**. What you lock in an escrow is real money.
-- The OpenLCEscrow contract, `0xd35bbde52618F716597cb097Fab3E52D3605A7c6`, is source-verified on the BOT Chain Explorer. It **has not had an independent security audit**.
+- The OpenLCEscrow contract, 0xd35bbde52618F716597cb097Fab3E52D3605A7c6, is source-verified on the BOT Chain Explorer. It **has not had an independent security audit**.
 - OpenLC charges no fee. Every transaction's network fee (gas) is paid in BOT by the wallet that signs it.
 - Use amounts you can afford to lose. Clauses 10 and 11 apply in full.
 - Nothing in OpenLC creates a payment service, a money-services business, or a regulated financial product.
@@ -48,7 +48,7 @@ OpenLC — the open letter of credit — is launched on **BOT Chain mainnet** (c
 
 **3.4** An order becomes binding between the parties when the supplier confirms it. Until then, either party may walk away and no funds are committed.
 
-**3.5** The order as confirmed — its line items, quantities, prices, delivery terms, and any terms and conditions attached to it — is the **agreement between the parties** for the purposes of these Terms and the Dispute Policy.
+**3.5** The order as confirmed (its line items, quantities, prices, delivery terms, and any terms and conditions attached to it) is the **agreement between the parties** for the purposes of these Terms and the Dispute Policy.
 
 **3.6** (Withdrawn in version 1.3.)
 
@@ -76,7 +76,7 @@ OpenLC — the open letter of credit — is launched on **BOT Chain mainnet** (c
 
 **5.4** When a buyer opens a claim, the contract holds only the disputed amount and pays the undisputed remainder of the delivery balance to the supplier, in the same transaction.
 
-**5.5** OpenLC appoints the arbitrator for every order — a platform arbitrator wallet, holding the signing key described in 5.2(e). This is a real power over the disputed amount, bounded by 5.3. Nominating your own arbitrator is not available yet.
+**5.5** OpenLC appoints the arbitrator for every order: a platform arbitrator wallet, holding the signing key described in 5.2(e). This is a real power over the disputed amount, bounded by 5.3. Nominating your own arbitrator is not available yet.
 
 **5.6** Settlement produces an immutable on-chain receipt recording the allocation, the order hash, and the hash of the settled proposal.
 
@@ -120,11 +120,11 @@ OpenLC — the open letter of credit — is launched on **BOT Chain mainnet** (c
 
 ## 9. Data and records
 
-**9.1** OpenLC stores your order contents, evidence statements, evidence file metadata, dispute history, and audit trail with OpenLC's hosting providers — Supabase, for the database and private file storage — in order to run the platform and to produce arbitration packages.
+**9.1** OpenLC stores your order contents, evidence statements, evidence file metadata, dispute history, and audit trail with OpenLC's hosting providers (Supabase, for the database and private file storage) in order to run the platform and to produce arbitration packages.
 
-**9.2** Evidence fingerprints (SHA-256) and every escrow transaction, including order hashes and settlement receipts, are written to BOT Chain, which is public and permanent, and cannot be deleted. Commercial details — line items, prices, evidence, and the identities of the parties — are held off-chain, with OpenLC's hosting providers, and are visible only to the parties to that order and, on escalation, the arbitrator.
+**9.2** Evidence fingerprints (SHA-256) and every escrow transaction, including order hashes and settlement receipts, are written to BOT Chain, which is public and permanent, and cannot be deleted. Commercial details (line items, prices, evidence, and the identities of the parties) are held off-chain, with OpenLC's hosting providers, and are visible only to the parties to that order and, on escalation, the arbitrator.
 
-**9.3** Evidence files are retained for the life of the dispute record. Where files are processed by an automated document-reading service, they are sent for extraction only, are not used to train third-party models, and only the extracted text — not the original file — is sent to the AI mediation model described in clause 7.
+**9.3** Evidence files are retained for the life of the dispute record. Where files are processed by an automated document-reading service, they are sent for extraction only, are not used to train third-party models, and only the extracted text, not the original file, is sent to the AI mediation model described in clause 7.
 
 **9.4** Personal data is handled in accordance with the Personal Data Protection Act 2010 (Malaysia).
 
@@ -170,7 +170,7 @@ Questions about these Terms, the Dispute Policy, or a specific case should be ra
 
 ## Version history
 
-- **1.3 — 25 September 2026.** OpenLC launched on BOT Chain mainnet (chain id 677). Replaced the opening notice with a mainnet notice: real BOT, a source-verified contract without an independent security audit, no fee, gas paid by the signing wallet, and no payment service, money-services business or regulated financial product. Clarified in clause 3.2 that the confirmation link is the way to confirm, and that it may also be emailed to a contact address given for the other party. Withdrew clause 3.6 (the demo supplier). Removed pilot wording from clauses 5.5, 6.3, 10.1, 11.1 and 12.2 without changing their meaning.
+- **1.3, 25 September 2026.** OpenLC launched on BOT Chain mainnet (chain id 677). Replaced the opening notice with a mainnet notice: real BOT, a source-verified contract without an independent security audit, no fee, gas paid by the signing wallet, and no payment service, money-services business or regulated financial product. Clarified in clause 3.2 that the confirmation link is the way to confirm, and that it may also be emailed to a contact address given for the other party. Withdrew clause 3.6 (the demo supplier). Removed pilot wording from clauses 5.5, 6.3, 10.1, 11.1 and 12.2 without changing their meaning.
 
 ---
 
