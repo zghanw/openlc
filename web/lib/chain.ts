@@ -18,7 +18,7 @@ export type BotChainNetwork = {
   getBotUrl: string;
 };
 
-const NETWORKS: Record<number, BotChainNetwork> = {
+export const NETWORKS: Record<number, BotChainNetwork> = {
   968: {
     chainIdDec: 968,
     chainIdHex: "0x3c8",
@@ -39,9 +39,15 @@ const NETWORKS: Record<number, BotChainNetwork> = {
   },
 };
 
-const configuredChainId = Number(process.env.NEXT_PUBLIC_BOTCHAIN_CHAIN_ID ?? "677");
+const configuredChainId = Number((process.env.NEXT_PUBLIC_BOTCHAIN_CHAIN_ID ?? "").trim() || NaN);
 
-/** The network this deployment targets. Defaults to BOT Chain mainnet (677) on any unset or unknown value. */
+/** True only when NEXT_PUBLIC_BOTCHAIN_CHAIN_ID is set to a network in NETWORKS. escrowConfigured
+ *  requires it: a build with a testnet escrow address and no chain id must not send real BOT to
+ *  an address that has no contract on mainnet. */
+export const configuredChainKnown = NETWORKS[configuredChainId] !== undefined;
+
+/** The network this deployment targets. Shows BOT Chain mainnet (677) on an unset or unknown
+ *  value, for display only: chain actions stay disabled then (see configuredChainKnown). */
 export const BOTCHAIN: BotChainNetwork = NETWORKS[configuredChainId] ?? NETWORKS[677];
 
 /** The exact object MetaMask's `wallet_addEthereumChain` expects for this network. */
@@ -66,10 +72,10 @@ export const ESCROW_DEPLOY_BLOCK =
 
 /** Fails closed: every chain action must check this and refuse with a visible reason rather than
  *  throwing a raw error at click time when the deployment has no escrow address configured yet. */
-export const escrowConfigured = ESCROW_ADDRESS !== ZERO_ADDRESS && ESCROW_DEPLOY_BLOCK > 0;
+export const escrowConfigured = configuredChainKnown && ESCROW_ADDRESS !== ZERO_ADDRESS && ESCROW_DEPLOY_BLOCK > 0;
 
 export const ESCROW_NOT_CONFIGURED_REASON =
-  "The escrow contract is not configured for this deployment yet (NEXT_PUBLIC_OPENLC_ESCROW_ADDRESS / NEXT_PUBLIC_OPENLC_ESCROW_DEPLOY_BLOCK). Chain actions are disabled until it is.";
+  "The escrow contract is not configured for this deployment yet (NEXT_PUBLIC_BOTCHAIN_CHAIN_ID / NEXT_PUBLIC_OPENLC_ESCROW_ADDRESS / NEXT_PUBLIC_OPENLC_ESCROW_DEPLOY_BLOCK). Chain actions are disabled until it is.";
 
 /** Throws the same fail-closed message every escrow action should surface when unconfigured. */
 export function requireEscrowConfigured(): void {

@@ -287,6 +287,20 @@ async function recoverSettlementExecuted(escrowId: bigint): Promise<{ txHash: st
   }
 }
 
+/** Fails closed before the one call that sends value (createEscrow): the configured escrow address
+ *  must hold contract code on the read provider's network, or funding would send real BOT to an
+ *  address with no contract (e.g. a testnet escrow address in a mainnet build). */
+async function requireEscrowContract(): Promise<void> {
+  requireEscrowConfigured();
+  let code: string;
+  try {
+    code = await new JsonRpcProvider(BOTCHAIN.rpcUrl).getCode(ESCROW_ADDRESS);
+  } catch {
+    throw new Error(`The escrow contract on ${BOTCHAIN.chainName} could not be checked, so nothing was sent. Try again in a minute.`);
+  }
+  if (code === "0x") throw new Error(`There is no escrow contract at ${ESCROW_ADDRESS} on ${BOTCHAIN.chainName}, so nothing was sent. This deployment is misconfigured. Contact support before funding.`);
+}
+
 /** The full on-chain state of one escrow - the single source of truth for the settlement-approval
  *  reader in claim-section.tsx, the deadline reader in DeadlineControls, and the order page's "On
  *  BOT Chain" panel. One getEscrow call plus one inspectionClosesAt call. Works with no wallet
@@ -450,6 +464,7 @@ export function useEscrowActions() {
     const dispatch = releasePlan ? BigInt(releasePlan.dispatchUnits) : 0n;
     const delivery = releasePlan ? BigInt(releasePlan.deliveryUnits) : total;
 
+    await requireEscrowContract();
     const receipt = await sendTx(
       "createEscrow",
       [order.supplierWalletAddress, arbitrator, asBytes32(order.orderHash, "The order hash"), order.reference, deposit, dispatch, delivery, deadlineSec, inspectionSec],
