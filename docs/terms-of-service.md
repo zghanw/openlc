@@ -12,6 +12,7 @@ OpenLC — the open letter of credit — is launched on **BOT Chain mainnet** (c
 - The OpenLCEscrow contract, `0xd35bbde52618F716597cb097Fab3E52D3605A7c6`, is source-verified on the BOT Chain Explorer. It **has not had an independent security audit**.
 - OpenLC charges no fee. Every transaction's network fee (gas) is paid in BOT by the wallet that signs it.
 - Use amounts you can afford to lose. Clauses 10 and 11 apply in full.
+- Nothing in OpenLC creates a payment service, a money-services business, or a regulated financial product.
 
 ---
 
@@ -41,7 +42,7 @@ OpenLC — the open letter of credit — is launched on **BOT Chain mainnet** (c
 
 **3.1** A buyer creates a purchase order specifying line items, quantities, unit prices, delivery date, and delivery location, and may optionally name the supplier's wallet address.
 
-**3.2** OpenLC issues a confirmation link for the order, not an email. If the order names the supplier's wallet address, only that wallet may accept it. Otherwise, the first wallet to accept through the link becomes the supplier and its payout address, and no other wallet can take the order after that. Share the link only with your intended counterparty.
+**3.2** OpenLC issues a confirmation link for the order, and the link is the way to confirm it. If the order gives a contact email for the other party, OpenLC may also email the link to that address. If the order names the supplier's wallet address, only that wallet may accept it. Otherwise, the first wallet to accept through the link becomes the supplier and its payout address, and no other wallet can take the order after that. Share the link only with your intended counterparty.
 
 **3.3** Invitations expire **7 days** after issue. A buyer may replace an invitation at any time before it is accepted, which immediately invalidates the previous one, or cancel it outright.
 
@@ -169,7 +170,7 @@ Questions about these Terms, the Dispute Policy, or a specific case should be ra
 
 ## Version history
 
-- **1.3 — 25 September 2026.** OpenLC launched on BOT Chain mainnet (chain id 677). Replaced the opening notice with a mainnet notice: real BOT, a source-verified contract without an independent security audit, no fee, gas paid by the signing wallet. Withdrew clause 3.6 (the demo supplier). Removed pilot wording from clauses 5.5, 6.3, 10.1, 11.1 and 12.2 without changing their meaning.
+- **1.3 — 25 September 2026.** OpenLC launched on BOT Chain mainnet (chain id 677). Replaced the opening notice with a mainnet notice: real BOT, a source-verified contract without an independent security audit, no fee, gas paid by the signing wallet, and no payment service, money-services business or regulated financial product. Clarified in clause 3.2 that the confirmation link is the way to confirm, and that it may also be emailed to a contact address given for the other party. Withdrew clause 3.6 (the demo supplier). Removed pilot wording from clauses 5.5, 6.3, 10.1, 11.1 and 12.2 without changing their meaning.
 
 ---
 
