@@ -6,14 +6,14 @@ ORDER
 Buyer company: Choong Trading Sdn. Bhd.
 Supplier company: FreshSource Foods Sdn. Bhd.
 Supplier wallet: your second MetaMask account (or tick "Use the OpenLC demo supplier" for a one-wallet run)
-PO reference: PP-DEMO-0905
-Expected delivery: 12 September 2026
+PO reference: OLC-DEMO-0905
+Expected delivery: 1 October 2026
 Delivery location: Receiving Bay 2, Shah Alam Distribution Centre
 
 SHIPPING
 --------
 Carrier: DHL Express
-Tracking number: DHL-PP-0905-MY
+Tracking number: DHL-OLC-0905-MY
 
 DELIVERY
 --------

@@ -1,42 +1,41 @@
 PURCHASE ORDER
 
-Reference: PP-DEMO-0905
-Issue date: 05 September 2026
-Expected delivery: 12 September 2026
+Reference: OLC-DEMO-0905
+Issue date: 24 September 2026
+Expected delivery: 1 October 2026
 
 Buyer:
 Choong Trading Sdn. Bhd.
 
 Supplier:
 FreshSource Foods Sdn. Bhd.
-Contact: payproof94@gmail.com
+Supplier payout: the wallet that accepts this order on OpenLC.
 
 Delivery location:
-Receiving Bay 2
-Shah Alam Distribution Centre
+Receiving Bay 2, Shah Alam Distribution Centre
 
 LINE ITEMS
 
 1. Fresh strawberries, 8 x 250 g punnets
    Quantity: 10 cartons
-   Unit price: 1.20 USDC
-   Line total: 12.00 USDC
+   Unit price: 0.12 BOT
+   Line total: 1.20 BOT
 
 2. Fresh blueberries, 12 x 125 g punnets
    Quantity: 6 cartons
-   Unit price: 1.50 USDC
-   Line total: 9.00 USDC
+   Unit price: 0.15 BOT
+   Line total: 0.90 BOT
 
 3. Premium Hass avocados, 4 kg
    Quantity: 6 crates
-   Unit price: 1.50 USDC
-   Line total: 9.00 USDC
+   Unit price: 0.15 BOT
+   Line total: 0.90 BOT
 
-TOTAL ORDER VALUE: 30.00 USDC
+TOTAL ORDER VALUE: 3.00 BOT
 
 Receiving terms:
 Goods will be checked at Receiving Bay 2.
 Visible exceptions will be photographed at handover.
 Undisputed goods may be accepted and released separately from damaged goods.
 
-This purchase order contains synthetic data prepared for a ProofPay product demonstration.
+This purchase order contains synthetic data prepared for an OpenLC product demonstration.

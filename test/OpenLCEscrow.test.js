@@ -42,7 +42,7 @@ const PROPOSAL_HASH = `0x${"33".repeat(32)}`;
 const OTHER_PROPOSAL_HASH = `0x${"44".repeat(32)}`;
 const ZERO_HASH = `0x${"00".repeat(32)}`;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-const REFERENCE = "PP-DEMO-0905";
+const REFERENCE = "OLC-DEMO-0905";
 
 const STATUS = { Open: 0n, Disputed: 1n, Settled: 2n };
 const MODE = {
