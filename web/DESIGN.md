@@ -273,7 +273,7 @@ All three state hues also appear as a *soft* fill mixed at 14% into transparent 
 - **Panel Black** (ops-card): cards, panels, tiles, dialogs and popovers.
 - **Raised Grey** (ops-raised): inputs, segmented controls, neutral pills, the active nav row and hover fills (often mixed at 55%).
 - **Hairline** (ops-hairline): the default 1px border and row divider.
-- **Rule Grey** (ops-rule): stronger borders for table header rules, outline buttons, dashed sample tags and file drops.
+- **Rule Grey** (ops-rule): stronger borders for table header rules, outline buttons and dashed file drops.
 - **Paper White** (ops-ink): workspace text, and also the primary button fill (the primary action is near-white on black, not green).
 - **Helper Grey** (ops-muted): helper text under a value, captions and table headers. Labels people read as controls use Paper White instead.
 ### No-Hue Landing
@@ -351,7 +351,7 @@ The workspace is flat and tonally layered: ground, sidebar, card and raised grey
 
 ## Shapes
 
-The workspace uses gently rounded rectangles: 8px (`--radius`) for buttons, inputs, nav rows and avatars; 12px (`--radius-lg`) for cards, tiles, panels and dialogs; 6px for pills, role tags and sample tags; full rounds only for status dots, count badges and the network pill. Borders are 1px throughout; dashed borders mark something provisional (sample tags, file drops, add-line buttons). The landing is softer and more luminous: 18px glossy cards, 12px inner mock cards, a 30px squircle for the mark (29px on its inner face), full pills for every action and day marker, 14px ends on the split bar, and 3px ticks on swatches and progress segments. A dashed outline on the landing means an unsecured invoice (credit); a solid silver fill means locked money (escrow).
+The workspace uses gently rounded rectangles: 8px (`--radius`) for buttons, inputs, nav rows and avatars; 12px (`--radius-lg`) for cards, tiles, panels and dialogs; 6px for pills and role tags; full rounds only for status dots, count badges and the network pill. Borders are 1px throughout; dashed borders mark something provisional (file drops, add-line buttons). The landing is softer and more luminous: 18px glossy cards, 12px inner mock cards, a 30px squircle for the mark (29px on its inner face), full pills for every action and day marker, 14px ends on the split bar, and 3px ticks on swatches and progress segments. A dashed outline on the landing means an unsecured invoice (credit); a solid silver fill means locked money (escrow).
 
 ## Components
 
@@ -365,7 +365,7 @@ Quiet and decisive in the workspace, luminous on the landing.
 
 ### Chips
 - **Style:** a 24px-tall, 6px-radius status pill, 12px/600, with a 6px current-colour dot before the label. The fill is the soft state tint and the text is the full hue.
-- **State:** green for funded, in transit and success; amber for waiting; red for claims; Raised Grey with muted or ink text for neutral. A live pill "breathes" with a 5px ring in its own hue (2.2s). Role tags share the shape and are neutral grey with an icon. Sample tags are dashed and neutral.
+- **State:** green for funded, in transit and success; amber for waiting; red for claims; Raised Grey with muted or ink text for neutral. A live pill "breathes" with a 5px ring in its own hue (2.2s). Role tags share the shape and are neutral grey with an icon.
 
 ### Cards / Containers
 - **Corner Style:** 12px in the workspace; 18px on the landing.
@@ -385,7 +385,7 @@ Quiet and decisive in the workspace, luminous on the landing.
 - **Landing header:** fixed and transparent at the top, then 74% black with a 14px blur and a hairline once scrolled. Nav links are muted full pills that brighten on hover.
 
 ### Money Tiles (signature)
-Four Overview tiles in a 12px-radius Panel Black grid: a muted 14px title with an optional help hint, a 36px muted icon square, a Metric value with its unit, and a caption. They enter with a 200ms rise staggered 60ms apart; this is the workspace's only entry motion. Linked tiles lift their border to Rule Grey on hover. **Money tiles never count sample orders**; when samples are left out, a muted note says so under the grid.
+Four Overview tiles in a 12px-radius Panel Black grid: a muted 14px title with an optional help hint, a 36px muted icon square, a Metric value with its unit, and a caption. They enter with a 200ms rise staggered 60ms apart; this is the workspace's only entry motion. Linked tiles lift their border to Rule Grey on hover.
 
 ### Release Plan Bar (signature)
 One proportional bar split into deposit, dispatch and delivery segments with shared column templates, so each label sits over the money it describes. Paid or planned segments are solid (Paper White, then Helper Grey, then Rule Grey). Held money is Raised Grey with an inset Rule Grey edge, disputed money is the soft red with a red edge, and refunded money is muted. Container queries reveal the share, amount and state only when a segment is wide enough to read.
@@ -402,7 +402,6 @@ A centre staff that fills with light as you scroll, with a glowing point of ligh
 - **Do** right-align money columns with `white-space: nowrap`, in lining proportional figures; set hashes and addresses in the monospace stack.
 - **Do** use Bricolage Grotesque only for landing display and section headlines; everything else is Mona Sans.
 - **Do** collapse the order detail to one column below 1050px, led by the next action, and turn the orders table into stacked rows below 760px.
-- **Do** leave sample orders out of every money tile total and say so when they are left out.
 - **Do** honour `prefers-reduced-motion` with final states and no travel, as both rooms already do.
 
 ### Don't:
