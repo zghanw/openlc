@@ -39,10 +39,19 @@ the busy-mediator message. Task 13's DoD run happened on camera in the demo reco
 
 ## Mainnet BOT: where it is (checked 01:19 MYT)
 
-Hao Wen received 0.6 mainnet BOT from the organizers, but it is **not in any of the three wallets above**: deployer
-0.0651, buyer 0, supplier 0.0038. Ask him which address received it. Budget: the deploy costs about 0.06 BOT (the
-deployer should hold ≥ 0.08 first); one real full order cycle needs about 0.1-0.15 BOT for the order plus gas for the
-buyer (fund, accept) and the supplier (ship), about 0.02 each. Keep a reserve.
+The organizers allocated **0.06** mainnet BOT (Hao Wen corrected an earlier "0.6"). It is in the deployer: deployer
+0.0651, buyer 0, supplier 0.0038 (checked 01:19 MYT). Measured costs at mainnet's 20 gwei (the deploy from
+eth_estimateGas on mainnet; the actions from real testnet receipts):
+- deploy: 1,553,396 gas = **0.0311 BOT**, leaving about 0.034 in the deployer;
+- fund: 0.0067; ship: 0.0021; accept: 0.0016; claim: 0.0021; approve: 0.0018 (buyer) / 0.0010 (supplier);
+  execute: 0.0016; a plain transfer: 0.0004.
+
+Plan: after the deploy, Hao Wen sends about 0.018 BOT from the deployer to the buyer wallet. Then he runs ONE
+**partial-claim cycle** on mainnet with a tiny order (0.005 BOT at 10/20/70): fund → ship → claim a small part →
+both approve → execute. The buyer needs about 0.0172; the supplier needs about 0.0031, and its 0.0038 already covers
+that. That single order shows lock, milestone releases, the partial claim and the dual-signed settlement on mainnet.
+A second, happy-path order (about 0.013 more) only fits if nothing goes wrong; otherwise buy a little BOT at
+https://dex.botchain.ai/#/swap. Keep a reserve, and check the gas price again before each step.
 
 ## Remaining work, in order
 
