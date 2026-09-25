@@ -10,6 +10,8 @@
     &nbsp;|&nbsp;
     <a href="https://openlc.online/launch"><strong>Mainnet Launch</strong></a>
     &nbsp;|&nbsp;
+    <a href="https://x.com/OpenLCdev/status/2103245338459193723"><strong>Video Walkthrough</strong></a>
+    &nbsp;|&nbsp;
     <a href="contracts/OpenLCEscrow.sol"><strong>Source</strong></a>
     &nbsp;|&nbsp;
     <a href="RESEARCH.md"><strong>Research Report</strong></a>
@@ -63,7 +65,7 @@ A supplier who ships on 60-day credit is lending money to a stranger. OpenLC rep
 | Web app | [openlc.online](https://openlc.online) on Vercel |
 | API | `https://openlc-api.onrender.com` on Render ([`/health`](https://openlc-api.onrender.com/health)) |
 
-Launch announcement: [OpenLC is officially launched on BOT Chain Mainnet](https://openlc.online/launch).
+Launch announcement: [OpenLC is officially launched on BOT Chain Mainnet](https://openlc.online/launch). Video walkthrough: [a four-part thread on X](https://x.com/OpenLCdev/status/2103245338459193723), each part posted as a reply to the one before.
 
 ## First mainnet order: OLC-LAUNCH-001
 

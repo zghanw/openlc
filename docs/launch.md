@@ -51,5 +51,6 @@ The supplier received 0.004 BOT and the buyer got 0.001 BOT back. Nobody held th
 - Website: [openlc.online](https://openlc.online)
 - Contract: [BOT Chain Explorer](https://scan.botchain.ai/address/0xd35bbde52618F716597cb097Fab3E52D3605A7c6#code)
 - Source code: [github.com/zghanw/openlc](https://github.com/zghanw/openlc)
+- Video walkthrough: [four-part thread on X](https://x.com/OpenLCdev/status/2103245338459193723)
 - Updates: [@OpenLCdev on X](https://x.com/OpenLCdev)
 - [Terms of Service](/legal/terms) and [Dispute Resolution Policy](/legal/dispute-policy)
