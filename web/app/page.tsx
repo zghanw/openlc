@@ -188,9 +188,9 @@ function TimelineSection() {
             Sixty days of credit, or paid on proof.
           </h2>
           <p className="lp-lede">
-            The same 0.005 BOT sale, two ways. On the right are the real transactions of{" "}
-            <span className="lp-nowrap">OLC-LAUNCH-001</span>, our own first order on BOT Chain mainnet, run between two
-            of our own wallets and set on the days a shipment takes.
+            The same 0.001 BOT sale, two ways. On the right are the real transactions of{" "}
+            <span className="lp-nowrap">OLC-LAUNCH-002</span>, our own order on BOT Chain mainnet, run between two of
+            our own wallets and set on the days a shipment takes.
           </p>
         </motion.div>
         <CreditTimeline />
