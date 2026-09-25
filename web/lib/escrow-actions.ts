@@ -2,7 +2,8 @@
 
 import { Contract, Interface, JsonRpcProvider, sha256, toUtf8Bytes, type ContractTransactionReceipt, type JsonRpcSigner, type LogDescription } from "ethers";
 import ESCROW_ABI from "@/lib/openlc-escrow.abi.json";
-import { BOTCHAIN, ESCROW_ADDRESS, ESCROW_DEPLOY_BLOCK, explorerTxUrl, requireEscrowConfigured } from "@/lib/chain";
+import { BOTCHAIN, ESCROW_ADDRESS, ESCROW_DEPLOY_BLOCK, explorerTxUrl, formatBot, requireEscrowConfigured } from "@/lib/chain";
+import { formatBotAmount } from "@/lib/units.mjs";
 import { describeTxError, isSameAddress, isWalletMismatch, shortAddress, useWallet } from "@/lib/wallet";
 import type { DocumentKind, InspectionLine } from "@/lib/demo-orders";
 import { confirmClaimExecution, disputeToClaim, type DisputeRecord, type EvidenceFileInput } from "@/lib/dispute-actions";
@@ -301,6 +302,29 @@ async function requireEscrowContract(): Promise<void> {
   if (code === "0x") throw new Error(`There is no escrow contract at ${ESCROW_ADDRESS} on ${BOTCHAIN.chainName}, so nothing was sent. This deployment is misconfigured. Contact support before funding.`);
 }
 
+// createEscrow measured about 335,000 gas on mainnet; 400,000 leaves headroom for longer references.
+const FUND_GAS_ESTIMATE = 400_000n;
+
+/** MetaMask reports a wallet that cannot cover value plus gas only as "Internal JSON-RPC error",
+ *  so check first and say what is missing. */
+async function requireFundingBalance(account: string, total: bigint): Promise<void> {
+  let balance: bigint;
+  let gasPrice: bigint;
+  try {
+    const provider = new JsonRpcProvider(BOTCHAIN.rpcUrl);
+    const [held, fees] = await Promise.all([provider.getBalance(account), provider.getFeeData()]);
+    balance = held;
+    gasPrice = fees.gasPrice ?? 20_000_000_000n;
+  } catch {
+    return; // ponytail: an unreachable RPC never blocks funding; MetaMask still checks funds itself
+  }
+  const gas = gasPrice * FUND_GAS_ESTIMATE;
+  const needed = total + gas;
+  if (balance >= needed) return;
+  const bot = (wei: bigint) => formatBotAmount(formatBot(wei));
+  throw new Error(`Your wallet holds ${bot(balance)} BOT. Funding this order needs about ${bot(needed)} BOT: ${bot(total)} for the order plus about ${bot(gas)} for gas. Get BOT on the BOT Chain DEX, then try again.`);
+}
+
 /** The full on-chain state of one escrow - the single source of truth for the settlement-approval
  *  reader in claim-section.tsx, the deadline reader in DeadlineControls, and the order page's "On
  *  BOT Chain" panel. One getEscrow call plus one inspectionClosesAt call. Works with no wallet
@@ -465,6 +489,7 @@ export function useEscrowActions() {
     const delivery = releasePlan ? BigInt(releasePlan.deliveryUnits) : total;
 
     await requireEscrowContract();
+    await requireFundingBalance(wallet.account, total);
     const receipt = await sendTx(
       "createEscrow",
       [order.supplierWalletAddress, arbitrator, asBytes32(order.orderHash, "The order hash"), order.reference, deposit, dispatch, delivery, deadlineSec, inspectionSec],

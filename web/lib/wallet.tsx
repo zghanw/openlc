@@ -33,6 +33,12 @@ export function describeTxError(err: unknown): string {
   // ethers' BrowserProvider turns MetaMask's EIP-1193 4001 into its own ACTION_REJECTED.
   if (isError(err, "ACTION_REJECTED") || e?.code === 4001) return "Transaction rejected in MetaMask.";
   const underlying = e?.info?.error?.message || e?.error?.message;
+  const text = [underlying, e?.shortMessage, e?.reason, e?.message].filter(Boolean).join(" ");
+  if (/insufficient funds/i.test(text))
+    return "Your wallet does not hold enough BOT for this transaction and its gas. Get BOT on the BOT Chain DEX, then try again.";
+  // MetaMask hides the real reason behind this text; running short of BOT is the usual one.
+  if (/Internal JSON-RPC error/i.test(text))
+    return "MetaMask could not send the transaction. Check that your wallet holds enough BOT for the amount plus gas, then try again.";
   return underlying || e?.shortMessage || e?.reason || e?.message || "Unknown error.";
 }
 
