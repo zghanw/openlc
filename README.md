@@ -65,6 +65,8 @@ A supplier who ships on 60-day credit is lending money to a stranger. OpenLC rep
 | Web app | [openlc.online](https://openlc.online) on Vercel |
 | API | `https://openlc-api.onrender.com` on Render ([`/health`](https://openlc-api.onrender.com/health)) |
 
+**Hosting note.** The OpenLC API runs on Render's free tier, which spins the instance down after 15 minutes without traffic. The first request after an idle spell has to wake it, and that takes about 30 to 45 seconds, so if the first sign-in seems to stall, give it a moment or reload once. Every action after that responds in well under a second. Opening any page starts the wake in the background, which usually hides it entirely. This is a hosting choice rather than a protocol one: OpenLC never signs or moves BOT, so every transaction is signed in your own wallet and settled by the [verified mainnet contract](https://scan.botchain.ai/address/0xd35bbde52618F716597cb097Fab3E52D3605A7c6#code) whatever our API is doing.
+
 Launch announcement: [OpenLC is officially launched on BOT Chain Mainnet](https://openlc.online/launch). Video walkthrough: [a four-part thread on X](https://x.com/OpenLCdev/status/2103245338459193723), each part posted as a reply to the one before.
 
 ## First mainnet order: OLC-LAUNCH-001
