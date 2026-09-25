@@ -41,7 +41,7 @@
 
 A supplier who ships on 60-day credit is lending money to a stranger. OpenLC replaces credit terms and deposits with payment that is secured before dispatch and released on proof. The buyer locks the full order value in a BOT Chain escrow with one signature. The supplier is paid in milestones as it proves dispatch and delivery. If part of a delivery is damaged or missing, one transaction holds only the disputed amount and pays the supplier everything else, so a disagreement over two cartons never freezes the whole invoice.
 
-**Deployment status:** OpenLC is live on **BOT Chain Mainnet** (chain ID `677`) at [`0xd35bbde52618F716597cb097Fab3E52D3605A7c6`](https://scan.botchain.ai/address/0xd35bbde52618F716597cb097Fab3E52D3605A7c6#code), and the live app at [openlc.online](https://openlc.online) talks only to that contract. The app fails closed when the network or contract is not configured, so it can never sign against the wrong chain or a retired address. The same source ran full order cycles on BOT Chain Testnet first, and the [first mainnet order](#first-mainnet-order-olc-launch-001) exercised every money path with real BOT.
+**Deployment status:** OpenLC is live on **BOT Chain Mainnet** (chain ID `677`) at [`0xd35bbde52618F716597cb097Fab3E52D3605A7c6`](https://scan.botchain.ai/address/0xd35bbde52618F716597cb097Fab3E52D3605A7c6#code), and the live app at [openlc.online](https://openlc.online) talks only to that contract. The app fails closed when the network or contract is not configured, so it can never sign against the wrong chain or a retired address. The same source ran full order cycles on BOT Chain Testnet first. On mainnet, two orders with real BOT have exercised every money path: [OLC-LAUNCH-001](#first-mainnet-order-olc-launch-001) with a partial claim and a split signed by both parties, and [OLC-LAUNCH-002](#second-mainnet-order-olc-launch-002-step-by-step), paid in full on proof, shown screen by screen.
 
 ## Deployment
 
@@ -96,6 +96,72 @@ Escrow `#1` on the mainnet contract, all sent through [openlc.online](https://op
 | Execute settlement | `0.001 BOT` returned to the buyer, settlement mode `MutualApproval` | [`0x5584e249...5599fa`](https://scan.botchain.ai/tx/0x5584e24933f4d613980589f42ea2d9a3ed9a01a0893bd9e7f5b5ba05e15599fa) |
 
 Result: the supplier received `0.004 BOT`, the buyer got `0.001 BOT` back, and the escrow balance is `0`. The API recorded every step as `verified_on_chain`. Measured mainnet gas at 20 gwei: fund `0.0067`, ship `0.0021`, anchor `0.0006`, claim `0.0021`, approve `0.0010` to `0.0018`, execute `0.0017` BOT.
+
+## Second mainnet order: OLC-LAUNCH-002, step by step
+
+The full-payment path, run on mainnet between our own two wallets: a `0.001 BOT` order at 10 / 20 / 70, read from a PDF purchase order, funded, shipped with evidence and paid in full on acceptance. Every screen below is from that run.
+
+| 1. What needs the buyer | 2. Import the purchase order |
+|---|---|
+| <img src="docs/readme/run-01-overview.png" alt="Overview listing the orders that need the buyer's action" width="100%"> | <img src="docs/readme/run-02-import.png" alt="New purchase order dialog after Import from file read three lines from the PDF" width="100%"> |
+| The Overview lists every order waiting on you, with the next step for each. | **Import from file** reads the three lines from the sample PDF with AI; the buyer checks them before sending. |
+
+| 3. Order details | 4. Release plan |
+|---|---|
+| <img src="docs/readme/run-03-order-details.png" alt="Order details with prices set so the order totals 0.001 BOT" width="100%"> | <img src="docs/readme/run-04-release-plan.png" alt="Release plan at 10, 20 and 70 percent with the agreement" width="100%"> |
+| Reference, delivery terms and prices for a `0.001 BOT` order. | 10% on funding, 20% on dispatch evidence, 70% on acceptance, agreed under Terms and Policy 1.3. |
+
+| 5. Confirmation link | 6. The supplier confirms |
+|---|---|
+| <img src="docs/readme/run-05-confirmation-link.png" alt="Order sent for confirmation with the link to copy" width="100%"> | <img src="docs/readme/run-06-supplier-confirm.png" alt="Supplier reviewing every line and confirming the terms" width="100%"> |
+| The buyer copies one link for the supplier. | The supplier signs in with its own wallet, checks every line and confirms. |
+
+| 7. Ready to fund | 8. One signature |
+|---|---|
+| <img src="docs/readme/run-07-fund.png" alt="Fund escrow panel showing the amount, the payee and the signing wallet" width="100%"> | <img src="docs/readme/run-08-fund-dialog.png" alt="Fund 0.001 BOT into escrow confirmation" width="100%"> |
+| The amount, the payee and the signing wallet before anything moves. | `0.001 BOT` is locked and the `0.0001 BOT` deposit pays the supplier at once. |
+
+| 9. Funded and verified | 10. Ship with evidence |
+|---|---|
+| <img src="docs/readme/run-09-funded.png" alt="Funded order with the On BOT Chain panel reading escrow number 2" width="100%"> | <img src="docs/readme/run-10-ship.png" alt="Supplier shipping form with carrier, tracking and the dispatch photo" width="100%"> |
+| The **On BOT Chain** panel reads escrow #2 straight from the contract. | Carrier, tracking number and the dispatch photo. |
+
+| 11. Sign the shipment | 12. Shipped |
+|---|---|
+| <img src="docs/readme/run-11-ship-dialog.png" alt="Mark as shipped confirmation" width="100%"> | <img src="docs/readme/run-12-shipped.png" alt="Supplier view after shipment with 0.0003 BOT released and 0.0007 BOT held" width="100%"> |
+| One transaction records the shipment, anchors the photo's fingerprint and releases `0.0002 BOT`. | `0.0003 BOT` released, `0.0007 BOT` still held, and the deadline that protects the supplier if the buyer goes quiet. |
+
+| 13. In transit | 14. Record delivery |
+|---|---|
+| <img src="docs/readme/run-13-in-transit.png" alt="Buyer's order page in transit with The goods have arrived" width="100%"> | <img src="docs/readme/run-14-record-delivery.png" alt="Record delivery confirmation" width="100%"> |
+| The buyer confirms the goods arrived. | Recording delivery starts the inspection window. |
+
+| 15. Inspect | 16. Accept in full |
+|---|---|
+| <img src="docs/readme/run-15-inspect.png" alt="Inspection with Yes, everything intact and Accept delivery and release 0.0007 BOT" width="100%"> | <img src="docs/readme/run-16-accept-dialog.png" alt="Accept the delivery in full confirmation" width="100%"> |
+| The button quotes exactly what the escrow still holds: `0.0007 BOT`. | The final release is one transaction and cannot be reversed. |
+
+| 17. Settled | 18. The full record |
+|---|---|
+| <img src="docs/readme/run-17-settled.png" alt="Settled order: 0.001 BOT paid to the supplier, escrow settled on chain" width="100%"> | <img src="docs/readme/run-18-settled-record.png" alt="Order lines, inspection result, anchored documents and history" width="100%"> |
+| All `0.001 BOT` reached the supplier and the contract reads Settled. | Lines, the inspection, the anchored documents and every step in the history. |
+
+| 19. Wallet activity | 20. Orders |
+|---|---|
+| <img src="docs/readme/run-19-wallet.png" alt="Wallet activity for both mainnet orders with explorer receipts" width="100%"> | <img src="docs/readme/run-20-orders.png" alt="Orders register with OLC-LAUNCH-002 settled" width="100%"> |
+| Every movement of both mainnet orders, each with its receipt on the explorer. | The order closes as Settled in the register. |
+
+### On-chain receipts
+
+Escrow `#2` on the mainnet contract, settlement mode `BuyerConfirmation`:
+
+| Step | What moved | Mainnet proof |
+|---|---|---|
+| Fund | Buyer locks `0.001 BOT`; the `0.0001 BOT` deposit pays the supplier | [`0x1e457393...73dc2b`](https://scan.botchain.ai/tx/0x1e4573934e3e9277ccfdc1109b5246c2a7a9dc4fc578784ae0a771c42e73dc2b) |
+| Ship | Supplier anchors the dispatch photo's SHA-256; `0.0002 BOT` released | [`0x3d4b5968...68eafe`](https://scan.botchain.ai/tx/0x3d4b596827dc43216af8a49d85290f91f4958ef1e3e6e28c3ffba7cf4868eafe) |
+| Accept | Buyer accepts in full; the remaining `0.0007 BOT` paid to the supplier | [`0xe2a27526...c2ff7c`](https://scan.botchain.ai/tx/0xe2a27526580b03e1ae8c191c3ad9a5d0cbb2a5724ab6f56f62e1c1a874c2ff7c) |
+
+Result: the supplier received the full `0.001 BOT` and the escrow balance is `0`. The whole happy path cost `0.0101 BOT` in gas (fund `0.0064`, ship `0.0021`, accept `0.0016`), whatever the order value.
 
 Earlier testnet cycles on the same source, on [scan.bohr.life](https://scan.bohr.life): a 3 BOT order paid in full on proof ([fund](https://scan.bohr.life/tx/0x846ea2b8874fa2bfdfa2c36ef42b0801b65504a8127014fe9de49b257da6c46f), [ship](https://scan.bohr.life/tx/0x2098aacdbe5ff33d5d971b906e55ff5798cd3a092ada5a11d1099b072bd29005), [accept](https://scan.bohr.life/tx/0x793669d83aa0a3e0ca5a78ec8c6c8d0aa495ed40bed455328f0c3584bada57ed)); a 1 BOT order with a partial claim and a mutual split ([claim](https://scan.bohr.life/tx/0x8a72ab5e9f79100ee522063024443288a8bba20f23c634aa2a78667c6060f97a), [settle](https://scan.bohr.life/tx/0xb57dc85208eee87e171db06dbcecc370ad310d382c9af0101ae014d6fe220e61)); and a buyer's deadline reclaim of an unshipped escrow ([fund](https://scan.bohr.life/tx/0x0f9b65e2737c099c4fa374f165dd2b9bb6deb393bbac8c460a168cb00f550646), [reclaim](https://scan.bohr.life/tx/0xed3f2817831236bf4cb8df7502868149495a05bd293d1ef1235e12d31c246344)).
 

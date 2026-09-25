@@ -31,6 +31,8 @@ We ran the first order ourselves, between two of our own wallets, to prove every
 
 The supplier received 0.004 BOT and the buyer got 0.001 BOT back. Nobody held the money in between except the contract.
 
+A second order, OLC-LAUNCH-002 (0.001 BOT at 10/20/70), then ran the full-payment path: [fund](https://scan.botchain.ai/tx/0x1e4573934e3e9277ccfdc1109b5246c2a7a9dc4fc578784ae0a771c42e73dc2b), [ship](https://scan.botchain.ai/tx/0x3d4b596827dc43216af8a49d85290f91f4958ef1e3e6e28c3ffba7cf4868eafe) and [accept in full](https://scan.botchain.ai/tx/0xe2a27526580b03e1ae8c191c3ad9a5d0cbb2a5724ab6f56f62e1c1a874c2ff7c). The supplier received the whole 0.001 BOT, for 0.0101 BOT of gas in total.
+
 ## How to use it
 
 - Open [openlc.online](https://openlc.online) and sign in with MetaMask. Signing in is a message, not a transaction.

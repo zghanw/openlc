@@ -250,11 +250,21 @@ The first mainnet order, OLC-LAUNCH-001 (escrow #1), was run between two of the 
 | Supplier approval | [`0x7ac48be1`](https://scan.botchain.ai/tx/0x7ac48be1116c30808f71748e43300b5f2ceff70d9010e7ff4ed498374633bb7f) | 0.0010 |
 | Execute settlement, 0.001 refunded | [`0x5584e249`](https://scan.botchain.ai/tx/0x5584e24933f4d613980589f42ea2d9a3ed9a01a0893bd9e7f5b5ba05e15599fa) | 0.0017 |
 
-Final state: the supplier received 0.004 BOT, the buyer 0.001 BOT, the escrow balance is zero, and the API recorded every step as verified on chain. The same source had earlier completed a full-payment order, a partial claim with mutual settlement and a deadline reclaim on BOT Chain Testnet.
+Final state: the supplier received 0.004 BOT, the buyer 0.001 BOT, the escrow balance is zero, and the API recorded every step as verified on chain.
+
+A second mainnet order, OLC-LAUNCH-002 (escrow #2, 0.001 BOT at 10/20/70), then ran the full-payment path, starting from a PDF purchase order read by the AI importer:
+
+| Step | Transaction | Gas (BOT, 20 gwei) |
+|---|---|---|
+| Fund 0.001 BOT, deposit 0.0001 paid | [`0x1e457393`](https://scan.botchain.ai/tx/0x1e4573934e3e9277ccfdc1109b5246c2a7a9dc4fc578784ae0a771c42e73dc2b) | 0.0064 |
+| Ship, dispatch 0.0002 paid | [`0x3d4b5968`](https://scan.botchain.ai/tx/0x3d4b596827dc43216af8a49d85290f91f4958ef1e3e6e28c3ffba7cf4868eafe) | 0.0021 |
+| Accept in full, 0.0007 paid, mode BuyerConfirmation | [`0xe2a27526`](https://scan.botchain.ai/tx/0xe2a27526580b03e1ae8c191c3ad9a5d0cbb2a5724ab6f56f62e1c1a874c2ff7c) | 0.0016 |
+
+The supplier received the whole 0.001 BOT and the escrow balance is zero. The same source had earlier completed a full-payment order, a partial claim with mutual settlement and a deadline reclaim on BOT Chain Testnet.
 
 ### 11.3 Cost
 
-A happy-path order (fund, ship, accept) costs about 0.010 BOT of gas at 20 gwei, and a partial-claim order about 0.016 BOT across both parties, whatever the order value, because gas depends on computation, not on the amount moved. OpenLC charges no platform fee. By comparison, bank letters of credit and escrow services charge a percentage of the order plus fixed minimums [6][7][8][9], so for small orders the fixed minimums dominate.
+A happy-path order (fund, ship, accept) cost 0.0101 BOT of gas at 20 gwei on mainnet (OLC-LAUNCH-002), and a partial-claim order about 0.016 BOT across both parties (OLC-LAUNCH-001), whatever the order value, because gas depends on computation, not on the amount moved. OpenLC charges no platform fee. By comparison, bank letters of credit and escrow services charge a percentage of the order plus fixed minimums [6][7][8][9], so for small orders the fixed minimums dominate.
 
 ### 11.4 Findings from the first mainnet order
 
