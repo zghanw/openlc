@@ -43,6 +43,48 @@ A supplier who ships on 60-day credit is lending money to a stranger. OpenLC rep
 
 **Deployment status:** OpenLC is live on **BOT Chain Mainnet** (chain ID `677`) at [`0xd35bbde52618F716597cb097Fab3E52D3605A7c6`](https://scan.botchain.ai/address/0xd35bbde52618F716597cb097Fab3E52D3605A7c6#code), and the live app at [openlc.online](https://openlc.online) talks only to that contract. The app fails closed when the network or contract is not configured, so it can never sign against the wrong chain or a retired address. The same source ran full order cycles on BOT Chain Testnet first. On mainnet, two orders with real BOT have exercised every money path: [OLC-LAUNCH-001](#first-mainnet-order-olc-launch-001) with a partial claim and a split signed by both parties, and [OLC-LAUNCH-002](#second-mainnet-order-olc-launch-002-step-by-step), paid in full on proof, shown screen by screen.
 
+## Why OpenLC
+
+Across Asia, 44% of B2B sales made on credit are paid late and about 5% are never paid ([Atradius Payment Practices Barometer, Asia 2025](https://group.atradius.com/dam/jcr:de5379ba-2ad5-415f-9c77-6e6c2669d13e/payment-practices-barometer-asia-2025-en.pdf)). The bank instrument built for this problem, trade finance such as a letter of credit, turns down 41% of the applications small and medium businesses make ([ADB Global Trade Finance Gap Survey, December 2025](https://www.tralac.org/documents/news/7229-adb-global-trade-finance-gap-survey-december-2025/file.html)). OpenLC gives both sides of a business order the protection of a letter of credit without a bank in the middle:
+
+- **Payment before dispatch:** the supplier ships knowing the full order value is already locked on chain.
+- **Release on proof:** the buyer's money moves only when dispatch evidence is anchored or the buyer accepts delivery.
+- **Partial claims:** a claim holds only the disputed amount; the rest pays the supplier in the same transaction.
+- **Dual-signed settlement:** a disputed amount pays out only when both parties sign the same split, or the arbitrator named on the order decides it within limits the contract enforces.
+- **Deadline safety for both sides:** the buyer reclaims an unshipped escrow after the delivery date; the supplier claims an uninspected one after the inspection window.
+- **Evidence without exposure:** documents stay private; only their SHA-256 fingerprints go on chain.
+- **No custody:** the contract has no owner or admin, the API never signs a transaction, and OpenLC can never touch the money.
+
+See the [research report](RESEARCH.md) for the market analysis, the design rationale and the evaluation.
+
+## How an order works
+
+```text
+Buyer creates the purchase order -> supplier confirms it from its own wallet (copy-paste link)
+Fund       buyer locks the full value            deposit pays the supplier at once
+Ship       supplier anchors dispatch evidence    dispatch payment releases
+Deliver    buyer records the delivery
+Inspect    everything intact -> accept           delivery balance releases, order settled
+           part damaged or missing -> claim      only the disputed amount stays held,
+                                                 the rest pays the supplier in the same transaction
+Settle     both sign the same split -> execute   disputed amount paid out exactly as signed
+Deadlines  nothing shipped by the delivery date  buyer reclaims everything not yet released
+           no inspection within 7 days           supplier claims the balance
+```
+
+The release plan is set per order (for example 10 / 20 / 70). The delivery deadline is the end of the agreed delivery day and never less than 24 hours after funding. The inspection window is 7 days after the later of shipment and the delivery deadline.
+
+### Using OpenLC
+
+1. Open [openlc.online](https://openlc.online) and **Sign in with MetaMask**. Signing in is a readable message, not a transaction. OpenLC switches MetaMask to BOT Chain (adding it first if needed) before any transaction.
+2. Get BOT on the [BOT Chain DEX](https://dex.botchain.ai) for the order value and gas.
+3. **New order:** enter the supplier, delivery terms and line items, or **Import from file** to read them from a purchase order PDF. Set the release plan and copy the confirmation link.
+4. The supplier opens the link, signs in with its own wallet and confirms the terms. Its wallet becomes the payout address.
+5. **Fund escrow** with one signature. The order page's **On BOT Chain** panel reads the locked balance straight from the contract.
+6. The supplier marks the order shipped with a dispatch photo. The buyer records the delivery, then accepts it or opens a claim on the damaged or missing lines.
+
+Sample documents for a full run are in [`docs/samples/`](docs/samples/).
+
 ## Deployment
 
 | Network | Chain ID | Contract | Verified | Deploy block | Deploy transaction |
@@ -166,48 +208,6 @@ Escrow `#2` on the mainnet contract, settlement mode `BuyerConfirmation`:
 Result: the supplier received the full `0.001 BOT` and the escrow balance is `0`. The whole happy path cost `0.0101 BOT` in gas (fund `0.0064`, ship `0.0021`, accept `0.0016`), whatever the order value.
 
 Earlier testnet cycles on the same source, on [scan.bohr.life](https://scan.bohr.life): a 3 BOT order paid in full on proof ([fund](https://scan.bohr.life/tx/0x846ea2b8874fa2bfdfa2c36ef42b0801b65504a8127014fe9de49b257da6c46f), [ship](https://scan.bohr.life/tx/0x2098aacdbe5ff33d5d971b906e55ff5798cd3a092ada5a11d1099b072bd29005), [accept](https://scan.bohr.life/tx/0x793669d83aa0a3e0ca5a78ec8c6c8d0aa495ed40bed455328f0c3584bada57ed)); a 1 BOT order with a partial claim and a mutual split ([claim](https://scan.bohr.life/tx/0x8a72ab5e9f79100ee522063024443288a8bba20f23c634aa2a78667c6060f97a), [settle](https://scan.bohr.life/tx/0xb57dc85208eee87e171db06dbcecc370ad310d382c9af0101ae014d6fe220e61)); and a buyer's deadline reclaim of an unshipped escrow ([fund](https://scan.bohr.life/tx/0x0f9b65e2737c099c4fa374f165dd2b9bb6deb393bbac8c460a168cb00f550646), [reclaim](https://scan.bohr.life/tx/0xed3f2817831236bf4cb8df7502868149495a05bd293d1ef1235e12d31c246344)).
-
-## Why OpenLC
-
-Across Asia, 44% of B2B sales made on credit are paid late and about 5% are never paid ([Atradius Payment Practices Barometer, Asia 2025](https://group.atradius.com/dam/jcr:de5379ba-2ad5-415f-9c77-6e6c2669d13e/payment-practices-barometer-asia-2025-en.pdf)). The bank instrument built for this problem, trade finance such as a letter of credit, turns down 41% of the applications small and medium businesses make ([ADB Global Trade Finance Gap Survey, December 2025](https://www.tralac.org/documents/news/7229-adb-global-trade-finance-gap-survey-december-2025/file.html)). OpenLC gives both sides of a business order the protection of a letter of credit without a bank in the middle:
-
-- **Payment before dispatch:** the supplier ships knowing the full order value is already locked on chain.
-- **Release on proof:** the buyer's money moves only when dispatch evidence is anchored or the buyer accepts delivery.
-- **Partial claims:** a claim holds only the disputed amount; the rest pays the supplier in the same transaction.
-- **Dual-signed settlement:** a disputed amount pays out only when both parties sign the same split, or the arbitrator named on the order decides it within limits the contract enforces.
-- **Deadline safety for both sides:** the buyer reclaims an unshipped escrow after the delivery date; the supplier claims an uninspected one after the inspection window.
-- **Evidence without exposure:** documents stay private; only their SHA-256 fingerprints go on chain.
-- **No custody:** the contract has no owner or admin, the API never signs a transaction, and OpenLC can never touch the money.
-
-See the [research report](RESEARCH.md) for the market analysis, the design rationale and the evaluation.
-
-## How an order works
-
-```text
-Buyer creates the purchase order -> supplier confirms it from its own wallet (copy-paste link)
-Fund       buyer locks the full value            deposit pays the supplier at once
-Ship       supplier anchors dispatch evidence    dispatch payment releases
-Deliver    buyer records the delivery
-Inspect    everything intact -> accept           delivery balance releases, order settled
-           part damaged or missing -> claim      only the disputed amount stays held,
-                                                 the rest pays the supplier in the same transaction
-Settle     both sign the same split -> execute   disputed amount paid out exactly as signed
-Deadlines  nothing shipped by the delivery date  buyer reclaims everything not yet released
-           no inspection within 7 days           supplier claims the balance
-```
-
-The release plan is set per order (for example 10 / 20 / 70). The delivery deadline is the end of the agreed delivery day and never less than 24 hours after funding. The inspection window is 7 days after the later of shipment and the delivery deadline.
-
-### Using OpenLC
-
-1. Open [openlc.online](https://openlc.online) and **Sign in with MetaMask**. Signing in is a readable message, not a transaction. OpenLC switches MetaMask to BOT Chain (adding it first if needed) before any transaction.
-2. Get BOT on the [BOT Chain DEX](https://dex.botchain.ai) for the order value and gas.
-3. **New order:** enter the supplier, delivery terms and line items, or **Import from file** to read them from a purchase order PDF. Set the release plan and copy the confirmation link.
-4. The supplier opens the link, signs in with its own wallet and confirms the terms. Its wallet becomes the payout address.
-5. **Fund escrow** with one signature. The order page's **On BOT Chain** panel reads the locked balance straight from the contract.
-6. The supplier marks the order shipped with a dispatch photo. The buyer records the delivery, then accepts it or opens a claim on the damaged or missing lines.
-
-Sample documents for a full run are in [`docs/samples/`](docs/samples/).
 
 ## Product tour
 
