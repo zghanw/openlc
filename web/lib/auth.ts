@@ -49,7 +49,7 @@ export async function authenticateConnectedWallet(input: {
   return session;
 }
 
-export type SignInPhase = "idle" | "connecting" | "signing" | "opening";
+export type SignInPhase = "idle" | "connecting" | "preparing" | "signing" | "opening";
 
 /**
  * One click from "not signed in" to a session: connect MetaMask if it isn't yet, then sign the
@@ -64,9 +64,14 @@ export function useWalletSignIn(onSignedIn?: () => void) {
   const [awaitingAccount, setAwaitingAccount] = useState(false);
 
   async function signIn(address: string) {
-    setPhase("signing");
+    setPhase("preparing");
     try {
-      await authenticateConnectedWallet({ address, sign: wallet.signMessage });
+      // sign() runs only once the challenge is back, so wrapping it marks the exact moment
+      // MetaMask opens. Until then the button must not tell anyone to look at MetaMask.
+      await authenticateConnectedWallet({
+        address,
+        sign: (message) => { setPhase("signing"); return wallet.signMessage(message); },
+      });
       setPhase("opening");
       onSignedIn?.();
     } catch (caught) {

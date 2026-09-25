@@ -8,6 +8,7 @@ import { loadSession, useSession } from "@/lib/openlc-api";
 
 const PROGRESS: Record<Exclude<SignInPhase, "idle">, string> = {
   connecting: "Connecting…",
+  preparing: "Preparing…",
   signing: "Sign the message in MetaMask…",
   opening: "Opening…",
 };

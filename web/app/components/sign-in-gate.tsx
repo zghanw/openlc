@@ -3,12 +3,12 @@
 import { Fragment, type ReactNode } from "react";
 import { ArrowRight, Clock, LoaderCircle, LogOut, PenLine, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWalletSignIn } from "@/lib/auth";
+import { useWalletSignIn, type SignInPhase } from "@/lib/auth";
 import { signOutToLanding, useSession } from "@/lib/openlc-api";
 import { TERMS } from "@/lib/order-status";
 import { shortAddress, useWallet } from "@/lib/wallet";
 
-const PROGRESS = { connecting: "Connecting…", signing: "Sign the message in MetaMask…", opening: "Opening…" } as const;
+const PROGRESS: Record<Exclude<SignInPhase, "idle">, string> = { connecting: "Connecting…", preparing: "Preparing…", signing: "Sign the message in MetaMask…", opening: "Opening…" };
 
 /**
  * Remounts a signed-in route whenever the session changes (sign-in, sign-out, expiry, another tab),
