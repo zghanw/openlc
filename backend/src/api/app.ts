@@ -92,6 +92,24 @@ const openSchema = z.object({
   onchainEscrow: onchainEscrowSchema.optional(),
 });
 
+
+const FIELD_NAMES: Record<string, string> = {
+  supplierEmail: "supplier email", buyerEmail: "buyer email", supplierName: "supplier company", buyerName: "buyer company",
+  deliveryDate: "expected delivery", deliveryLocation: "delivery location", reference: "PO reference", lineItems: "line items",
+  unitPriceUnits: "unit price", quantity: "quantity", amountUnits: "order value", description: "description",
+  transactionDigest: "transaction", address: "wallet address", signature: "signature", statement: "statement",
+  buyerUnits: "buyer amount", supplierUnits: "supplier amount", summary: "summary", name: "company name",
+};
+function describeValidation(error: z.ZodError): string {
+  const fields = [...new Set(error.issues.map((issue) => {
+    const key = [...issue.path].reverse().find((part): part is string => typeof part === "string");
+    return key ? FIELD_NAMES[key] ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase() : "";
+  }).filter(Boolean))];
+  return fields.length
+    ? `Some details are missing or not valid: ${fields.slice(0, 4).join(", ")}. Check them and try again.`
+    : "Some details are missing or not valid. Check them and try again.";
+}
+
 export function createApp(
   service: DisputeService,
   verifier: TokenVerifier,
@@ -109,13 +127,16 @@ export function createApp(
   }));
   app.onError((error, c) => {
     if (error instanceof DomainError) return c.json({ error: error.code, message: error.message }, error.status as any);
-    if (error instanceof z.ZodError) return c.json({ error: "INVALID_REQUEST", issues: error.issues }, 400);
+    if (error instanceof z.ZodError) return c.json({ error: "INVALID_REQUEST", message: describeValidation(error), issues: error.issues }, 400);
+    // Two saves raced on the same record (optimistic locking): nothing was written by this request.
+    if (error instanceof Error && error.message === "OPTIMISTIC_LOCK_CONFLICT")
+      return c.json({ error: "CONFLICT", message: "This order changed while you were working on it. Refresh the page and try again." }, 409);
     console.error("Unhandled OpenLC backend error", {
       name: error instanceof Error ? error.name : "UnknownError",
       message: error instanceof Error ? error.message : String(error),
       stack: process.env.NODE_ENV === "development" && error instanceof Error ? error.stack : undefined,
     });
-    return c.json({ error: "INTERNAL_ERROR" }, 500);
+    return c.json({ error: "INTERNAL_ERROR", message: "Something went wrong on the OpenLC server. OpenLC never signs or moves BOT for you, so nothing changed on BOT Chain. Try again in a minute." }, 500);
   });
   app.get("/health", (c) => c.json({ ok: true, service: "openlc-api" }));
   if (identity) {
@@ -126,7 +147,7 @@ export function createApp(
       // site and would make that line of the message meaningless.
       const origin = process.env.FRONTEND_ORIGIN ?? "";
       if (!/^https?:\/\//.test(origin))
-        throw new DomainError("INVALID_ORIGIN", "This deployment has no valid FRONTEND_ORIGIN configured", 500);
+        throw new DomainError("INVALID_ORIGIN", "Sign-in is not available on this site right now. Try again later.", 500);
       return c.json(await identity.createWalletChallenge(body.address, origin));
     });
     app.post("/auth/wallet/verify", async (c) => {
@@ -143,7 +164,7 @@ export function createApp(
   }
   app.use("/v1/*", async (c, next) => {
     const header = c.req.header("authorization") ?? "";
-    if (!header.startsWith("Bearer ")) throw new DomainError("UNAUTHORIZED", "Bearer token required", 401);
+    if (!header.startsWith("Bearer ")) throw new DomainError("UNAUTHORIZED", "Sign in to continue.", 401);
     c.set("actor", await verifier.verify(header.slice(7)));
     await next();
   });
@@ -193,12 +214,12 @@ export function createApp(
     app.post("/v1/orders/:id/documents", async (c) => {
       const body = await c.req.parseBody();
       const file = body.file;
-      if (!(file instanceof File)) throw new DomainError("INVALID_DOCUMENT", "Attach a file under the 'file' field", 400);
+      if (!(file instanceof File)) throw new DomainError("INVALID_DOCUMENT", "Attach a file.", 400);
       const kind = String(body.kind ?? "");
       const transcript = typeof body.transcript === "string" ? body.transcript : undefined;
       let extracted: Record<string, unknown> | undefined;
       if (typeof body.extracted === "string" && body.extracted.trim()) {
-        try { extracted = JSON.parse(body.extracted) as Record<string, unknown>; } catch { throw new DomainError("INVALID_DOCUMENT", "extracted must be JSON", 400); }
+        try { extracted = JSON.parse(body.extracted) as Record<string, unknown>; } catch { throw new DomainError("INVALID_DOCUMENT", "The document details could not be read. Attach the file again.", 400); }
       }
       const bytes = new Uint8Array(await file.arrayBuffer());
       const anchorTransactionDigest = typeof body.anchorTransactionDigest === "string" && body.anchorTransactionDigest.trim() ? body.anchorTransactionDigest.trim() : undefined;
@@ -226,7 +247,7 @@ export function createApp(
   app.get("/v1/disputes/:id", async (c) => {
     const dispute = await service.get(c.req.param("id"));
     const actor = c.get("actor");
-    if (![dispute.buyerId, dispute.supplierId, dispute.arbitratorId].includes(actor.id)) throw new DomainError("FORBIDDEN", "Actor cannot access dispute", 403);
+    if (![dispute.buyerId, dispute.supplierId, dispute.arbitratorId].includes(actor.id)) throw new DomainError("FORBIDDEN", "You cannot open this claim. Sign in with the wallet of the buyer or supplier on the order.", 403);
     return c.json(dispute);
   });
   app.post("/v1/disputes/:id/supplier-response", async (c) => {
@@ -256,7 +277,7 @@ export function createApp(
     return c.json(result);
   });
   app.post("/v1/disputes/:id/mediate", async (c) => {
-    if (!mediator) throw new DomainError("AI_UNAVAILABLE", "AI mediation is not configured", 503);
+    if (!mediator) throw new DomainError("AI_UNAVAILABLE", "The AI mediator is not available right now. You can still propose a split yourself.", 503);
     const dispute = await service.get(c.req.param("id"));
     const actor = c.get("actor");
     if (![dispute.buyerId, dispute.supplierId].includes(actor.id)) throw new DomainError("FORBIDDEN", "Only a party may request mediation", 403);
@@ -276,7 +297,7 @@ export function createApp(
   app.post("/v1/disputes/:id/enforce-deadline", async (c) => {
     const dispute = await service.get(c.req.param("id"));
     const actor = c.get("actor");
-    if (![dispute.buyerId, dispute.supplierId, dispute.arbitratorId].includes(actor.id)) throw new DomainError("FORBIDDEN", "Actor cannot access dispute", 403);
+    if (![dispute.buyerId, dispute.supplierId, dispute.arbitratorId].includes(actor.id)) throw new DomainError("FORBIDDEN", "You cannot open this claim. Sign in with the wallet of the buyer or supplier on the order.", 403);
     const result = await service.enforceDeadline(dispute.id);
     if (trades) await trades.syncDispute(result.id);
     return c.json(result);
@@ -293,11 +314,11 @@ export function createApp(
   });
   app.get("/v1/disputes/:id/arbitration-package", async (c) => c.json(await service.arbitrationPackage(c.req.param("id"), c.get("actor"))));
   app.post("/v1/disputes/:id/settlement-execution", async (c) => {
-    if (!settlementVerifier) throw new DomainError("ESCROW_VERIFIER_UNAVAILABLE", "The escrow settlement verifier is not configured", 503);
+    if (!settlementVerifier) throw new DomainError("ESCROW_VERIFIER_UNAVAILABLE", "OpenLC cannot check BOT Chain right now, so this step was not recorded. Try again in a minute.", 503);
     const dispute = await service.get(c.req.param("id"));
     const actor = c.get("actor");
     if (![dispute.buyerId, dispute.supplierId, dispute.arbitratorId].includes(actor.id)) {
-      throw new DomainError("FORBIDDEN", "Actor cannot submit settlement execution proof", 403);
+      throw new DomainError("FORBIDDEN", "Only the buyer, the supplier or the arbitrator on this order can record the settlement.", 403);
     }
     const proof = z.object({
       transactionDigest: txHash, packageId: evmAddress,

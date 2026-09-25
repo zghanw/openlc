@@ -24,7 +24,7 @@ declare global {
 export function describeConnectError(err: unknown): string {
   const code = (err as { code?: number } | undefined)?.code;
   if (code === 4001) return "Connection request rejected in MetaMask.";
-  if (code === -32002) return "MetaMask already has a connection request open \u2014 check your browser toolbar for the MetaMask icon.";
+  if (code === -32002) return "MetaMask already has a request waiting. Click the MetaMask icon in your browser toolbar to finish it.";
   return "MetaMask didn't respond as expected. Click the MetaMask icon in your toolbar and connect this site directly, then reload.";
 }
 
@@ -39,7 +39,18 @@ export function describeTxError(err: unknown): string {
   // MetaMask hides the real reason behind this text; running short of BOT is the usual one.
   if (/Internal JSON-RPC error/i.test(text))
     return "MetaMask could not send the transaction. Check that your wallet holds enough BOT for the amount plus gas, then try again.";
-  return underlying || e?.shortMessage || e?.reason || e?.message || "Unknown error.";
+  if (e?.code === -32002) return "MetaMask already has a request waiting. Click the MetaMask icon in your browser toolbar to finish it.";
+  if (e?.code === 4100) return "MetaMask has not connected this account to OpenLC. Connect it in MetaMask, then try again.";
+  if (e?.code === 4900 || e?.code === 4901) return "MetaMask is not connected to BOT Chain. Reconnect it and try again.";
+  if (isError(err, "NETWORK_ERROR") || isError(err, "TIMEOUT") || isError(err, "SERVER_ERROR"))
+    return "BOT Chain did not answer in time. Nothing was sent. Try again in a minute.";
+  if (/nonce|replacement|underpriced/i.test(text))
+    return "MetaMask has another transaction from this wallet still pending. Wait for it to finish, or cancel it in MetaMask, then try again.";
+  if (isError(err, "CALL_EXCEPTION"))
+    return "BOT Chain refused this action for the order's current state. Refresh the order to see where it stands.";
+  if (isError(err, "UNKNOWN_ERROR") || isError(err, "BAD_DATA"))
+    return "MetaMask returned an unexpected answer. Refresh the page and try again.";
+  return underlying || e?.shortMessage || e?.reason || e?.message || "Something went wrong. Refresh the page and try again.";
 }
 
 type WalletContextValue = {
@@ -171,7 +182,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         // ethers' BrowserProvider turns MetaMask's EIP-1193 4001 into its own ACTION_REJECTED.
         const rejected = isError(err, "ACTION_REJECTED") || (err as { code?: number } | undefined)?.code === 4001;
-        throw new Error(rejected ? "Signature request rejected in MetaMask." : describeConnectError(err));
+        throw new Error(rejected ? "Sign-in cancelled in MetaMask. Nothing was signed; sign in again when you are ready." : describeConnectError(err));
       }
     },
     [getSigner],

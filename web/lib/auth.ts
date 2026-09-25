@@ -21,7 +21,9 @@ export async function authenticateConnectedWallet(input: {
     body: JSON.stringify({ address: input.address }),
   });
   if (!challengeResponse.ok)
-    throw new Error(`Could not create a wallet sign-in request (${challengeResponse.status}).`);
+    throw new Error(challengeResponse.status >= 500
+      ? "OpenLC could not start signing in right now. Try again in a minute."
+      : "OpenLC could not start signing in with this wallet. Reload the page and try again.");
   const challenge = (await challengeResponse.json()) as { id: string; message: string };
   const signature = await input.sign(challenge.message);
   const verifyResponse = await fetch(`${backendUrl()}/auth/wallet/verify`, {
@@ -31,7 +33,7 @@ export async function authenticateConnectedWallet(input: {
   });
   if (!verifyResponse.ok) {
     const payload = (await verifyResponse.json().catch(() => ({}))) as { message?: string };
-    throw new Error(payload.message ?? `Wallet verification failed (${verifyResponse.status}).`);
+    throw new Error(payload.message ?? "OpenLC could not confirm your signature. Sign in again.");
   }
   const verified = (await verifyResponse.json()) as {
     accessToken: string;

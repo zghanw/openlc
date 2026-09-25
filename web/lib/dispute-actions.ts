@@ -59,6 +59,8 @@ function nearestAiProposal(proposals: ClaimProposal[], at: string): ClaimProposa
 }
 
 const MEDIATOR_BUSY = "The AI mediator was busy. Try again in a minute.";
+// A run whose answer failed the quote and allocation checks: say so in words, never the raw check detail.
+const MEDIATOR_CHECKS_FAILED = "The AI mediator's answer did not pass OpenLC's checks (every quote must match the evidence or the policy word for word, and the split must add up), so no proposal was made. Ask it again, or propose a split yourself.";
 
 /** A Gemini quota (429) or overload (5xx) failure is an outage, not a finding: show it as one line, never the raw API body. */
 function isModelOutage(text?: string): boolean {
@@ -75,6 +77,9 @@ export function disputeToClaim(dispute: DisputeRecord): ClaimView {
   const mediations: ClaimMediation[] = dispute.mediationRuns.map((run) => isModelOutage(run.validationIssues[0]) ? {
     id: run.id, createdAt: run.createdAt, outcome: run.outcome, modelCalls: run.modelCalls,
     reason: MEDIATOR_BUSY, unresolved: [],
+  } : run.outcome === "validation_failed" ? {
+    id: run.id, createdAt: run.createdAt, outcome: run.outcome, modelCalls: run.modelCalls,
+    reason: MEDIATOR_CHECKS_FAILED, unresolved: [],
   } : {
     id: run.id, createdAt: run.createdAt, outcome: run.outcome, modelCalls: run.modelCalls,
     reason: run.mediatorFinal?.reason ?? run.validationIssues[0],
@@ -141,7 +146,9 @@ export type MediationOutcome = { outcome: "proposal" | "abstain"; reason?: strin
 export async function requestMediation(disputeId: string): Promise<MediationOutcome> {
   const result = await apiRequest<{ outcome: "proposal" | "abstain"; reason?: string; unresolvedIssues?: string[]; dispute: DisputeRecord }>(`/v1/disputes/${encodeURIComponent(disputeId)}/mediate`, { method: "POST" });
   const busy = result.outcome === "abstain" && (result.unresolvedIssues ?? []).some(isModelOutage);
-  return { outcome: result.outcome, reason: busy ? MEDIATOR_BUSY : result.reason, unresolvedIssues: busy ? [] : result.unresolvedIssues, claim: disputeToClaim(result.dispute) };
+  const failedChecks = !busy && result.dispute.mediationRuns.at(-1)?.outcome === "validation_failed";
+  const reason = busy ? MEDIATOR_BUSY : failedChecks ? MEDIATOR_CHECKS_FAILED : result.reason;
+  return { outcome: result.outcome, reason, unresolvedIssues: busy || failedChecks ? [] : result.unresolvedIssues, claim: disputeToClaim(result.dispute) };
 }
 
 export async function enforceClaimDeadline(disputeId: string): Promise<ClaimView> {

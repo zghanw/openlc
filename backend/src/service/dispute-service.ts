@@ -21,7 +21,7 @@ export class DisputeService {
 
   async get(id: string): Promise<DisputeAggregate> {
     const dispute = await this.store.get(id);
-    if (!dispute) throw new DomainError("NOT_FOUND", "Dispute not found", 404);
+    if (!dispute) throw new DomainError("NOT_FOUND", "This claim was not found. Open it from the order page.", 404);
     return dispute;
   }
 
@@ -68,7 +68,7 @@ export class DisputeService {
   async arbitrationPackage(id: string, actor: Actor) {
     const dispute = await this.get(id);
     if (actor.id !== dispute.arbitratorId && actor.id !== dispute.buyerId && actor.id !== dispute.supplierId) {
-      throw new DomainError("FORBIDDEN", "Actor cannot access this arbitration package", 403);
+      throw new DomainError("FORBIDDEN", "Only the arbitrator on this order can open the arbitration package.", 403);
     }
     return buildArbitrationPackage(dispute, this.ctx);
   }

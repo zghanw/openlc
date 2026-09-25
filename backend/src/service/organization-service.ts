@@ -76,7 +76,7 @@ export class OrganizationService {
 
   async publicTrustProfile(slug: string): Promise<OrganizationTrustProfile> {
     const organization = await this.store.findBySlug(slug);
-    if (!organization?.trustProfilePublishedAt) throw new DomainError("NOT_FOUND", "Published trust profile not found", 404);
+    if (!organization?.trustProfilePublishedAt) throw new DomainError("NOT_FOUND", "This company has not published a trust profile.", 404);
     return this.buildTrustProfile({ ...organization, accountId: "", authority: "member", canBuy: false, canSupply: false });
   }
 

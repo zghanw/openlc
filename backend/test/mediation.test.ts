@@ -324,7 +324,7 @@ describe("bounded AI mediation", () => {
     const result = await new MediationOrchestrator(blocked, policy, control.ctx).mediate(dispute);
     expect(result).toMatchObject({
       outcome: "abstain",
-      reason: "The AI output failed deterministic safety validation; no proposal was created.",
+      reason: "The AI mediator's answer did not pass OpenLC's checks (every quote must match the evidence or the policy word for word, and the split must add up), so no proposal was made. Ask it again, or propose a split yourself.",
       run: { outcome: "validation_failed" },
     });
     if (result.outcome === "abstain") {

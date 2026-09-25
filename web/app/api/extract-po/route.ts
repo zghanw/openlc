@@ -65,21 +65,21 @@ async function generate(apiKey: string, model: string, system: string, parts: Ar
   });
   if (!response.ok) {
     const detail = await response.text();
-    return { error: NextResponse.json({ error: "EXTRACTION_FAILED", message: `The document could not be read (${response.status}).`, detail: detail.slice(0, 500) }, { status: 502 }) };
+    return { error: NextResponse.json({ error: "EXTRACTION_FAILED", message: response.status === 429 || response.status >= 500 ? "The document reader is busy right now. Try again in a minute, or type the lines in yourself." : "This document could not be read. Try a clearer PDF or image, or type the lines in yourself.", detail: detail.slice(0, 500) }, { status: 502 }) };
   }
   const body = (await response.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
   const text = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("");
-  if (!text) return { error: NextResponse.json({ error: "EMPTY", message: "No content could be extracted from this document." }, { status: 502 }) };
+  if (!text) return { error: NextResponse.json({ error: "EMPTY", message: "No text could be read from this document. Try a clearer PDF or image, or type the lines in yourself." }, { status: 502 }) };
   try {
     return { data: JSON.parse(text) as Record<string, unknown> };
   } catch {
-    return { error: NextResponse.json({ error: "INVALID_JSON", message: "The extraction result could not be parsed." }, { status: 502 }) };
+    return { error: NextResponse.json({ error: "INVALID_JSON", message: "The document could not be read as a purchase order. Check the file, or type the lines in yourself." }, { status: 502 }) };
   }
 }
 
 export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return NextResponse.json({ error: "NOT_CONFIGURED", message: "Document reading is not configured. Set GEMINI_API_KEY for the web app." }, { status: 503 });
+  if (!apiKey) return NextResponse.json({ error: "NOT_CONFIGURED", message: "Reading files is not available right now. Type the lines in yourself." }, { status: 503 });
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
@@ -99,6 +99,6 @@ export async function POST(request: Request) {
     ? await generate(apiKey, model, transcriptInstructions, parts, transcriptSchema)
     : await generate(apiKey, model, extractInstructions, parts, schema);
   if (result.error) return result.error;
-  if (mode === "purchase_order" && !Array.isArray(result.data?.lines)) return NextResponse.json({ error: "INVALID_JSON", message: "The extraction result could not be parsed." }, { status: 502 });
+  if (mode === "purchase_order" && !Array.isArray(result.data?.lines)) return NextResponse.json({ error: "INVALID_JSON", message: "The document could not be read as a purchase order. Check the file, or type the lines in yourself." }, { status: 502 });
   return NextResponse.json({ ...result.data, model, fileName: file.name, fileSize: file.size, mimeType: mime });
 }

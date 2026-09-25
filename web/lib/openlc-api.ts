@@ -383,7 +383,13 @@ export async function apiRequest<T>(
   headers.set("content-type", "application/json");
   if (session?.accessToken)
     headers.set("authorization", `Bearer ${session.accessToken}`);
-  const response = await fetch(`${BACKEND_URL}${path}`, { ...init, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${BACKEND_URL}${path}`, { ...init, headers });
+  } catch {
+    // fetch rejects only when no answer arrived at all (offline, DNS, the API asleep or restarting).
+    throw new Error("OpenLC could not be reached. Check your connection and try again in a minute.");
+  }
   // Every /v1 route answers 401 only for a missing, invalid or expired session: drop it so the sign-in gate shows.
   if (response.status === 401) {
     clearSession();
@@ -399,12 +405,18 @@ async function readError(response: Response): Promise<string> {
       message?: string;
       error?: string;
     };
-    return (
-      payload.message || payload.error || `Request failed (${response.status})`
-    );
+    return payload.message || fallbackError(response.status);
   } catch {
-    return `Request failed (${response.status})`;
+    return fallbackError(response.status);
   }
+}
+
+/** Words for an answer that carried no message of its own (a proxy page, a restart, an old API). */
+function fallbackError(status: number): string {
+  if (status >= 500) return "OpenLC is having trouble right now. Nothing changed on BOT Chain. Try again in a minute.";
+  if (status === 404) return "That was not found. Refresh the page and try again.";
+  if (status === 409) return "This changed while you were working on it. Refresh the page and try again.";
+  return "That request could not be completed. Refresh the page and try again.";
 }
 
 export function backendUrl(): string {

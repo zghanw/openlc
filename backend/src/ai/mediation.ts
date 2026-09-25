@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { units } from "../domain/money.js";
+import { DomainError } from "../domain/types.js";
 import type {
   AdvocatePosition,
   DisputeAggregate,
@@ -376,7 +377,7 @@ export class MediationOrchestrator {
 
   async mediate(dispute: DisputeAggregate): Promise<MediationResult> {
     if (dispute.status !== "negotiation_open" || dispute.evidence.length < 2) {
-      throw new Error("Mediation requires open negotiation and evidence from both parties");
+      throw new DomainError("INVALID_STATE", "The AI mediator needs an open negotiation with statements from both the buyer and the supplier.", 409);
     }
     const started = Date.now();
     let calls = 0;
@@ -570,7 +571,7 @@ Abstain, and state the reason, only when no agreement term or policy clause answ
         outcome: "abstain",
         reason: busy
           ? "The AI mediator is busy right now. No proposal was created; try again in a minute."
-          : "The AI output failed deterministic safety validation; no proposal was created.",
+          : "The AI mediator's answer did not pass OpenLC's checks (every quote must match the evidence or the policy word for word, and the split must add up), so no proposal was made. Ask it again, or propose a split yourself.",
         unresolvedIssues: [validationIssue],
         citations: [],
         run,

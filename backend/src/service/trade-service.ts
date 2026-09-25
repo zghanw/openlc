@@ -136,7 +136,7 @@ function invitedName(order: TradeOrder): string {
 
 function ensureAmount(value: string): string {
   if (!/^(0|[1-9]\d*)$/.test(value) || BigInt(value) <= 0n) {
-    throw new DomainError("INVALID_ORDER_AMOUNT", "Order amount must be a positive integer in asset base units", 400);
+    throw new DomainError("INVALID_ORDER_AMOUNT", "The order value must be more than zero.", 400);
   }
   return value;
 }
@@ -145,10 +145,10 @@ function releasePlan(input: CreateTradeOrderInput): TradeReleasePlan {
   const total = BigInt(ensureAmount(input.amountUnits));
   const plan = input.releasePlan ?? { depositUnits: "0", dispatchUnits: "0", deliveryUnits: total.toString() };
   for (const value of [plan.depositUnits, plan.dispatchUnits, plan.deliveryUnits]) {
-    if (!/^\d+$/.test(value)) throw new DomainError("INVALID_RELEASE_PLAN", "Release amounts must be non-negative integers in asset base units", 400);
+    if (!/^\d+$/.test(value)) throw new DomainError("INVALID_RELEASE_PLAN", "The release plan amounts are not valid. Set the release plan again.", 400);
   }
   if (BigInt(plan.depositUnits) + BigInt(plan.dispatchUnits) + BigInt(plan.deliveryUnits) !== total) {
-    throw new DomainError("INVALID_RELEASE_PLAN", "Deposit, dispatch, and delivery releases must equal the order amount", 400);
+    throw new DomainError("INVALID_RELEASE_PLAN", "The deposit, dispatch and delivery amounts must add up to the order value.", 400);
   }
   return structuredClone(plan);
 }
@@ -215,7 +215,7 @@ export class TradeService {
     };
     // Re-read so a concurrent update (for example the claim that references this file) is not lost.
     const fresh = await this.store.getOrder(order.id);
-    if (!fresh) throw new DomainError("NOT_FOUND", "Trade order not found", 404);
+    if (!fresh) throw new DomainError("NOT_FOUND", "This order was not found. Open it from your Orders list.", 404);
     const updated: TradeOrder = { ...fresh, documents: [...(fresh.documents ?? []), document], updatedAt: now, version: fresh.version + 1 };
     await this.store.saveOrder(updated, fresh.version);
     return updated;
@@ -238,7 +238,7 @@ export class TradeService {
     if (!document) throw new DomainError("NOT_FOUND", "Document not found", 404);
     if (!order.funding) throw new DomainError("FUNDING_REQUIRED", "Evidence can only be anchored to a funded order", 409);
     const digest = transactionDigest.trim();
-    if (!digest) throw new DomainError("INVALID_DOCUMENT", "An anchor transaction digest is required", 400);
+    if (!digest) throw new DomainError("INVALID_DOCUMENT", "The anchoring transaction is missing. Refresh the order and try again.", 400);
     let verificationStatus: "verified_on_chain" | "external_reference" = "external_reference";
     if (this.fundingVerifier?.verifyEvidenceAnchor) {
       await this.fundingVerifier.verifyEvidenceAnchor(order, digest, document.sha256);
@@ -332,7 +332,7 @@ export class TradeService {
 
   async getOrder(id: string, actor: Actor): Promise<TradeOrder> {
     const order = await this.store.getOrder(id);
-    if (!order) throw new DomainError("NOT_FOUND", "Trade order not found", 404);
+    if (!order) throw new DomainError("NOT_FOUND", "This order was not found. Open it from your Orders list.", 404);
     const organizationIds = this.organizations
       ? (await this.organizations.workspace(actor)).organizations.map((item) => item.organizationId)
       : [];
@@ -340,7 +340,7 @@ export class TradeService {
       // An invited party reads the order before accepting, with or without the emailed
       // token: their verified email, or (for a named supplier) their wallet, proves it.
       if (!(await this.pendingInviteFor(order, actor)))
-        throw new DomainError("FORBIDDEN", "Actor cannot access this trade order", 403);
+        throw new DomainError("FORBIDDEN", "You cannot open this order. Sign in with the wallet of the buyer or supplier named on it.", 403);
     }
     return order;
   }
@@ -629,7 +629,7 @@ export class TradeService {
   async settleByDeadline(orderId: string, actor: Actor, input: DeadlineSettlementInput): Promise<TradeOrder> {
     const order = await this.getOrder(orderId, actor);
     if (!order.funding || !order.supplierId || !order.buyerId) throw new DomainError("FUNDING_REQUIRED", "Only a funded order can be settled by deadline", 409);
-    if (!input.transactionDigest?.trim()) throw new DomainError("INVALID_RELEASE", "A settlement transaction digest is required", 400);
+    if (!input.transactionDigest?.trim()) throw new DomainError("INVALID_RELEASE", "The settlement transaction is missing. Refresh the order and try again.", 400);
     const refund = input.kind === "refund_unshipped";
     const nowMs = this.ctx.now().getTime();
     if (refund) {
@@ -731,7 +731,7 @@ export class TradeService {
     await this.requireBuyerAuthority(order, actor, "Only an authorized buyer can accept a delivery");
     if (!order.funding || !order.supplierId) throw new DomainError("FUNDING_REQUIRED", "Only a funded order can be accepted", 409);
     if (order.status !== "delivered") throw new DomainError("INVALID_STATE", "The delivery must be recorded before it can be accepted");
-    if (!input.transactionDigest?.trim()) throw new DomainError("INVALID_RELEASE", "A release transaction digest is required", 400);
+    if (!input.transactionDigest?.trim()) throw new DomainError("INVALID_RELEASE", "The release transaction is missing. Refresh the order and try again.", 400);
     if (input.inspection) {
       for (const line of input.inspection.lines) {
         const item = order.lineItems.find((candidate) => candidate.id === line.lineId);

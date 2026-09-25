@@ -39,7 +39,7 @@ export class IdentityService {
     } catch {
       throw new DomainError(
         "INVALID_WALLET_ADDRESS",
-        `${address} is not a valid EVM wallet address`,
+        `${address} is not a valid wallet address. Check the address and try again.`,
         400,
       );
     }
@@ -80,13 +80,13 @@ export class IdentityService {
     const normalized = this.normalizeAddress(input.address);
     const challenge = await this.store.getChallenge(input.challengeId);
     if (!challenge)
-      throw new DomainError("CHALLENGE_NOT_FOUND", "The wallet challenge was not found", 404);
+      throw new DomainError("CHALLENGE_NOT_FOUND", "This sign-in request has expired. Sign in again.", 404);
     if (challenge.usedAt)
-      throw new DomainError("CHALLENGE_ALREADY_USED", "This wallet challenge has already been used", 409);
+      throw new DomainError("CHALLENGE_ALREADY_USED", "This sign-in request was already used. Sign in again.", 409);
     if (challenge.address !== normalized)
-      throw new DomainError("CHALLENGE_ADDRESS_MISMATCH", "The connected wallet does not match the challenge", 403);
+      throw new DomainError("CHALLENGE_ADDRESS_MISMATCH", "The wallet that signed is not the wallet that started signing in. Sign in again with one wallet.", 403);
     if (new Date(challenge.expiresAt).getTime() <= this.now().getTime())
-      throw new DomainError("CHALLENGE_EXPIRED", "The wallet challenge has expired", 410);
+      throw new DomainError("CHALLENGE_EXPIRED", "This sign-in request expired before it was signed. Sign in again.", 410);
 
     let recovered: string;
     try {
@@ -94,14 +94,14 @@ export class IdentityService {
     } catch {
       throw new DomainError(
         "INVALID_WALLET_SIGNATURE",
-        "The signature does not prove control of the connected wallet address",
+        "The signature does not match your wallet. Sign in again from the same MetaMask account.",
         401,
       );
     }
     if (recovered !== normalized)
       throw new DomainError(
         "INVALID_WALLET_SIGNATURE",
-        "The signature does not prove control of the connected wallet address",
+        "The signature does not match your wallet. Sign in again from the same MetaMask account.",
         401,
       );
 
@@ -110,7 +110,7 @@ export class IdentityService {
       this.now().toISOString(),
     );
     if (!consumed)
-      throw new DomainError("CHALLENGE_ALREADY_USED", "This wallet challenge has already been used", 409);
+      throw new DomainError("CHALLENGE_ALREADY_USED", "This sign-in request was already used. Sign in again.", 409);
     const account = await this.store.createWalletAccount(normalized);
     return { account, accessToken: await this.issueSession(account) };
   }
@@ -133,7 +133,7 @@ export class IdentityService {
       };
     } catch (error) {
       console.warn(`Session rejected: ${error instanceof Error ? error.message : String(error)}`);
-      throw new DomainError("UNAUTHORIZED", "Invalid or expired user token", 401);
+      throw new DomainError("UNAUTHORIZED", "Your session has expired. Sign in again.", 401);
     }
   }
 

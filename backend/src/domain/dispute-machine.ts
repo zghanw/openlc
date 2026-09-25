@@ -50,7 +50,7 @@ function clone(dispute: DisputeAggregate): DisputeAggregate {
 function sideFor(dispute: DisputeAggregate, actor: Actor): PartySide {
   if (actor.id === dispute.buyerId) return "buyer";
   if (actor.id === dispute.supplierId) return "supplier";
-  throw new DomainError("FORBIDDEN", "Actor is not a party to this dispute", 403);
+  throw new DomainError("FORBIDDEN", "Only the buyer or the supplier on this order can do that.", 403);
 }
 
 function requireSide(dispute: DisputeAggregate, actor: Actor, expected: PartySide): void {
@@ -80,11 +80,11 @@ function ensureBeforeDeadline(dispute: DisputeAggregate, ctx: DomainContext): vo
 
 function ensureEvidence(statement: string, files: EvidenceFile[]): void {
   if (!statement.trim()) throw new DomainError("EVIDENCE_REQUIRED", "An evidence statement is required", 400);
-  if (statement.length > MAX_STATEMENT) throw new DomainError("EVIDENCE_TOO_LONG", "Evidence statement is too long", 400);
-  if (files.length > MAX_FILES) throw new DomainError("TOO_MANY_FILES", "Too many evidence files", 400);
+  if (statement.length > MAX_STATEMENT) throw new DomainError("EVIDENCE_TOO_LONG", "The statement is too long. Shorten it and try again.", 400);
+  if (files.length > MAX_FILES) throw new DomainError("TOO_MANY_FILES", "Too many evidence files. Attach fewer and try again.", 400);
   for (const file of files) {
     if (!/^[a-f0-9]{64}$/i.test(file.sha256) || file.sizeBytes < 0 || !file.storagePath) {
-      throw new DomainError("INVALID_EVIDENCE_FILE", "Evidence file metadata is invalid", 400);
+      throw new DomainError("INVALID_EVIDENCE_FILE", "An evidence file could not be read. Remove it and attach it again.", 400);
     }
   }
 }
@@ -232,7 +232,7 @@ export function recordAiProposal(original: DisputeAggregate, proposal: Proposal,
   if (dispute.status !== "negotiation_open") throw new DomainError("INVALID_STATE", "Negotiation is not open");
   ensureBeforeDeadline(dispute, ctx);
   if (openProposal(dispute)) throw new DomainError("OPEN_PROPOSAL_EXISTS", "An open proposal already exists");
-  if (run && run.disputeVersion !== original.version) throw new DomainError("STALE_MEDIATION_RUN", "The dispute changed while AI mediation was running");
+  if (run && run.disputeVersion !== original.version) throw new DomainError("STALE_MEDIATION_RUN", "The claim changed while the AI mediator was working. Ask it again.");
   validateAllocation(proposal, dispute.disputedUnits);
   proposal.source = "ai";
   proposal.proposerSide = undefined;
@@ -249,7 +249,7 @@ export function recordMediationAbstention(original: DisputeAggregate, run: Media
   const dispute = clone(original);
   if (dispute.status !== "negotiation_open") throw new DomainError("INVALID_STATE", "Negotiation is not open");
   ensureBeforeDeadline(dispute, ctx);
-  if (run.disputeVersion !== original.version) throw new DomainError("STALE_MEDIATION_RUN", "The dispute changed while AI mediation was running");
+  if (run.disputeVersion !== original.version) throw new DomainError("STALE_MEDIATION_RUN", "The claim changed while the AI mediator was working. Ask it again.");
   dispute.mediationRuns.push(structuredClone(run));
   audit(dispute, ctx, "ai-mediator", "mediation.abstained", { runId: run.id, outcome: run.outcome, validationIssues: run.validationIssues });
   return dispute;
@@ -261,7 +261,7 @@ export function acceptProposal(original: DisputeAggregate, actor: Actor, proposa
   if (dispute.status !== "negotiation_open") throw new DomainError("INVALID_STATE", "Negotiation is not open");
   ensureBeforeDeadline(dispute, ctx);
   const proposal = dispute.proposals.find((item) => item.id === proposalId && item.status === "open");
-  if (!proposal) throw new DomainError("PROPOSAL_NOT_OPEN", "Proposal is not open");
+  if (!proposal) throw new DomainError("PROPOSAL_NOT_OPEN", "This proposal was already accepted, rejected or countered. Refresh the claim.");
   if (!proposal.acceptances.includes(side)) proposal.acceptances.push(side);
   audit(dispute, ctx, actor.id, "proposal.accepted_by_party", { proposalId, side });
   if (proposal.acceptances.includes("buyer") && proposal.acceptances.includes("supplier")) {
@@ -276,7 +276,7 @@ export function rejectProposal(original: DisputeAggregate, actor: Actor, proposa
   if (dispute.status !== "negotiation_open") throw new DomainError("INVALID_STATE", "Negotiation is not open");
   ensureBeforeDeadline(dispute, ctx);
   const proposal = dispute.proposals.find((item) => item.id === proposalId && item.status === "open");
-  if (!proposal) throw new DomainError("PROPOSAL_NOT_OPEN", "Proposal is not open");
+  if (!proposal) throw new DomainError("PROPOSAL_NOT_OPEN", "This proposal was already accepted, rejected or countered. Refresh the claim.");
   if (proposal.proposerSide === side) throw new DomainError("CANNOT_REJECT_OWN_PROPOSAL", "The proposer cannot reject their own proposal");
   proposal.status = "rejected";
   audit(dispute, ctx, actor.id, "proposal.rejected", { proposalId, side });

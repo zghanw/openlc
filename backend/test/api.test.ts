@@ -89,6 +89,8 @@ describe("HTTP API", () => {
         body: JSON.stringify({ address: `0x${"1".repeat(64)}` }),
       });
       expect(response.status).toBe(400);
+      // A validation failure names the field in words, never a bare INVALID_REQUEST code.
+      expect((await response.json()).message).toBe("Some details are missing or not valid: wallet address. Check them and try again.");
     } finally {
       process.env.FRONTEND_ORIGIN = previousOrigin;
     }
@@ -100,7 +102,9 @@ describe("HTTP API", () => {
     const app = createApp(new DisputeService(new MemoryDisputeStore(), control.ctx), verifier);
     const response = await app.request("/v1/disputes/x", { headers: { authorization: "Bearer bad" } });
     expect(response.status).toBe(500);
-    expect(await response.text()).not.toContain("secret internal auth detail");
+    const body = await response.text();
+    expect(body).not.toContain("secret internal auth detail");
+    expect(JSON.parse(body).message).toMatch(/^Something went wrong on the OpenLC server/);
   });
 
   it("does not let an unrelated authenticated user trigger or inspect deadline enforcement", async () => {
