@@ -68,15 +68,22 @@ describe("NotificationService.orderAccepted", () => {
   });
 
   it("keeps the in-app notification when the email fails or the sender throws", async () => {
-    const failures = [
-      async () => ({ status: "failed" as const, attemptedAt: "now" }),
-      async (): Promise<InvitationDelivery> => { throw new Error("provider down"); },
-    ];
-    for (const deliver of failures) {
-      const { accounts, service } = setup(deliver);
-      await accounts.setNotificationEmail(BUYER, "buyer@example.com");
-      await expect(service.orderAccepted(acceptedOrder())).resolves.toBeUndefined();
-      expect((await service.list(BUYER)).unread).toBe(1);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const failures = [
+        async () => ({ status: "failed" as const, attemptedAt: "now" }),
+        async (): Promise<InvitationDelivery> => { throw new Error("provider down"); },
+      ];
+      for (const deliver of failures) {
+        const { accounts, email, service } = setup(deliver);
+        await accounts.setNotificationEmail(BUYER, "buyer@example.com");
+        await expect(service.orderAccepted(acceptedOrder())).resolves.toBeUndefined();
+        expect(email.deliver).toHaveBeenCalledOnce();
+        expect((await service.list(BUYER)).unread).toBe(1);
+      }
+      expect(log).toHaveBeenCalledWith("Order-accepted email failed", expect.objectContaining({ reason: "provider down" }));
+    } finally {
+      log.mockRestore();
     }
   });
 

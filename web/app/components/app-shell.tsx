@@ -153,7 +153,7 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
   const [editError, setEditError] = useState("");
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailDraft, setEmailDraft] = useState("");
-  const [emailState, setEmailState] = useState<"loading" | "ready" | "saving">("loading");
+  const [emailState, setEmailState] = useState<"loading" | "ready" | "saving" | "failed">("loading");
   const [emailError, setEmailError] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(open, setOpen, ref);
@@ -170,12 +170,18 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
   const beginEmailEdit = () => {
     setOpen(false);
     setEmailError("");
+    setEmailDraft("");
     setEmailState("loading");
     setEmailOpen(true);
     loadNotificationEmail()
-      .then((email) => setEmailDraft(email ?? ""))
-      .catch((cause) => setEmailError(cause instanceof Error ? cause.message : "Your notification email could not be loaded."))
-      .finally(() => setEmailState("ready"));
+      .then((email) => {
+        setEmailDraft(email ?? "");
+        setEmailState("ready");
+      })
+      .catch((cause) => {
+        setEmailError(cause instanceof Error ? cause.message : "Your notification email could not be loaded.");
+        setEmailState("failed");
+      });
   };
   const saveNotificationEmail = async () => {
     setEmailState("saving");

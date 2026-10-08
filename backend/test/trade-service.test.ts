@@ -647,25 +647,31 @@ describe("trade lifecycle API", () => {
   });
 
   it("notifies the issuer when the invited party accepts, and a failing notifier never undoes the accept", async () => {
-    for (const fails of [false, true]) {
-      const control = controlledContext();
-      const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
-      const orderAccepted = vi.fn(async () => { if (fails) throw new Error("notifications down"); });
-      const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, undefined, undefined, undefined, { orderAccepted });
-      const supplier = { id: SUPPLIER, email: "supplier-notify@example.com", name: "FreshSource" };
-      const buyer = { id: BUYER, email: "buyer-notify@example.com", name: "GreenBite" };
-      const order = await trades.createOrder({
-        reference: "PO-NOTIFY", initiatorRole: "supplier", buyerEmail: buyer.email, arbitratorId: ARBITRATOR,
-        assetType: "BOT", amountUnits: "100", description: "Olive oil", deliveryDate: "2026-10-20", deliveryLocation: "PJ",
-        lineItems: [{ id: "line", description: "Olive oil", quantity: "1", unit: "tin", unitPriceUnits: "100" }],
-      }, supplier);
-      await trades.createInvite(order.id, supplier);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      for (const fails of [false, true]) {
+        const control = controlledContext();
+        const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+        const orderAccepted = vi.fn(async () => { if (fails) throw new Error("notifications down"); });
+        const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, undefined, undefined, undefined, { orderAccepted });
+        const supplier = { id: SUPPLIER, email: "supplier-notify@example.com", name: "FreshSource" };
+        const buyer = { id: BUYER, email: "buyer-notify@example.com", name: "GreenBite" };
+        const order = await trades.createOrder({
+          reference: "PO-NOTIFY", initiatorRole: "supplier", buyerEmail: buyer.email, arbitratorId: ARBITRATOR,
+          assetType: "BOT", amountUnits: "100", description: "Olive oil", deliveryDate: "2026-10-20", deliveryLocation: "PJ",
+          lineItems: [{ id: "line", description: "Olive oil", quantity: "1", unit: "tin", unitPriceUnits: "100" }],
+        }, supplier);
+        await trades.createInvite(order.id, supplier);
 
-      const confirmed = await trades.acceptInvitation(order.id, buyer);
-      expect(confirmed.status).toBe("supplier_confirmed");
-      expect(orderAccepted).toHaveBeenCalledOnce();
-      expect(orderAccepted).toHaveBeenCalledWith(confirmed);
-      expect((await trades.getOrder(order.id, supplier)).status).toBe("supplier_confirmed");
+        const confirmed = await trades.acceptInvitation(order.id, buyer);
+        expect(confirmed.status).toBe("supplier_confirmed");
+        expect(orderAccepted).toHaveBeenCalledOnce();
+        expect(orderAccepted).toHaveBeenCalledWith(confirmed);
+        expect((await trades.getOrder(order.id, supplier)).status).toBe("supplier_confirmed");
+        if (fails) expect(log).toHaveBeenCalledWith("Order-accepted notification failed", expect.objectContaining({ reason: "notifications down" }));
+      }
+    } finally {
+      log.mockRestore();
     }
   });
 
