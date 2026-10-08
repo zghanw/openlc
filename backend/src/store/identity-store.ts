@@ -21,12 +21,16 @@ export interface IdentityStore {
   createChallenge(challenge: WalletChallenge): Promise<void>;
   getChallenge(id: string): Promise<WalletChallenge | undefined>;
   consumeChallenge(id: string, usedAt: string): Promise<boolean>;
+  /** User-typed and unverified: kept apart from `email` so it can never stand in for a verified identity. */
+  getNotificationEmail(accountId: string): Promise<string | undefined>;
+  setNotificationEmail(accountId: string, email: string | undefined): Promise<void>;
 }
 
 export class MemoryIdentityStore implements IdentityStore {
   private readonly accounts = new Map<string, OpenLCAccount>();
   private readonly addressAccounts = new Map<string, string>();
   private readonly challenges = new Map<string, WalletChallenge>();
+  private readonly notificationEmails = new Map<string, string>();
 
   async findAccountById(id: string): Promise<OpenLCAccount | undefined> {
     const account = this.accounts.get(id);
@@ -64,5 +68,14 @@ export class MemoryIdentityStore implements IdentityStore {
     if (!challenge || challenge.usedAt) return false;
     this.challenges.set(id, { ...challenge, usedAt });
     return true;
+  }
+
+  async getNotificationEmail(accountId: string): Promise<string | undefined> {
+    return this.notificationEmails.get(accountId);
+  }
+
+  async setNotificationEmail(accountId: string, email: string | undefined): Promise<void> {
+    if (email) this.notificationEmails.set(accountId, email);
+    else this.notificationEmails.delete(accountId);
   }
 }

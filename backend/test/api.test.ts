@@ -173,4 +173,23 @@ describe("HTTP API", () => {
     expect(response.status).toBe(409);
     expect(mediationCalls).toBe(0);
   });
+
+  it("reads, sets, clears and validates the account's notification email", async () => {
+    const control = controlledContext();
+    const identity = new IdentityService(new MemoryIdentityStore(), {
+      sessionSecret: "test-only-session-secret-that-is-at-least-thirty-two-bytes", chainId: 968,
+    });
+    const verifier: TokenVerifier = { verify: async (token) => ({ id: token }) };
+    const app = createApp(new DisputeService(new MemoryDisputeStore(), control.ctx), verifier, undefined, undefined, undefined, identity);
+    const headers = { authorization: `Bearer ${BUYER}`, "content-type": "application/json" };
+    const patch = (notificationEmail: string) => app.request("/v1/account", { method: "PATCH", headers, body: JSON.stringify({ notificationEmail }) });
+
+    expect(await (await app.request("/v1/account", { headers })).json()).toEqual({ notificationEmail: null });
+    expect(await (await patch("buyer@example.com")).json()).toEqual({ notificationEmail: "buyer@example.com" });
+    expect(await (await app.request("/v1/account", { headers })).json()).toEqual({ notificationEmail: "buyer@example.com" });
+    const invalid = await patch("nope");
+    expect(invalid.status).toBe(400);
+    expect((await invalid.json() as any).error).toBe("INVALID_EMAIL");
+    expect(await (await patch("")).json()).toEqual({ notificationEmail: null });
+  });
 });

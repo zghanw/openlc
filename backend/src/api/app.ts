@@ -99,6 +99,7 @@ const FIELD_NAMES: Record<string, string> = {
   unitPriceUnits: "unit price", quantity: "quantity", amountUnits: "order value", description: "description",
   transactionDigest: "transaction", address: "wallet address", signature: "signature", statement: "statement",
   buyerUnits: "buyer amount", supplierUnits: "supplier amount", summary: "summary", name: "company name",
+  notificationEmail: "notification email",
 };
 function describeValidation(error: z.ZodError): string {
   const fields = [...new Set(error.issues.map((issue) => {
@@ -169,6 +170,13 @@ export function createApp(
     await next();
   });
   app.get("/v1/me", (c) => c.json(c.get("actor")));
+  if (identity) {
+    app.get("/v1/account", async (c) => c.json({ notificationEmail: await identity.notificationEmail(c.get("actor").id) }));
+    app.patch("/v1/account", async (c) => {
+      const body = z.object({ notificationEmail: z.string().max(254) }).parse(await c.req.json());
+      return c.json({ notificationEmail: await identity.setNotificationEmail(c.get("actor").id, body.notificationEmail) });
+    });
+  }
   if (organizations) {
     app.get("/v1/workspace", async (c) => c.json(await organizations.workspace(c.get("actor"))));
     app.patch("/v1/workspace", async (c) => {

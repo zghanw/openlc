@@ -86,6 +86,24 @@ export class SupabaseIdentityStore implements IdentityStore {
     if (error) throw new Error(`Supabase wallet challenge consume failed: ${error.message}`);
     return data === true;
   }
+
+  async getNotificationEmail(accountId: string): Promise<string | undefined> {
+    const { data, error } = await this.client
+      .from("openlc_accounts")
+      .select("notification_email")
+      .eq("id", accountId)
+      .maybeSingle();
+    if (error) throw new Error(`Supabase notification email read failed: ${error.message}`);
+    return data?.notification_email ?? undefined;
+  }
+
+  async setNotificationEmail(accountId: string, email: string | undefined): Promise<void> {
+    const { error } = await this.client
+      .from("openlc_accounts")
+      .update({ notification_email: email ?? null, updated_at: new Date().toISOString() })
+      .eq("id", accountId);
+    if (error) throw new Error(`Supabase notification email update failed: ${error.message}`);
+  }
 }
 
 export function accountFromRow(row: AccountRow): OpenLCAccount {
