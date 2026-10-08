@@ -305,6 +305,56 @@ describe("trade lifecycle API", () => {
     expect(confirmed.confirmation).toMatchObject({ confirmedBy: SUPPLIER, confirmedRole: "supplier", email: supplier.email, termsVersion: "1.3" });
   });
 
+  it("a repeat accept by the same supplier never rewinds a funded order to supplier_confirmed", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const store = new MemoryTradeStore();
+    const trades = new TradeService(store, disputes, control.ctx);
+    const buyer = { id: BUYER, email: "buyer-repeat@example.com", name: "Buyer", walletAddress: "0xa" };
+    const supplier = { id: SUPPLIER, email: "supplier-repeat@example.com", name: "Supplier", walletAddress: "0xb" };
+    const order = await trades.createOrder({
+      reference: "PO-REPEAT", supplierEmail: supplier.email, arbitratorWalletAddress: "0xc", arbitratorId: ARBITRATOR,
+      assetType: "USDC", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer);
+    const invite = await trades.createInvite(order.id, buyer);
+    await trades.acceptInvite(invite.inviteToken!, supplier);
+    const funded = await trades.recordFunding(order.id, buyer, { packageId: "0x1", escrowObjectId: "0x2", transactionDigest: "fund-repeat", buyerAddress: "0xa", supplierAddress: "0xb", arbitratorAddress: "0xc" });
+
+    const viaToken = await trades.acceptInvite(invite.inviteToken!, supplier);
+    const viaWorkspace = await trades.acceptInvitation(order.id, supplier);
+    const saved = await trades.getOrder(order.id, buyer);
+    for (const result of [viaToken, viaWorkspace, saved]) {
+      expect(result.status).toBe("funded");
+      expect(result.version).toBe(funded.version);
+    }
+
+    // The order saved but the invite write after it did not, so acceptedBy is missing:
+    // the order is past confirmation and is refused rather than rebuilt.
+    await store.saveInvite({ ...(await store.getInviteByOrderId(order.id))!, acceptedBy: undefined });
+    await expect(trades.acceptInvitation(order.id, supplier)).rejects.toMatchObject({ code: "INVALID_STATE", status: 409 });
+    expect((await trades.getOrder(order.id, buyer)).version).toBe(funded.version);
+  });
+
+  it("a double-clicked accept while still supplier_confirmed returns the order unchanged", async () => {
+    const control = controlledContext();
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx);
+    const buyer = { id: BUYER, email: "buyer-double@example.com", name: "Buyer" };
+    const supplier = { id: SUPPLIER, email: "supplier-double@example.com", name: "Supplier", walletAddress: "0xb" };
+    const order = await trades.createOrder({
+      reference: "PO-DOUBLE", supplierEmail: supplier.email, arbitratorId: ARBITRATOR,
+      assetType: "USDC", amountUnits: "1000", description: "Goods", deliveryDate: "2026-09-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "line", description: "Goods", quantity: "1", unit: "lot", unitPriceUnits: "1000" }],
+    }, buyer);
+    await trades.createInvite(order.id, buyer);
+    const first = await trades.acceptInvitation(order.id, supplier);
+    const second = await trades.acceptInvitation(order.id, supplier);
+    expect(second.status).toBe("supplier_confirmed");
+    expect(second.version).toBe(first.version);
+    expect(second.confirmation).toEqual(first.confirmation);
+  });
+
   it("settles a fully accepted delivery against the release transaction", async () => {
     const control = controlledContext();
     const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);

@@ -451,9 +451,13 @@ export class TradeService {
     if (new Date(invite.expiresAt).getTime() <= this.ctx.now().getTime()) throw new DomainError("INVITE_EXPIRED", "This invitation has expired", 410);
     const order = await this.store.getOrder(invite.orderId);
     if (!order) throw new DomainError("NOT_FOUND", "The invited order no longer exists", 404);
+    // A repeat accept by the same party (a double-click, a reopened link) changes nothing:
+    // rebuilding the order here would push a funded or settled order back to supplier_confirmed.
+    if (invite.acceptedBy === actor.id) return order;
     const side = pendingSide(order) ?? (order.initiatorRole === "supplier" ? "buyer" : "supplier");
     const acceptedId = side === "buyer" ? order.buyerId : order.supplierId;
     if (acceptedId && acceptedId !== actor.id) throw new DomainError("INVITE_ALREADY_ACCEPTED", "This order has already been accepted by another company", 409);
+    if (!["awaiting_supplier", "awaiting_buyer"].includes(order.status)) throw new DomainError("INVALID_STATE", "This order is no longer waiting for confirmation");
     if (invite.acceptedBy && invite.acceptedBy !== actor.id) throw new DomainError("INVITE_ALREADY_ACCEPTED", "This invitation has already been accepted", 409);
     const initiatorId = side === "buyer" ? order.supplierId : order.buyerId;
     if (actor.id === initiatorId || actor.id === order.arbitratorId) throw new DomainError("INVALID_PARTY", "The issuing company and the arbitrator cannot confirm the order", 400);
