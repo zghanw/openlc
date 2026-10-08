@@ -20,6 +20,9 @@ import { SupabaseIdentityStore } from "./store/supabase-identity-store.js";
 import { OrganizationService } from "./service/organization-service.js";
 import { MemoryOrganizationStore } from "./store/organization-store.js";
 import { SupabaseOrganizationStore } from "./store/supabase-organization-store.js";
+import { NotificationService } from "./service/notification-service.js";
+import { MemoryNotificationStore } from "./store/notification-store.js";
+import { SupabaseNotificationStore } from "./store/supabase-notification-store.js";
 import { BrevoInvitationEmailSender, DisabledInvitationEmailSender, ResendInvitationEmailSender, SmtpInvitationEmailSender } from "./integrations/invitation-email.js";
 
 const store = config.store === "supabase"
@@ -27,11 +30,11 @@ const store = config.store === "supabase"
   : new MemoryDisputeStore();
 const service = new DisputeService(store, systemContext);
 const sessionSecret = config.sessionSecret();
-const identity = sessionSecret
-  ? new IdentityService(new SupabaseIdentityStore(config.supabaseUrl(), config.supabaseSecretKey()), {
-      sessionSecret,
-      chainId: config.botchainChainId,
-    })
+const identityStore = sessionSecret
+  ? new SupabaseIdentityStore(config.supabaseUrl(), config.supabaseSecretKey())
+  : undefined;
+const identity = identityStore && sessionSecret
+  ? new IdentityService(identityStore, { sessionSecret, chainId: config.botchainChainId })
   : undefined;
 // No OPENLC_SESSION_SECRET means wallet sign-in cannot be configured; there is no other
 // production authentication path left to fall back to, so every bearer token is rejected.
@@ -97,6 +100,15 @@ if (config.escrowVerifierEnabled) {
 const documentStore = config.store === "supabase"
   ? new SupabaseDocumentStore(config.supabaseUrl(), config.supabaseSecretKey(), config.documentsBucket)
   : new MemoryDocumentStore();
-const trades = new TradeService(tradeStore, service, systemContext, process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders", fundingVerifier, organizations, invitationEmail, documentStore);
-const app = createApp(service, verifier, mediator, settlementVerifier, trades, identity, organizations);
+const orderBaseUrl = process.env.INVITE_BASE_URL ?? "http://localhost:3000/orders";
+// The issuer hears when an invite is accepted: in-app always, by email when they set an address.
+// The address lives on the account, so without wallet sign-in there is nobody to notify.
+const notifications = identityStore
+  ? new NotificationService(
+      config.store === "supabase" ? new SupabaseNotificationStore(config.supabaseUrl(), config.supabaseSecretKey()) : new MemoryNotificationStore(),
+      identityStore, invitationEmail, systemContext, orderBaseUrl,
+    )
+  : undefined;
+const trades = new TradeService(tradeStore, service, systemContext, orderBaseUrl, fundingVerifier, organizations, invitationEmail, documentStore, notifications);
+const app = createApp(service, verifier, mediator, settlementVerifier, trades, identity, organizations, notifications);
 serve({ fetch: app.fetch, port: config.port }, ({ port }) => console.log(`OpenLC API listening on port ${port}`));

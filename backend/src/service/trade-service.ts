@@ -24,6 +24,7 @@ import { MemoryDocumentStore, type DocumentStore } from "../store/document-store
 import type { EscrowFundingVerifier } from "../integrations/evm-escrow.js";
 import type { OrganizationService } from "./organization-service.js";
 import { DisabledInvitationEmailSender, type InvitationEmailSender } from "../integrations/invitation-email.js";
+import type { NotificationService } from "./notification-service.js";
 
 /** Version of the platform terms a party accepts when confirming an order. */
 export const TERMS_VERSION = "1.3";
@@ -178,6 +179,7 @@ export class TradeService {
     private readonly organizations?: OrganizationService,
     private readonly invitationEmail: InvitationEmailSender = new DisabledInvitationEmailSender(),
     private readonly documents: DocumentStore = new MemoryDocumentStore(),
+    private readonly notifications?: Pick<NotificationService, "orderAccepted">,
   ) {}
 
   /** Attach a file to the order. Either party (or the invited party) can attach; both can read. */
@@ -525,6 +527,12 @@ export class TradeService {
     }
     await this.store.saveOrder(updated, order.version);
     await this.store.saveInvite({ ...invite, acceptedBy: actor.id, acceptedAt: now, invitedWalletAddress: invite.invitedWalletAddress ?? boundWalletAddress?.toLowerCase() });
+    // The accept is already saved: telling the issuer is best effort and must never undo it.
+    try {
+      await this.notifications?.orderAccepted(updated);
+    } catch (error) {
+      console.error("Order-accepted notification failed", { orderId: updated.id, reason: error instanceof Error ? error.message : String(error) });
+    }
     return updated;
   }
 

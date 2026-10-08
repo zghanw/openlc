@@ -89,6 +89,17 @@ button.network-pill{cursor:pointer;transition:background-color 200ms ease-out,bo
 .user-menu-panel a:hover,.user-menu-panel button:hover,.user-menu-panel a:focus-visible,.user-menu-panel button:focus-visible{background:var(--secondary)}
 .company-name-form{display:grid;gap:20px}
 .company-name-form .field>small{color:var(--muted-foreground);text-align:right}
+/* Notification bell (header, left of the user menu) */
+.notification-bell-button{position:relative;width:40px;justify-content:center;padding:0}
+.notification-count{position:absolute;top:3px;right:2px;min-width:17px;height:17px;padding:0 4px;display:inline-grid;place-items:center;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:.625rem;font-weight:700}
+.notification-panel{width:340px;max-height:min(480px,calc(100vh - 88px));overflow-y:auto}
+.notification-panel a{min-height:0;padding:10px}
+.notification-text{display:grid;gap:2px}
+.notification-text strong{font-size:.8125rem;font-weight:600}
+.notification-text small{color:var(--muted-foreground);font-size:.75rem}
+.notification-unread{box-shadow:inset 2px 0 0 var(--primary)}
+.notification-empty{margin:0;padding:12px 10px;color:var(--muted-foreground);font-size:.8125rem}
+@media (max-width:767px){.notification-panel{position:fixed;left:16px;right:16px;top:64px;width:auto}}
 
 .shell-main{flex:1;width:100%;max-width:1320px;margin:0 auto;padding:24px;display:grid;gap:24px;align-content:start;min-width:0}
 .shell-main:focus{outline:none}

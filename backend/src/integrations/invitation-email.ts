@@ -16,18 +16,47 @@ export type InvitationEmailInput = {
   expiresAt: string;
 };
 
+/** One outgoing email, whatever it is about. */
+export type EmailMessage = {
+  to: string;
+  toName?: string;
+  subject: string;
+  text: string;
+  html: string;
+  /** Stable per logical email, so a retried request is not delivered twice (Resend honours it). */
+  idempotencyKey: string;
+  headers?: Record<string, string>;
+};
+
 export interface InvitationEmailSender {
   send(input: InvitationEmailInput): Promise<InvitationDelivery>;
+  deliver(message: EmailMessage): Promise<InvitationDelivery>;
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value.replace(/[&<>'"]/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;",
   })[character]!);
 }
 
+function invitationMessage(input: InvitationEmailInput): EmailMessage {
+  return {
+    to: input.to,
+    toName: input.supplierName,
+    subject: `${input.buyerName} invited you to review ${input.orderReference}`,
+    text: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in OpenLC. Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
+    html: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in OpenLC.</p><p>Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
+    idempotencyKey: `order-invite/${input.invitationId}`,
+    headers: { "X-OpenLC-Invitation-ID": input.invitationId },
+  };
+}
+
 export class DisabledInvitationEmailSender implements InvitationEmailSender {
   async send(): Promise<InvitationDelivery> {
+    return this.deliver();
+  }
+
+  async deliver(): Promise<InvitationDelivery> {
     return { status: "not_configured", attemptedAt: new Date().toISOString() };
   }
 }
@@ -35,7 +64,11 @@ export class DisabledInvitationEmailSender implements InvitationEmailSender {
 export class ResendInvitationEmailSender implements InvitationEmailSender {
   constructor(private readonly apiKey: string, private readonly from: string) {}
 
-  async send(input: InvitationEmailInput): Promise<InvitationDelivery> {
+  send(input: InvitationEmailInput): Promise<InvitationDelivery> {
+    return this.deliver(invitationMessage(input));
+  }
+
+  async deliver(message: EmailMessage): Promise<InvitationDelivery> {
     const attemptedAt = new Date().toISOString();
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -43,26 +76,20 @@ export class ResendInvitationEmailSender implements InvitationEmailSender {
         headers: {
           authorization: `Bearer ${this.apiKey}`,
           "content-type": "application/json",
-          "idempotency-key": `order-invite/${input.invitationId}`,
+          "idempotency-key": message.idempotencyKey,
         },
-        body: JSON.stringify({
-          from: this.from,
-          to: [input.to],
-          subject: `${input.buyerName} invited you to review ${input.orderReference}`,
-          text: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in OpenLC. Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
-          html: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in OpenLC.</p><p>Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
-        }),
+        body: JSON.stringify({ from: this.from, to: [message.to], subject: message.subject, text: message.text, html: message.html }),
         signal: AbortSignal.timeout(10_000),
       });
       const payload = await response.json().catch(() => ({})) as { id?: string };
       if (!response.ok || !payload.id) {
-        console.error("Invitation email delivery failed", { invitationId: input.invitationId, provider: "resend", status: response.status });
+        console.error("Email delivery failed", { key: message.idempotencyKey, provider: "resend", status: response.status });
         return { status: "failed", attemptedAt };
       }
       return { status: "sent", messageId: payload.id, attemptedAt };
     } catch (error) {
-      console.error("Invitation email delivery failed", {
-        invitationId: input.invitationId, provider: "resend",
+      console.error("Email delivery failed", {
+        key: message.idempotencyKey, provider: "resend",
         reason: error instanceof Error ? error.message : String(error),
       });
       return { status: "failed", attemptedAt };
@@ -81,7 +108,11 @@ function splitAddress(value: string): { name?: string; email: string } {
 export class BrevoInvitationEmailSender implements InvitationEmailSender {
   constructor(private readonly apiKey: string, private readonly from: string) {}
 
-  async send(input: InvitationEmailInput): Promise<InvitationDelivery> {
+  send(input: InvitationEmailInput): Promise<InvitationDelivery> {
+    return this.deliver(invitationMessage(input));
+  }
+
+  async deliver(message: EmailMessage): Promise<InvitationDelivery> {
     const attemptedAt = new Date().toISOString();
     try {
       const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -89,23 +120,23 @@ export class BrevoInvitationEmailSender implements InvitationEmailSender {
         headers: { "api-key": this.apiKey, "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({
           sender: splitAddress(this.from),
-          to: [{ email: input.to, name: input.supplierName }],
-          subject: `${input.buyerName} invited you to review ${input.orderReference}`,
-          textContent: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in OpenLC. Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
-          htmlContent: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in OpenLC.</p><p>Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
-          headers: { "X-OpenLC-Invitation-ID": input.invitationId },
+          to: [{ email: message.to, name: message.toName }],
+          subject: message.subject,
+          textContent: message.text,
+          htmlContent: message.html,
+          headers: message.headers,
         }),
         signal: AbortSignal.timeout(10_000),
       });
       const payload = await response.json().catch(() => ({})) as { messageId?: string };
       if (!response.ok || !payload.messageId) {
-        console.error("Invitation email delivery failed", { invitationId: input.invitationId, provider: "brevo", status: response.status });
+        console.error("Email delivery failed", { key: message.idempotencyKey, provider: "brevo", status: response.status });
         return { status: "failed", attemptedAt };
       }
       return { status: "sent", messageId: payload.messageId, attemptedAt };
     } catch (error) {
-      console.error("Invitation email delivery failed", {
-        invitationId: input.invitationId, provider: "brevo",
+      console.error("Email delivery failed", {
+        key: message.idempotencyKey, provider: "brevo",
         reason: error instanceof Error ? error.message : String(error),
       });
       return { status: "failed", attemptedAt };
@@ -140,22 +171,26 @@ export class SmtpInvitationEmailSender implements InvitationEmailSender {
     });
   }
 
-  async send(input: InvitationEmailInput): Promise<InvitationDelivery> {
+  send(input: InvitationEmailInput): Promise<InvitationDelivery> {
+    return this.deliver(invitationMessage(input));
+  }
+
+  async deliver(message: EmailMessage): Promise<InvitationDelivery> {
     const attemptedAt = new Date().toISOString();
     try {
       const result = await this.transport.sendMail({
         from: this.config.from,
-        to: input.to,
-        subject: `${input.buyerName} invited you to review ${input.orderReference}`,
-        text: `${input.supplierName},\n\n${input.buyerName} invited you to review purchase order ${input.orderReference} in OpenLC. Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.\n\nReview order: ${input.reviewUrl}\n\nThis invitation expires ${input.expiresAt}. Commercial line items are not included in this email.`,
-        html: `<p>${escapeHtml(input.supplierName)},</p><p>${escapeHtml(input.buyerName)} invited you to review purchase order <strong>${escapeHtml(input.orderReference)}</strong> in OpenLC.</p><p>Open the link and sign in with MetaMask, using the wallet you will trade from, to review every term before confirming.</p><p><a href="${escapeHtml(input.reviewUrl)}">Review purchase order</a></p><p>This invitation expires ${escapeHtml(input.expiresAt)}. Commercial line items are not included in this email.</p>`,
-        headers: { "X-OpenLC-Invitation-ID": input.invitationId },
+        to: message.to,
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+        headers: message.headers,
       });
-      return { status: "sent", messageId: result.messageId || input.invitationId, attemptedAt };
+      return { status: "sent", messageId: result.messageId || message.idempotencyKey, attemptedAt };
     } catch (error) {
-      // Without this the buyer sees "delivery failed" and nobody can see why.
-      console.error("Invitation email delivery failed", {
-        invitationId: input.invitationId, host: this.config.host,
+      // Without this the sender sees "delivery failed" and nobody can see why.
+      console.error("Email delivery failed", {
+        key: message.idempotencyKey, host: this.config.host,
         reason: error instanceof Error ? error.message : String(error),
         code: (error as { code?: string }).code,
       });
