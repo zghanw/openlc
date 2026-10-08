@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createApp, type TokenVerifier } from "../src/api/app.js";
 import { DisputeService } from "../src/service/dispute-service.js";
 import { OrganizationService } from "../src/service/organization-service.js";
@@ -7,6 +7,10 @@ import { MemoryDisputeStore } from "../src/store/store.js";
 import { MemoryOrganizationStore } from "../src/store/organization-store.js";
 import { MemoryTradeStore } from "../src/store/trade-store.js";
 import { ARBITRATOR, BUYER, SUPPLIER, controlledContext } from "./fixtures.js";
+import { NotificationService } from "../src/service/notification-service.js";
+import { MemoryNotificationStore } from "../src/store/notification-store.js";
+import { MemoryIdentityStore } from "../src/store/identity-store.js";
+import { DisabledInvitationEmailSender } from "../src/integrations/invitation-email.js";
 
 const auth = (token: string) => ({ authorization: `Bearer ${token}`, "content-type": "application/json" });
 
@@ -640,6 +644,57 @@ describe("trade lifecycle API", () => {
     await expect(trades.previewInvite(invited.inviteToken!, stranger)).rejects.toMatchObject({ code: "SUPPLIER_WALLET_MISMATCH", status: 403 });
     const named = { id: SUPPLIER, walletAddress: supplierWallet };
     expect((await trades.previewInvite(invited.inviteToken!, named)).id).toBe(order.id);
+  });
+
+  it("notifies the issuer when the invited party accepts, and a failing notifier never undoes the accept", async () => {
+    for (const fails of [false, true]) {
+      const control = controlledContext();
+      const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+      const orderAccepted = vi.fn(async () => { if (fails) throw new Error("notifications down"); });
+      const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx, undefined, undefined, undefined, undefined, undefined, { orderAccepted });
+      const supplier = { id: SUPPLIER, email: "supplier-notify@example.com", name: "FreshSource" };
+      const buyer = { id: BUYER, email: "buyer-notify@example.com", name: "GreenBite" };
+      const order = await trades.createOrder({
+        reference: "PO-NOTIFY", initiatorRole: "supplier", buyerEmail: buyer.email, arbitratorId: ARBITRATOR,
+        assetType: "BOT", amountUnits: "100", description: "Olive oil", deliveryDate: "2026-10-20", deliveryLocation: "PJ",
+        lineItems: [{ id: "line", description: "Olive oil", quantity: "1", unit: "tin", unitPriceUnits: "100" }],
+      }, supplier);
+      await trades.createInvite(order.id, supplier);
+
+      const confirmed = await trades.acceptInvitation(order.id, buyer);
+      expect(confirmed.status).toBe("supplier_confirmed");
+      expect(orderAccepted).toHaveBeenCalledOnce();
+      expect(orderAccepted).toHaveBeenCalledWith(confirmed);
+      expect((await trades.getOrder(order.id, supplier)).status).toBe("supplier_confirmed");
+    }
+  });
+
+  it("shows the issuer an unread notification over the API after the supplier accepts, and clears it once read", async () => {
+    const control = controlledContext();
+    const verifier: TokenVerifier = { verify: async (token) => JSON.parse(token) };
+    const disputes = new DisputeService(new MemoryDisputeStore(), control.ctx);
+    const notifications = new NotificationService(
+      new MemoryNotificationStore(), new MemoryIdentityStore(), new DisabledInvitationEmailSender(), control.ctx, "http://localhost:3000/orders",
+    );
+    const trades = new TradeService(new MemoryTradeStore(), disputes, control.ctx, "http://localhost:3000/orders", undefined, undefined, undefined, undefined, notifications);
+    const app = createApp(disputes, verifier, undefined, undefined, trades, undefined, undefined, notifications);
+    const buyerToken = JSON.stringify({ id: BUYER, walletAddress: `0x${"a".repeat(40)}` });
+    const created = await app.request("/v1/orders", { method: "POST", headers: auth(buyerToken), body: JSON.stringify({
+      reference: "PO-BELL", supplierName: "FreshSource", arbitratorId: ARBITRATOR, assetType: "BOT", amountUnits: "100",
+      description: "Olive oil", deliveryDate: "2026-10-20", deliveryLocation: "PJ",
+      lineItems: [{ id: "1", description: "Olive oil", quantity: "1", unit: "tin", unitPriceUnits: "100" }],
+    }) });
+    const order = await created.json() as any;
+    const invite = await (await app.request(`/v1/orders/${order.id}/invite`, { method: "POST", headers: auth(buyerToken) })).json() as any;
+    const supplierToken = JSON.stringify({ id: SUPPLIER, walletAddress: `0x${"b".repeat(40)}` });
+    expect((await app.request(`/v1/invites/${invite.inviteToken}/accept`, { method: "POST", headers: auth(supplierToken), body: "{}" })).status).toBe(200);
+
+    const inbox = await (await app.request("/v1/notifications", { headers: auth(buyerToken) })).json() as any;
+    expect(inbox.unread).toBe(1);
+    expect(inbox.notifications[0]).toMatchObject({ orderId: order.id, title: "FreshSource accepted PO-BELL", body: "Fund the escrow to start the order." });
+    expect((await (await app.request("/v1/notifications", { headers: auth(supplierToken) })).json() as any).unread).toBe(0);
+    expect(await (await app.request("/v1/notifications/read", { method: "POST", headers: auth(buyerToken) })).json()).toEqual({ unread: 0 });
+    expect((await (await app.request("/v1/notifications", { headers: auth(buyerToken) })).json() as any).unread).toBe(0);
   });
 
 });

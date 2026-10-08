@@ -8,6 +8,7 @@ import type { TradeService } from "../service/trade-service.js";
 import type { EscrowSettlementVerifier } from "../integrations/evm-escrow.js";
 import type { IdentityService } from "../service/identity-service.js";
 import type { OrganizationService } from "../service/organization-service.js";
+import type { NotificationService } from "../service/notification-service.js";
 
 export interface TokenVerifier { verify(token: string): Promise<Actor>; }
 
@@ -119,6 +120,7 @@ export function createApp(
   trades?: TradeService,
   identity?: IdentityService,
   organizations?: OrganizationService,
+  notifications?: NotificationService,
 ) {
   const app = new Hono<{ Variables: { actor: Actor } }>();
   app.use("*", cors({
@@ -176,6 +178,10 @@ export function createApp(
       const body = z.object({ notificationEmail: z.string().max(254) }).parse(await c.req.json());
       return c.json({ notificationEmail: await identity.setNotificationEmail(c.get("actor").id, body.notificationEmail) });
     });
+  }
+  if (notifications) {
+    app.get("/v1/notifications", async (c) => c.json(await notifications.list(c.get("actor").id)));
+    app.post("/v1/notifications/read", async (c) => c.json(await notifications.markAllRead(c.get("actor").id)));
   }
   if (organizations) {
     app.get("/v1/workspace", async (c) => c.json(await organizations.workspace(c.get("actor"))));
