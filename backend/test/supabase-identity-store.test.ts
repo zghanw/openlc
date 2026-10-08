@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountFromRow } from "../src/store/supabase-identity-store.js";
+import { accountFromRow, type AccountRow } from "../src/store/supabase-identity-store.js";
 
 describe("accountFromRow", () => {
   const base = { id: "a1", supabase_user_id: null, email: null, display_name: null };
@@ -11,5 +11,10 @@ describe("accountFromRow", () => {
   });
   it("has no wallet when the embed is null", () => {
     expect(accountFromRow({ ...base, openlc_wallet_identities: null }).walletAddress).toBeUndefined();
+  });
+  it("never maps the unverified notification email into the account", () => {
+    const account = accountFromRow({ ...base, notification_email: "attacker@example.com", openlc_wallet_identities: null } as AccountRow);
+    expect(account.email).toBeUndefined();
+    expect(Object.values(account)).not.toContain("attacker@example.com");
   });
 });

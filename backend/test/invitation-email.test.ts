@@ -78,4 +78,29 @@ describe("invitation email delivery", () => {
     await expect(new BrevoInvitationEmailSender("brevo_test", "OpenLC <orders@example.com>").send(input))
       .resolves.toMatchObject({ status: "failed" });
   });
+
+  it("delivers any message with its own subject and body, and no invitation header", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ messageId: "brevo-3" }), { status: 201 }));
+    vi.stubGlobal("fetch", request);
+    const result = await new BrevoInvitationEmailSender("brevo_test", "OpenLC <orders@example.com>").deliver({
+      to: "buyer@example.com", subject: "FreshSource accepted PO-42", text: "Fund the escrow.",
+      html: "<p>Fund the escrow.</p>", idempotencyKey: "order-accepted/order-1",
+    });
+    expect(result).toMatchObject({ status: "sent", messageId: "brevo-3" });
+    const payload = JSON.parse(String((request.mock.calls[0] as [string, RequestInit])[1].body));
+    expect(payload).toMatchObject({
+      subject: "FreshSource accepted PO-42", textContent: "Fund the escrow.", htmlContent: "<p>Fund the escrow.</p>",
+      to: [{ email: "buyer@example.com" }],
+    });
+    expect(payload.headers).toBeUndefined();
+  });
+
+  it("sends a Resend message under the message's own idempotency key", async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "email-2" }), { status: 200 }));
+    vi.stubGlobal("fetch", request);
+    await new ResendInvitationEmailSender("re_test", "OpenLC <orders@example.com>").deliver({
+      to: "buyer@example.com", subject: "s", text: "t", html: "<p>t</p>", idempotencyKey: "order-accepted/order-1",
+    });
+    expect(new Headers((request.mock.calls[0] as [string, RequestInit])[1].headers).get("idempotency-key")).toBe("order-accepted/order-1");
+  });
 });

@@ -108,4 +108,21 @@ describe("IdentityService", () => {
       service.createWalletChallenge("not-an-address", "http://localhost:3000"),
     ).rejects.toMatchObject({ code: "INVALID_WALLET_ADDRESS" });
   });
+
+  it("keeps the notification email out of the session actor, so it can never pass as a verified email", async () => {
+    const wallet = Wallet.createRandom();
+    const service = new IdentityService(new MemoryIdentityStore(), { sessionSecret: SESSION_SECRET, chainId: CHAIN_ID });
+    const challenge = await service.createWalletChallenge(wallet.address, "http://localhost:3000");
+    const { account, accessToken } = await service.verifyWalletChallenge({
+      challengeId: challenge.id, address: wallet.address, signature: await wallet.signMessage(challenge.message),
+    });
+
+    expect(await service.setNotificationEmail(account.id, "  Supplier@Example.com ")).toBe("supplier@example.com");
+    expect(await service.notificationEmail(account.id)).toBe("supplier@example.com");
+    expect((await service.verifySession(accessToken)).email).toBeUndefined();
+
+    expect(await service.setNotificationEmail(account.id, "")).toBeNull();
+    expect(await service.notificationEmail(account.id)).toBeNull();
+    await expect(service.setNotificationEmail(account.id, "not-an-email")).rejects.toMatchObject({ code: "INVALID_EMAIL", status: 400 });
+  });
 });

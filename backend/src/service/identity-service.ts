@@ -32,6 +32,19 @@ export class IdentityService {
     return this.store.findAccountById(id);
   }
 
+  /** Where order notifications are emailed. Never part of the session actor: it is unverified. */
+  async notificationEmail(accountId: string): Promise<string | null> {
+    return (await this.store.getNotificationEmail(accountId)) ?? null;
+  }
+
+  async setNotificationEmail(accountId: string, value: string): Promise<string | null> {
+    const email = value.trim().toLowerCase();
+    if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))
+      throw new DomainError("INVALID_EMAIL", "Enter a valid email address, or leave it empty to turn off email notifications.", 400);
+    await this.store.setNotificationEmail(accountId, email || undefined);
+    return email || null;
+  }
+
   /** Checksums the address (EIP-55) and rejects anything that is not a valid EVM address. */
   private normalizeAddress(address: string): string {
     try {
