@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from "react";
 import { AlertCircle, AlertTriangle, Bell, Box, Building2, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FileText, Info, LayoutDashboard, LogOut, Mail, Menu, Pencil, Plus, Upload, UserRound, WalletCards, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +74,18 @@ export function EmptyArt({ kind }: { kind: "inbox" | "documents" | "activity" })
   );
 }
 
+/** While a header dropdown is open, a press outside it or Escape closes it. */
+function useDismiss(open: boolean, setOpen: (open: boolean) => void, ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
+  }, [open, setOpen, ref]);
+}
+
 const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 
 function timeAgo(iso: string): string {
@@ -102,14 +114,7 @@ function NotificationBell() {
     document.addEventListener("visibilitychange", refresh);
     return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
   }, []);
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) setOpen(false); };
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
-  }, [open]);
+  useDismiss(open, setOpen, ref);
   const toggle = () => {
     const next = !open;
     setOpen(next);
@@ -151,14 +156,7 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
   const [emailState, setEmailState] = useState<"loading" | "ready" | "saving">("loading");
   const [emailError, setEmailError] = useState("");
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) setOpen(false); };
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
-  }, [open]);
+  useDismiss(open, setOpen, ref);
   const signOut = () => {
     setOpen(false);
     void signOutToLanding();
