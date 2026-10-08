@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { AlertCircle, AlertTriangle, Box, Building2, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FileText, Info, LayoutDashboard, LogOut, Menu, Pencil, Plus, Upload, UserRound, WalletCards, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Bell, Box, Building2, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FileText, Info, LayoutDashboard, LogOut, Mail, Menu, Pencil, Plus, Upload, UserRound, WalletCards, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ import { STATUS, TERMS, statusLabel, statusTone } from "@/lib/order-status";
 import { MotionShell } from "@/app/components/motion";
 import { BuiltOnBotChain } from "@/app/components/built-on-botchain";
 import { SignInGate } from "@/app/components/sign-in-gate";
-import { signOutToLanding, updateWorkspaceName, useSession, type DemoSession } from "@/lib/openlc-api";
+import { loadNotificationEmail, loadNotifications, markNotificationsRead, signOutToLanding, updateNotificationEmail, updateWorkspaceName, useSession, type DemoSession, type OrderNotification } from "@/lib/openlc-api";
 import { BOTCHAIN } from "@/lib/chain";
 import { isWalletMismatch, shortAddress, useWallet } from "@/lib/wallet";
 
@@ -74,12 +74,82 @@ export function EmptyArt({ kind }: { kind: "inbox" | "documents" | "activity" })
   );
 }
 
+const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+function timeAgo(iso: string): string {
+  const minutes = Math.round((new Date(iso).getTime() - Date.now()) / 60_000);
+  if (minutes > -60) return relativeTime.format(minutes, "minute");
+  if (minutes > -1440) return relativeTime.format(Math.round(minutes / 60), "hour");
+  return relativeTime.format(Math.round(minutes / 1440), "day");
+}
+
+/** Header bell: checks on mount, every minute while the tab is visible, and when the tab comes back. */
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<OrderNotification[]>([]);
+  const [unread, setUnread] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      loadNotifications()
+        .then((inbox) => { if (!cancelled) { setItems(inbox.notifications); setUnread(inbox.unread); } })
+        .catch(() => { /* the bell keeps what it had; the next check retries */ });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
+  }, [open]);
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && unread > 0) {
+      setUnread(0);
+      markNotificationsRead().catch(() => { /* read state catches up on the next check */ });
+    }
+  };
+  return (
+    <div className="user-menu notification-bell" ref={ref}>
+      <button type="button" className="user-menu-button notification-bell-button" aria-haspopup="true" aria-expanded={open} aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} onClick={toggle}>
+        <Bell size={18} aria-hidden="true" />
+        {unread > 0 && <span className="notification-count" aria-hidden="true">{unread > 9 ? "9+" : unread}</span>}
+      </button>
+      {open && (
+        <div className="user-menu-panel notification-panel">
+          <div className="user-menu-head"><strong>Notifications</strong></div>
+          {items.length === 0
+            ? <p className="notification-empty">Nothing yet. When a company accepts one of your orders, it shows up here.</p>
+            : items.map((item) => (
+              <a key={item.id} href={`/orders/${encodeURIComponent(item.orderId)}`} className={item.readAt ? undefined : "notification-unread"}>
+                <span className="notification-text"><strong>{item.title}</strong><small>{item.body} · {timeAgo(item.createdAt)}</small></span>
+              </a>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UserMenu({ company, session }: { company: string; session: DemoSession | null }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(company);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [emailState, setEmailState] = useState<"loading" | "ready" | "saving">("loading");
+  const [emailError, setEmailError] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -98,6 +168,27 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
     setEditError("");
     setOpen(false);
     setEditing(true);
+  };
+  const beginEmailEdit = () => {
+    setOpen(false);
+    setEmailError("");
+    setEmailState("loading");
+    setEmailOpen(true);
+    loadNotificationEmail()
+      .then((email) => setEmailDraft(email ?? ""))
+      .catch((cause) => setEmailError(cause instanceof Error ? cause.message : "Your notification email could not be loaded."))
+      .finally(() => setEmailState("ready"));
+  };
+  const saveNotificationEmail = async () => {
+    setEmailState("saving");
+    setEmailError("");
+    try {
+      await updateNotificationEmail(emailDraft.trim());
+      setEmailOpen(false);
+    } catch (cause) {
+      setEmailError(cause instanceof Error ? cause.message : "The notification email could not be saved.");
+    }
+    setEmailState("ready");
   };
   const saveCompanyName = async () => {
     const name = draft.trim();
@@ -128,6 +219,7 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
           <div className="user-menu-panel" role="menu">
             {session && <div className="user-menu-head"><strong className="user-menu-wallet">{wallet}</strong><small>Signed in</small></div>}
             {session && <button type="button" role="menuitem" onClick={beginEdit}><Pencil size={14} aria-hidden="true" />Edit company name</button>}
+            {session && <button type="button" role="menuitem" onClick={beginEmailEdit}><Mail size={14} aria-hidden="true" />Notification email</button>}
             {session && <a role="menuitem" href="/trust">Trust profile</a>}
             <a role="menuitem" href="/legal/terms">Terms of Service</a>
             <a role="menuitem" href="/legal/dispute-policy">Dispute Resolution Policy</a>
@@ -151,6 +243,25 @@ function UserMenu({ company, session }: { company: string; session: DemoSession 
             <DialogFooter>
               <Button variant="outline" type="button" disabled={saving} onClick={() => setEditing(false)}>Cancel</Button>
               <Button className="btn-primary" type="submit" disabled={saving || draft.trim() === company || draft.trim().length < 2}>{saving ? "Saving…" : "Save company name"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={emailOpen} onOpenChange={(value) => { if (emailState !== "saving") setEmailOpen(value); }}>
+        <DialogContent className="consent-dialog">
+          <form className="company-name-form" onSubmit={(event) => { event.preventDefault(); void saveNotificationEmail(); }}>
+            <DialogHeader>
+              <DialogTitle>Notification email</DialogTitle>
+              <DialogDescription>OpenLC emails this address when a company accepts one of your orders. Leave it empty to get notifications in the app only.</DialogDescription>
+            </DialogHeader>
+            <label className="field field-wide">
+              <span>Email</span>
+              <Input autoFocus type="email" value={emailDraft} onChange={(event) => setEmailDraft(event.target.value)} maxLength={254} autoComplete="email" placeholder="you@company.com" disabled={emailState !== "ready"} />
+            </label>
+            {emailError && <p className="form-error" role="alert">{emailError}</p>}
+            <DialogFooter>
+              <Button variant="outline" type="button" disabled={emailState === "saving"} onClick={() => setEmailOpen(false)}>Cancel</Button>
+              <Button className="btn-primary" type="submit" disabled={emailState !== "ready"}>{emailState === "saving" ? "Saving…" : "Save email"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -287,6 +398,7 @@ export function AppShell({ active, company, title, description, actions, pageHea
             {!gated && (onNewOrder
               ? <button type="button" className="btn btn-primary header-new-order" onClick={onNewOrder}><Plus size={16} aria-hidden="true" /><span>New order</span></button>
               : <a className="btn btn-primary header-new-order" href="/orders?action=create"><Plus size={16} aria-hidden="true" /><span>New order</span></a>)}
+            {!gated && <NotificationBell />}
             <UserMenu company={company} session={session} />
           </div>
         </header>

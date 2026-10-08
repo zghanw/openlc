@@ -159,6 +159,36 @@ export async function updateWorkspaceName(name: string): Promise<WorkspaceProfil
   });
 }
 
+export type OrderNotification = {
+  id: string;
+  orderId: string;
+  kind: "order_accepted";
+  title: string;
+  body: string;
+  readAt?: string;
+  createdAt: string;
+};
+
+export async function loadNotifications(): Promise<{ notifications: OrderNotification[]; unread: number }> {
+  return apiRequest<{ notifications: OrderNotification[]; unread: number }>("/v1/notifications");
+}
+
+export async function markNotificationsRead(): Promise<{ unread: number }> {
+  return apiRequest<{ unread: number }>("/v1/notifications/read", { method: "POST" });
+}
+
+export async function loadNotificationEmail(): Promise<string | null> {
+  return (await apiRequest<{ notificationEmail: string | null }>("/v1/account")).notificationEmail;
+}
+
+/** An empty string clears it. */
+export async function updateNotificationEmail(notificationEmail: string): Promise<string | null> {
+  return (await apiRequest<{ notificationEmail: string | null }>("/v1/account", {
+    method: "PATCH",
+    body: JSON.stringify({ notificationEmail }),
+  })).notificationEmail;
+}
+
 export async function loadTrustProfile(organizationId: string): Promise<OrganizationTrustProfile> {
   return apiRequest<OrganizationTrustProfile>(`/v1/organizations/${encodeURIComponent(organizationId)}/trust-profile`);
 }
